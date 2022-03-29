@@ -1,0 +1,10 @@
+{
+  "name": "kilt-extension",
+  "version": "0.0.1",
+  "main": "main.js",
+  "author": "dudleyneedham <dudleyneedham1993@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@kiltprotocol/sdk-js": "^0.26.0"
+  }
+}
