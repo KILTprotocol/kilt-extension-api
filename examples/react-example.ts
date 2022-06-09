@@ -1,11 +1,13 @@
 // @ts-ignore
 import { useState, useEffect } from 'react'
-import { getExtensions } from './getExtension'
-import { InjectedWindowProvider } from '../types/types'
+import { getExtensions } from '../src/getExtension/getExtension'
+import { InjectedWindowProvider } from '../src/types/types'
 
-export default function reactExample() {
+export default function useSporran() {
   const [extensionEnabled, setExtensionEnabled] = useState(false)
-  const [extensions, setExtensions] = useState<InjectedWindowProvider[]>()
+  const [extensions, setExtensions] =
+    useState<Record<string, InjectedWindowProvider>>()
+
   useEffect(() => {
     async function doEffect() {
       const allInjected = await getExtensions()
@@ -16,6 +18,7 @@ export default function reactExample() {
     }
     doEffect()
   }, [])
+
   useEffect(() => {
     async function doEffect() {
       if (extensionEnabled) {
@@ -24,5 +27,6 @@ export default function reactExample() {
     }
     doEffect()
   }, [extensionEnabled, extensions])
-  return `<div>Add your logic app here</div>`
+
+  return { extensions }
 }
