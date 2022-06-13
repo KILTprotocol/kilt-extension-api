@@ -1,4 +1,3 @@
-// @ts-ignore
 import { useState, useEffect } from 'react'
 import { getExtensions } from '../src/getExtension/getExtension'
 import { InjectedWindowProvider } from '../src/types/types'
@@ -20,12 +19,9 @@ export default function useSporran() {
   }, [])
 
   useEffect(() => {
-    async function doEffect() {
-      if (extensionEnabled) {
-        console.log(extensions)
-      }
+    if (extensionEnabled) {
+      console.log(extensions)
     }
-    doEffect()
   }, [extensionEnabled, extensions])
 
   return { extensions }
