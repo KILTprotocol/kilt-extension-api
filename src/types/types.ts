@@ -1,4 +1,9 @@
-import { DidPublicKey, IEncryptedMessage } from '@kiltprotocol/sdk-js'
+import {
+  DidPublicKey,
+  IEncryptedMessage,
+  IIdentity,
+} from '@kiltprotocol/sdk-js'
+import { HexString } from '@polkadot/util/types'
 
 export type This = typeof globalThis
 export interface PubSubSession {
@@ -13,16 +18,21 @@ export interface PubSubSession {
 }
 
 export interface InjectedWindowProvider {
-  signWithDid: (
-    plaintext: string
-  ) => Promise<{ signature: string; didKeyUri: string }>
   startSession: (
     dAppName: string,
     dAppEncryptionKeyId: DidPublicKey['id'],
     challenge: string
   ) => Promise<PubSubSession>
-  specVersion: '0.1'
+  name: string
   version: string
+  specVersion: '1.0'
+  signWithDid: (
+    plaintext: string
+  ) => Promise<{ signature: string; didKeyUri: DidPublicKey['id'] }>
+  signExtrinsicWithDid: (
+    extrinsic: HexString,
+    signer: IIdentity['address']
+  ) => Promise<{ signed: HexString; didKeyUri: DidPublicKey['id'] }>
 }
 
 export interface ApiWindow extends This {
