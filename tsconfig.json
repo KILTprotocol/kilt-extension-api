@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "ESNext",
+    "outDir": "dist",
     "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "ESNext",
+    "noImplicitAny": true,
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -9,11 +12,11 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["src", "examples/react-example.ts"]
+  "include": ["src", "examples/react-example.ts"],
+  "exclude": ["node_modules", "tsconfig.json"] ,
 }

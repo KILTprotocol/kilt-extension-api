@@ -2,6 +2,7 @@ import {
   DidPublicKey,
   IEncryptedMessage,
   IIdentity,
+  IRequestForAttestation,
 } from '@kiltprotocol/sdk-js'
 import { HexString } from '@polkadot/util/types'
 
@@ -37,4 +38,30 @@ export interface InjectedWindowProvider {
 
 export interface ApiWindow extends This {
   kilt: Record<string, InjectedWindowProvider>
+}
+
+// Shouldbe updated to DiDURI after
+export interface CredentialSubject {
+  id: string
+  origin: string
+  rootHash: string
+}
+
+export interface Proof {
+  type: string
+  created?: string
+  proofPurpose?: string
+
+  [key: string]: unknown
+}
+
+export interface DomainLinkageCredential {
+  '@context': string[]
+  type: string[]
+  credentialSubject: CredentialSubject
+  issuer: string
+  issuanceDate: string
+  expirationDate: string
+  signedRequest: IRequestForAttestation
+  proof: Proof
 }

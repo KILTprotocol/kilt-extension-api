@@ -4,7 +4,20 @@
   "main": "main.js",
   "author": "dudleyneedham <dudleyneedham1993@gmail.com>",
   "license": "BSD-4-Clause",
+  "scripts": {
+    "lint": "eslint --ext .js,.ts ."
+  },
   "dependencies": {
     "@kiltprotocol/sdk-js": "^0.27.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.7.4",
+    "@types/jest": "^27.4.0",
+    "jest": "^27.4.7",
+    "ts-jest": "^28.0.8",
+    "ts-jest-resolver": "^2.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.33.0",
+    "@typescript-eslint/parser": "^5.33.0",
+    "eslint": ">=8.14.0"
   }
 }
