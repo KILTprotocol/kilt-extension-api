@@ -14,7 +14,7 @@ function documentReadyPromise<T>(creator: () => T): Promise<T> {
 
 export function getExtensions(): Promise<
   Record<string, InjectedWindowProvider>
-> {
+  > {
   apiWindow.kilt = apiWindow.kilt || {}
 
   return documentReadyPromise(() => apiWindow.kilt)

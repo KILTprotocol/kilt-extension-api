@@ -8,7 +8,7 @@
     "lint": "eslint --ext .js,.ts ."
   },
   "dependencies": {
-    "@kiltprotocol/sdk-js": "^0.27.0"
+    "@kiltprotocol/sdk-js": "^0.28.2"
   },
   "devDependencies": {
     "typescript": "^4.7.4",

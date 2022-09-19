@@ -8,44 +8,48 @@ import {
   Claim,
   ICredential,
   KeystoreSigner as SignCallback,
+  DidUri,
 } from '@kiltprotocol/sdk-js'
 
 export const DEFAULT_VERIFIABLECREDENTIAL_TYPE = 'VerifiableCredential'
 export const KILT_VERIFIABLECREDENTIAL_TYPE = 'KiltCredential2020'
 export const KILT_SELF_SIGNED_PROOF_TYPE = 'KILTSelfSigned2020'
 
+export const ctypeDomainLinkage = CType.fromSchema({
+  $schema: 'http://kilt-protocol.org/draft-01/ctype#',
+  title: 'Domain Linkage Credential',
+  properties: {
+    id: {
+      type: 'string',
+    },
+    origin: {
+      type: 'string',
+    },
+  },
+  type: 'object',
+})
+
 export async function createWellKnownDidConfig(
   sign: SignCallback,
   origin: string,
-  didUri: string
+  didUri: DidUri
 ): Promise<ICredential> {
   const fullDid = await Did.FullDidDetails.fromChainInfo(didUri)
 
   if (!fullDid) throw new Error('No Did found: Please create a Full DID')
 
-  const ctypeDomainLinkage = CType.fromSchema({
-    $schema: 'http://kilt-protocol.org/draft-01/ctype#',
-    title: 'Domain Linkage Credential',
-    properties: {
-      id: {
-        type: 'string',
-      },
-      origin: {
-        type: 'string',
-      },
-    },
-    type: 'object',
-  })
+  if (!(await ctypeDomainLinkage.verifyStored()))
+    throw new Error('Domain Linkage claim type not found on chain')
 
   const domainClaimContents = {
-    id: fullDid.did,
+    id: fullDid.uri,
     origin,
   }
 
   const claim = Claim.fromCTypeAndClaimContents(
     ctypeDomainLinkage,
     domainClaimContents,
-    fullDid.did
+    fullDid.uri
   )
 
   const request = RequestForAttestation.fromClaim(claim)
@@ -67,7 +71,7 @@ export async function createWellKnownDidConfig(
 
   const attestation = Attestation.fromRequestAndDid(
     selfSignedRequest,
-    fullDid.did
+    fullDid.uri
   )
 
   return Credential.fromRequestAndAttestation(request, attestation)
@@ -101,7 +105,7 @@ export function getDidConfiguration(
   const proof = {
     type: KILT_SELF_SIGNED_PROOF_TYPE,
     proofPurpose: 'assertionMethod',
-    verificationMethod: claimerSignature.keyId,
+    verificationMethod: claimerSignature.keyUri,
     signature: claimerSignature.signature,
     challenge: claimerSignature.challenge,
   }
