@@ -1,15 +1,13 @@
 import {
-  RequestForAttestation,
   Did,
-  KeyRelationship,
   CType,
   Credential,
-  Attestation,
   Claim,
   ICredential,
-  KeystoreSigner as SignCallback,
+  SignCallback,
   DidUri,
   Utils,
+  ICredentialPresentation,
 } from '@kiltprotocol/sdk-js'
 import {
   CredentialSubject,
@@ -37,58 +35,53 @@ export const ctypeDomainLinkage = CType.fromSchema({
 })
 
 export async function createCredential(
-  sign: SignCallback,
+  assertionSigner: SignCallback,
   origin: string,
   didUri: DidUri
 ): Promise<ICredential> {
-  const fullDid = await Did.FullDidDetails.fromChainInfo(didUri)
+  const fullDid = await Did.resolve(didUri)
 
-  if (!fullDid) throw new Error('No Did found: Please create a Full DID')
+  if (!fullDid?.document) {
+    throw new Error('No Did found: Please create a Full DID')
+  }
 
-  if (!(await ctypeDomainLinkage.verifyStored()))
-    throw new Error('Domain Linkage claim type not found on chain')
+  const { document } = fullDid
+
+  await CType.verifyStored(ctypeDomainLinkage)
 
   const domainClaimContents = {
-    id: fullDid.uri,
+    id: document.uri,
     origin,
   }
 
   const claim = Claim.fromCTypeAndClaimContents(
     ctypeDomainLinkage,
     domainClaimContents,
-    fullDid.uri
+    document.uri
   )
 
-  const request = RequestForAttestation.fromClaim(claim)
+  const credential = Credential.fromClaim(claim)
 
-  const assertionKey = fullDid.getVerificationKeys(
-    KeyRelationship.assertionMethod
-  )[0]
+  const assertionKey = document.assertionMethod?.[0]
 
-  if (!assertionKey)
+  if (!assertionKey) {
     throw new Error(
       'Full DID doesnt have assertion key: Please add assertion key'
     )
+  }
 
-  const selfSignedRequest = await request.signWithDidKey(
-    sign,
-    fullDid,
-    assertionKey.id
-  )
-
-  const attestation = Attestation.fromRequestAndDid(
-    selfSignedRequest,
-    fullDid.uri
-  )
-
-  return Credential.fromRequestAndAttestation(request, attestation)
+  return Credential.createPresentation({
+    credential,
+    signCallback: assertionSigner,
+    claimerDid: document,
+  })
 }
 
 export function getDomainLinkagePresentation(
-  credential: ICredential,
+  credential: ICredentialPresentation,
   expirationDate?: string
 ): VerifiableDomainLinkagePresentation {
-  const claimContents = credential.request.claim.contents
+  const claimContents = credential.claim.contents
   if (!claimContents.id && !claimContents.origin) {
     throw new Error('Claim contents do not content an id or origin')
   }
@@ -114,10 +107,10 @@ export function getDomainLinkagePresentation(
   const credentialSubject: CredentialSubject = {
     id: didUri,
     origin,
-    rootHash: credential.request.rootHash,
+    rootHash: credential.rootHash,
   }
 
-  const issuer = credential.attestation.owner
+  const issuer = didUri
 
   const issuanceDate = new Date().toISOString()
 
@@ -127,7 +120,7 @@ export function getDomainLinkagePresentation(
     ).toISOString() // 5 years
   }
 
-  const { claimerSignature } = credential.request
+  const { claimerSignature } = credential
 
   if (!claimerSignature) {
     throw new Error('No Claimer Signature found in the credential')
@@ -192,9 +185,9 @@ export async function verifyDidConfigPresentation(
         return false
       }
 
-      const isDid = Did.Utils.validateKiltDidUri(credentialSubject.id)
+      Did.Utils.validateKiltDidUri(credentialSubject.id)
       const matchesIssuer = issuer === credentialSubject.id
-      if (!isDid || !matchesIssuer) {
+      if (!matchesIssuer) {
         return false
       }
 
@@ -202,18 +195,22 @@ export async function verifyDidConfigPresentation(
       if (!matchesOrigin) {
         return false
       }
-      const didDetails = await Did.FullDidDetails.fromChainInfo(issuer)
-      if (!didDetails) {
-        throw new Error('No on-chain did')
+      const fullDid = await Did.resolve(didUri)
+
+      if (!fullDid?.document) {
+        throw new Error('No Did found: Please create a Full DID')
       }
 
-      if (!didDetails.attestationKey) {
+      const { document } = fullDid
+
+      if (!document?.assertionMethod?.[0].id) {
         throw new Error('No DID attestation key on-chain')
       }
 
       const { verified } = await Did.verifyDidSignature({
+        expectedVerificationMethod: 'assertionMethod',
         signature: {
-          keyUri: didDetails.assembleKeyUri(didDetails.attestationKey.id),
+          keyUri: credential.proof.verificationMethod,
           signature: credential.proof.signature as string,
         },
         message: Utils.Crypto.coToUInt8(credentialSubject.rootHash),
