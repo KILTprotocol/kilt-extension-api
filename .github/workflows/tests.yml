@@ -1,0 +1,20 @@
+name: Lint and Test
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    tags:
+      - '*'
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+  pull_request:
+    branches:
+      - develop
+      - main
+
+env:
+  TESTCONTAINERS_WATCHER_IMG: testcontainers/ryuk:0.3.2
+
