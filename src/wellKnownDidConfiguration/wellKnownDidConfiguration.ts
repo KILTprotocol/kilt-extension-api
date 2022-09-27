@@ -46,6 +46,10 @@ export async function createCredential(
 
   const { document } = fullDid
 
+  if (!validUrl.isUri(origin)) {
+    throw new Error('The origin is not a valid url')
+  }
+
   const domainClaimContents = {
     id: document.uri,
     origin,
@@ -73,12 +77,12 @@ export async function createCredential(
   })
 }
 
-export function getDomainLinkagePresentation(
+export async function getDomainLinkagePresentation(
   credential: ICredentialPresentation,
   expirationDate: string = new Date(
     Date.now() + 1000 * 60 * 60 * 24 * 365 * 5
   ).toISOString()
-): VerifiableDomainLinkagePresentation {
+): Promise<VerifiableDomainLinkagePresentation> {
   const claimContents = credential.claim.contents
   if (!claimContents.id && !claimContents.origin) {
     throw new Error('Claim contents do not content an id or origin')
@@ -110,9 +114,14 @@ export function getDomainLinkagePresentation(
 
   const { claimerSignature } = credential
 
-  if (!claimerSignature) {
-    throw new Error('No Claimer Signature found in the credential')
-  }
+  await Did.verifyDidSignature({
+    expectedVerificationMethod: 'assertionMethod',
+    signature: {
+      keyUri: claimerSignature.keyUri,
+      signature: claimerSignature.signature,
+    },
+    message: Utils.Crypto.coToUInt8(credentialSubject.rootHash),
+  })
 
   // add self-signed proof
   const proof = {

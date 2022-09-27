@@ -27,7 +27,7 @@ import {
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string
   let account: KeyringPair
-  const origin = 'http://localhost:3000'
+  let origin = 'http://localhost:3000'
   let didDocument: DidDocument
   let didUri: DidUri
   let keypair: any
@@ -56,17 +56,40 @@ describe('Well Known Did Configuration integration test', () => {
         origin,
         didUri
       ))
-    ).resolves
+    ).toBeTruthy()
   })
 
-  it('generate a well known did configuration credential', async () => {
-    expect((domainLinkageCredential = getDomainLinkagePresentation(credential)))
-      .resolves
+  it('fails to generate a well known did configuration credential due to bad origin', async () => {
+    await expect(
+      createCredential(
+        await assertionSigner({ assertion: keypair.assertion, didDocument }),
+        'bad origin',
+        didUri
+      )
+    ).rejects.toThrow()
   })
 
-  it('generate a well known did configuration credential', async () => {
+  it('get domain linkage presentation', async () => {
+    expect(
+      (domainLinkageCredential = await getDomainLinkagePresentation(credential))
+    ).toBeTruthy()
+  })
+
+  it('rejects the domain linkage as no signature', async () => {
+    credential.claimerSignature.signature = '0x'
+    await expect(getDomainLinkagePresentation(credential)).rejects.toThrow()
+  })
+
+  it('verify did configuration presentation', async () => {
     expect(
       await verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
-    ).resolves
+    ).toBeUndefined()
+  })
+
+  it('did not verify did configuration presentation', async () => {
+    domainLinkageCredential.linked_dids[0].proof.signature = '0x'
+    await expect(
+      verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
+    ).rejects.toThrow()
   })
 })
