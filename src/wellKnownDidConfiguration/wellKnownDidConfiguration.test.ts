@@ -1,15 +1,28 @@
 import {
   KeyringPair,
   DidUri,
-  init,
   DidDocument,
+  ICredentialPresentation,
 } from '@kiltprotocol/sdk-js'
-import { mnemonicGenerate } from '@polkadot/util-crypto'
+import { ApiPromise } from '@polkadot/api'
+import { mnemonicGenerate, cryptoWaitReady } from '@polkadot/util-crypto'
 import { VerifiableDomainLinkagePresentation } from '../types/types'
+import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
 
-import { createCredential } from './wellKnownDidConfiguration'
-import { assertionSigner, generateDid, keypairs } from '../tests/utils'
+import {
+  createCredential,
+  getDomainLinkagePresentation,
+  verifyDidConfigPresentation,
+} from './wellKnownDidConfiguration'
+import {
+  fundAccount,
+  generateDid,
+  buildConnection,
+  keypairs,
+  createCtype,
+  assertionSigner,
+} from '../tests/utils'
 
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string
@@ -18,28 +31,42 @@ describe('Well Known Did Configuration integration test', () => {
   let didDocument: DidDocument
   let didUri: DidUri
   let keypair: any
-  // let domainLinkageCredential: VerifiableDomainLinkagePresentation
-  // let credential: ICredential
+  let domainLinkageCredential: VerifiableDomainLinkagePresentation
+  let credential: ICredentialPresentation
   // let expirationDate: string
+  let api: ApiPromise
 
   beforeAll(async () => {
-    // mnemonic = mnemonicGenerate()
-    await init({ address: 'wss://peregrine.kilt.io/' })
-    mnemonic =
-      'gesture ocean hurry disagree control twin script evidence under pottery route galaxy'
-    account = new Keyring({ type: 'sr25519' }).addFromMnemonic(mnemonic)
+    api = await buildConnection('ws://127.0.0.1:9944')
+    await cryptoWaitReady()
+    mnemonic = mnemonicGenerate()
+    account = new Keyring({ type: 'ed25519' }).addFromMnemonic(mnemonic)
+    await fundAccount(account.address, new BN('1000000000000000000'), api)
+
     keypair = await keypairs(account, mnemonic)
-    didDocument = await generateDid(account, mnemonic, keypair.assertion.sign)
+    didDocument = await generateDid(account, mnemonic)
     didUri = didDocument.uri
+    await createCtype(didUri, account, mnemonic, api)
   })
 
   it('generate a well known did configuration credential', async () => {
     expect(
-      await createCredential(
+      (credential = await createCredential(
         await assertionSigner({ assertion: keypair.assertion, didDocument }),
         origin,
         didUri
-      )
-    ).toBeCalled()
+      ))
+    ).resolves
+  })
+
+  it('generate a well known did configuration credential', async () => {
+    expect((domainLinkageCredential = getDomainLinkagePresentation(credential)))
+      .resolves
+  })
+
+  it('generate a well known did configuration credential', async () => {
+    expect(
+      await verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
+    ).resolves
   })
 })

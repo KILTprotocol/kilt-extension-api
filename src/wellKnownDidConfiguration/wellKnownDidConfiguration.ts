@@ -3,7 +3,6 @@ import {
   CType,
   Credential,
   Claim,
-  ICredential,
   SignCallback,
   DidUri,
   Utils,
@@ -35,10 +34,10 @@ export const ctypeDomainLinkage = CType.fromSchema({
 })
 
 export async function createCredential(
-  assertionSigner: SignCallback,
+  signCallback: SignCallback,
   origin: string,
   didUri: DidUri
-): Promise<ICredential> {
+): Promise<ICredentialPresentation> {
   const fullDid = await Did.resolve(didUri)
 
   if (!fullDid?.document) {
@@ -46,8 +45,6 @@ export async function createCredential(
   }
 
   const { document } = fullDid
-
-  await CType.verifyStored(ctypeDomainLinkage)
 
   const domainClaimContents = {
     id: document.uri,
@@ -72,14 +69,15 @@ export async function createCredential(
 
   return Credential.createPresentation({
     credential,
-    signCallback: assertionSigner,
-    claimerDid: document,
+    signCallback,
   })
 }
 
 export function getDomainLinkagePresentation(
   credential: ICredentialPresentation,
-  expirationDate?: string
+  expirationDate: string = new Date(
+    Date.now() + 1000 * 60 * 60 * 24 * 365 * 5
+  ).toISOString()
 ): VerifiableDomainLinkagePresentation {
   const claimContents = credential.claim.contents
   if (!claimContents.id && !claimContents.origin) {
@@ -87,13 +85,9 @@ export function getDomainLinkagePresentation(
   }
 
   let didUri: DidUri
-  if (typeof claimContents.id !== 'string') {
-    throw new Error('claim contents id is not a string')
-  } else if (!Did.Utils.isUri(claimContents.id)) {
-    throw new Error('Credential ID is not a did uri')
-  } else {
-    didUri = claimContents.id as DidUri
-  }
+  Did.validateUri(claimContents.id)
+
+  didUri = claimContents.id as DidUri
 
   let origin: string
   if (typeof claimContents.origin !== 'string') {
@@ -113,12 +107,6 @@ export function getDomainLinkagePresentation(
   const issuer = didUri
 
   const issuanceDate = new Date().toISOString()
-
-  if (!expirationDate) {
-    expirationDate = new Date(
-      Date.now() + 1000 * 60 * 60 * 24 * 365 * 5
-    ).toISOString() // 5 years
-  }
 
   const { claimerSignature } = credential
 
@@ -160,67 +148,52 @@ export function getDomainLinkagePresentation(
 
 async function asyncSome(
   credentials: DomainLinkageCredential[],
-  verify: (credential: DomainLinkageCredential) => Promise<boolean>
+  verify: (credential: DomainLinkageCredential) => Promise<void>
 ) {
   for (const credential of credentials) {
-    if (await verify(credential)) return true
+    await verify(credential)
   }
-  return false
 }
 
 export async function verifyDidConfigPresentation(
   didUri: DidUri,
-  domainLinkageCredential: VerifiableDomainLinkagePresentation
+  domainLinkageCredential: VerifiableDomainLinkagePresentation,
+  origin: string
 ): Promise<void> {
   // Verification steps outlined in Well Known DID Configuration
   // https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource-verification
 
-  const verified = await asyncSome(
-    domainLinkageCredential.linked_dids,
-    async (credential) => {
-      const { issuer, credentialSubject } = credential
+  await asyncSome(domainLinkageCredential.linked_dids, async (credential) => {
+    const { issuer, credentialSubject } = credential
 
-      const matchesSessionDid = didUri === credentialSubject.id
-      if (!matchesSessionDid) {
-        return false
-      }
+    const matchesSessionDid = didUri === credentialSubject.id
+    if (!matchesSessionDid) throw new Error('session did doesnt match')
 
-      Did.Utils.validateKiltDidUri(credentialSubject.id)
-      const matchesIssuer = issuer === credentialSubject.id
-      if (!matchesIssuer) {
-        return false
-      }
+    Did.validateUri(credentialSubject.id)
+    const matchesIssuer = issuer === credentialSubject.id
+    if (!matchesIssuer) throw new Error('does not match the issuer')
 
-      const matchesOrigin = origin === credentialSubject.origin
-      if (!matchesOrigin) {
-        return false
-      }
-      const fullDid = await Did.resolve(didUri)
+    const matchesOrigin = origin === credentialSubject.origin
+    if (!matchesOrigin) throw new Error('does not match the origin')
+    const fullDid = await Did.resolve(didUri)
 
-      if (!fullDid?.document) {
-        throw new Error('No Did found: Please create a Full DID')
-      }
-
-      const { document } = fullDid
-
-      if (!document?.assertionMethod?.[0].id) {
-        throw new Error('No DID attestation key on-chain')
-      }
-
-      const { verified } = await Did.verifyDidSignature({
-        expectedVerificationMethod: 'assertionMethod',
-        signature: {
-          keyUri: credential.proof.verificationMethod,
-          signature: credential.proof.signature as string,
-        },
-        message: Utils.Crypto.coToUInt8(credentialSubject.rootHash),
-      })
-      return verified
+    if (!fullDid?.document) {
+      throw new Error('No Did found: Please create a Full DID')
     }
-  )
-  if (!verified) {
-    throw new Error(
-      `Verification of DID configuration resource of ${origin} failed for ${didUri}`
-    )
-  }
+
+    const { document } = fullDid
+
+    if (!document?.assertionMethod?.[0].id) {
+      throw new Error('No DID attestation key on-chain')
+    }
+
+    await Did.verifyDidSignature({
+      expectedVerificationMethod: 'assertionMethod',
+      signature: {
+        keyUri: credential.proof.verificationMethod,
+        signature: credential.proof.signature as string,
+      },
+      message: Utils.Crypto.coToUInt8(credentialSubject.rootHash),
+    })
+  })
 }

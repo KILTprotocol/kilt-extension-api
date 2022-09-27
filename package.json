@@ -5,11 +5,12 @@
   "author": "dudleyneedham <dudleyneedham1993@gmail.com>",
   "license": "BSD-4-Clause",
   "scripts": {
-    "lint": "eslint --ext .js,.ts ."
+    "lint": "eslint --ext .js,.ts .",
+    "test": "jest test"
   },
   "dependencies": {
-    "@kiltprotocol/sdk-js": "^0.29.0-rc.1",
-    "@kiltprotocol/vc-export": "^0.29.0-rc.1"
+    "@kiltprotocol/sdk-js": "^0.29.0-rc.2",
+    "@kiltprotocol/vc-export": "^0.29.0-rc.2"
   },
   "devDependencies": {
     "@types/jest": "^27.4.0",
