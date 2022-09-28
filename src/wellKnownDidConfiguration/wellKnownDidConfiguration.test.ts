@@ -27,7 +27,7 @@ import {
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string
   let account: KeyringPair
-  let origin = 'http://localhost:3000'
+  const origin = 'http://localhost:3000'
   let didDocument: DidDocument
   let didUri: DidUri
   let keypair: any

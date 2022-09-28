@@ -88,10 +88,9 @@ export async function getDomainLinkagePresentation(
     throw new Error('Claim contents do not content an id or origin')
   }
 
-  let didUri: DidUri
   Did.validateUri(claimContents.id)
 
-  didUri = claimContents.id as DidUri
+  const didUri = claimContents.id as DidUri
 
   let origin: string
   if (typeof claimContents.origin !== 'string') {
