@@ -1,9 +1,9 @@
 import {
-  DidPublicKey,
-  DidUri,
   IEncryptedMessage,
-  IIdentity,
-} from '@kiltprotocol/sdk-js'
+  DidUri,
+  KiltAddress,
+  DidResourceUri,
+} from '@kiltprotocol/types'
 import { HexString } from '@polkadot/util/types'
 import { types as VC_TYPES } from '@kiltprotocol/vc-export'
 
@@ -16,7 +16,7 @@ export interface PubSubSession {
   ) => Promise<void>
   close: () => Promise<void>
   send: (message: IEncryptedMessage) => Promise<void>
-  encryptionKeyId: DidPublicKey['uri']
+  encryptionKeyId: DidResourceUri
   encryptedChallenge: string
   nonce: string
 }
@@ -24,7 +24,7 @@ export interface PubSubSession {
 export interface InjectedWindowProvider {
   startSession: (
     dAppName: string,
-    dAppEncryptionKeyId: DidPublicKey['uri'],
+    dAppEncryptionKeyId: DidResourceUri,
     challenge: string
   ) => Promise<PubSubSession>
   name: string
@@ -32,11 +32,11 @@ export interface InjectedWindowProvider {
   specVersion: '1.0'
   signWithDid: (
     plaintext: string
-  ) => Promise<{ signature: string; didKeyUri: DidPublicKey['uri'] }>
+  ) => Promise<{ signature: string; didKeyUri: DidResourceUri }>
   signExtrinsicWithDid: (
     extrinsic: HexString,
-    signer: IIdentity['address']
-  ) => Promise<{ signed: HexString; didKeyUri: DidPublicKey['uri'] }>
+    signer: KiltAddress
+  ) => Promise<{ signed: HexString; didKeyUri: DidResourceUri }>
 }
 
 export interface ApiWindow extends This {
