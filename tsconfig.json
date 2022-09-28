@@ -18,5 +18,5 @@
     "noEmit": true
   },
   "include": ["src", "examples/react-example.ts"],
-  "exclude": ["node_modules", "tsconfig.json"] ,
+  "exclude": ["node_modules", "tsconfig.json", "jest.config.js"] ,
 }
