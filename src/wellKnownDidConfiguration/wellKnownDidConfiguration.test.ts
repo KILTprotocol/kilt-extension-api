@@ -9,7 +9,6 @@ import { mnemonicGenerate, cryptoWaitReady } from '@polkadot/util-crypto'
 import { VerifiableDomainLinkagePresentation } from '../types/types'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
-
 import {
   createCredential,
   getDomainLinkagePresentation,

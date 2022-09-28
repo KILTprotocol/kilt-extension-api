@@ -701,7 +701,7 @@
   resolved "https://registry.yarnpkg.com/@kiltprotocol/type-definitions/-/type-definitions-0.2.1.tgz#0469b0bcc58063be0b02ffbf6f779176c6b0a00d"
   integrity sha512-By09MH20P+rXadiZDnw2XeAw7bQLgNazOyNS3gPdU1L4Jx+lU9OtvIgZEA+T/TY/KM5nTv32s3c4wZ7v1s2znw==
 
-"@kiltprotocol/types@0.29.0-rc.2":
+"@kiltprotocol/types@0.29.0-rc.2", "@kiltprotocol/types@^0.29.0-rc.2":
   version "0.29.0-rc.2"
   resolved "https://registry.yarnpkg.com/@kiltprotocol/types/-/types-0.29.0-rc.2.tgz#cb3ebc6b0632755681a66ff4fae95c4ebcab048d"
   integrity sha512-1DJkXFFlqYuCH06AgU+WXGTwQss5T2AeeWk9+xK2mYbodF0DFA3usrQsTyog3nJPNe/E8k12V43W9czmx+iPVw==
@@ -713,7 +713,7 @@
     "@polkadot/util" "^10.0.0"
     "@polkadot/util-crypto" "^10.0.0"
 
-"@kiltprotocol/utils@0.29.0-rc.2":
+"@kiltprotocol/utils@0.29.0-rc.2", "@kiltprotocol/utils@^0.29.0-rc.2":
   version "0.29.0-rc.2"
   resolved "https://registry.yarnpkg.com/@kiltprotocol/utils/-/utils-0.29.0-rc.2.tgz#f17bc80cc728694d79b6d605e3a03e2ea512cddc"
   integrity sha512-jhUHwVnSRUfA4rTtUvh1YuiDf7Jb2J3Ax61hXqcmzBaAfXBRS024dp0hUCJSChU4kWEAJpHUVkEjpuqG4PRUQA==
@@ -884,7 +884,7 @@
     eventemitter3 "^4.0.7"
     rxjs "^7.5.6"
 
-"@polkadot/api@9.4.2", "@polkadot/api@^9.4.1":
+"@polkadot/api@9.4.2", "@polkadot/api@^9.4.1", "@polkadot/api@^9.4.2":
   version "9.4.2"
   resolved "https://registry.yarnpkg.com/@polkadot/api/-/api-9.4.2.tgz#d1291e4204a4cb01dd6df96f652dfe3968d09724"
   integrity sha512-qiYHNV8Y9LEUbyWHUnoshoufnQDcTb885nvgTOmm5x6skBaVPHYXoi55/jsIGpFOn1NYHQMSvOReqRDjvO/YTA==

@@ -12,6 +12,11 @@
   "dependencies": {
     "@kiltprotocol/sdk-js": "^0.29.0-rc.2",
     "@kiltprotocol/vc-export": "^0.29.0-rc.2",
+    "@kiltprotocol/utils": "^0.29.0-rc.2",
+    "@kiltprotocol/types": "^0.29.0-rc.2",
+    "@polkadot/util": "^10.1.9",
+    "@polkadot/util-crypto": "^10.1.9",
+    "@polkadot/api": "^9.4.2",
     "react": "^18.2.0",
     "ts-node": "^10.9.1"
   },
