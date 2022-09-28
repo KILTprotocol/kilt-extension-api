@@ -1,4 +1,5 @@
 import { getExtensions } from './getExtension/getExtension'
-import { InjectedWindowProvider, PubSubSession } from './types/types'
-export { getExtensions }
-export type { InjectedWindowProvider, PubSubSession }
+import * as WellKnownDidConfiguration from './wellKnownDidConfiguration/wellKnownDidConfiguration'
+import * as Types from './types/types'
+export { getExtensions, WellKnownDidConfiguration }
+export type { Types }
