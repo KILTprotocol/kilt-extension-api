@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@types/jest": "^27.4.0",
+    "@types/react": "^18.0.21",
     "@types/valid-url": "^1.0.3",
     "@typescript-eslint/eslint-plugin": "^5.33.0",
     "@typescript-eslint/parser": "^5.33.0",
