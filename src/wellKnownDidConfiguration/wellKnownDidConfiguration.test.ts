@@ -46,7 +46,7 @@ describe('Well Known Did Configuration integration test', () => {
     didDocument = await generateDid(account, mnemonic)
     didUri = didDocument.uri
     await createCtype(didUri, account, mnemonic, api)
-  })
+  }, 60_000)
 
   it('generate a well known did configuration credential', async () => {
     expect(
@@ -56,7 +56,7 @@ describe('Well Known Did Configuration integration test', () => {
         didUri
       ))
     ).toBeTruthy()
-  })
+  }, 60_000)
 
   it('fails to generate a well known did configuration credential due to bad origin', async () => {
     await expect(
@@ -66,29 +66,29 @@ describe('Well Known Did Configuration integration test', () => {
         didUri
       )
     ).rejects.toThrow()
-  })
+  }, 60_000)
 
   it('get domain linkage presentation', async () => {
     expect(
       (domainLinkageCredential = await getDomainLinkagePresentation(credential))
     ).toBeTruthy()
-  })
+  }, 60_000)
 
   it('rejects the domain linkage as no signature', async () => {
     credential.claimerSignature.signature = '0x'
     await expect(getDomainLinkagePresentation(credential)).rejects.toThrow()
-  })
+  }, 60_000)
 
   it('verify did configuration presentation', async () => {
     expect(
       await verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
     ).toBeUndefined()
-  })
+  }, 60_000)
 
   it('did not verify did configuration presentation', async () => {
     domainLinkageCredential.linked_dids[0].proof.signature = '0x'
     await expect(
       verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
     ).rejects.toThrow()
-  })
+  }, 60_000)
 })
