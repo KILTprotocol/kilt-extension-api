@@ -33,18 +33,27 @@ describe('Well Known Did Configuration integration test', () => {
   let domainLinkageCredential: VerifiableDomainLinkagePresentation
   let credential: ICredentialPresentation
   let api: ApiPromise
+  console.log('begins')
 
   beforeAll(async () => {
+    console.log('works 0')
     api = await buildConnection('ws://127.0.0.1:9944')
+    console.log('connect')
     await cryptoWaitReady()
+    console.log('crypto await')
     mnemonic = mnemonicGenerate()
     account = new Keyring({ type: 'ed25519' }).addFromMnemonic(mnemonic)
     await fundAccount(account.address, new BN('1000000000000000000'), api)
-
+    console.log('money')
     keypair = await keypairs(account, mnemonic)
+    console.log('key')
+
     didDocument = await generateDid(account, mnemonic)
+    console.log('generate')
+
     didUri = didDocument.uri
     await createCtype(didUri, account, mnemonic, api)
+    console.log('ctype')
   }, 60_000)
 
   it('generate a well known did configuration credential', async () => {
