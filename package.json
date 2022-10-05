@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "eslint --ext .js,.ts .",
     "build": "tsc",
-    "test": "jest test"
+    "test": "jest test --runInBand"
   },
   "dependencies": {
     "@kiltprotocol/sdk-js": "^0.29.0-rc.2",
