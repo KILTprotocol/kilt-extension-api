@@ -3,7 +3,7 @@ module.exports = {
   testEnvironment: 'node',
   clearMocks: true,
   // Parachain block time is 12s
-  testTimeout: 120000,
+  testTimeout: 12000,
   transformIgnorePatterns: [
     '/node_modules/(?!@polkadot|@babel/runtime/helpers/esm/)',
   ],
