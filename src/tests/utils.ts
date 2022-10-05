@@ -33,7 +33,7 @@ export async function buildConnection(wsEndpoint: string): Promise<ApiPromise> {
   const provider = new WsProvider(wsEndpoint)
   const api = await ApiPromise.create({ provider })
   await init({ api })
-  return api
+  return api.isReadyOrError
 }
 
 export const faucet = async () => {
