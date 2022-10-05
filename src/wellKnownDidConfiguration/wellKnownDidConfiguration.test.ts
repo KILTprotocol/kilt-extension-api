@@ -3,7 +3,6 @@ import {
   DidUri,
   DidDocument,
   ICredentialPresentation,
-  disconnect,
 } from '@kiltprotocol/sdk-js'
 import { ApiPromise } from '@polkadot/api'
 import { mnemonicGenerate, cryptoWaitReady } from '@polkadot/util-crypto'
@@ -24,6 +23,8 @@ import {
   assertionSigner,
 } from '../tests/utils'
 
+let api: ApiPromise
+
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string
   let account: KeyringPair
@@ -33,10 +34,12 @@ describe('Well Known Did Configuration integration test', () => {
   let keypair: any
   let domainLinkageCredential: VerifiableDomainLinkagePresentation
   let credential: ICredentialPresentation
-  let api: ApiPromise
 
   beforeAll(async () => {
     api = await buildConnection('ws://127.0.0.1:9944')
+  })
+
+  beforeAll(async () => {
     await cryptoWaitReady()
     mnemonic = mnemonicGenerate()
     account = new Keyring({ type: 'ed25519' }).addFromMnemonic(mnemonic)
@@ -95,5 +98,5 @@ describe('Well Known Did Configuration integration test', () => {
 })
 
 afterAll(async () => {
-  await disconnect()
+  await api.disconnect()
 })
