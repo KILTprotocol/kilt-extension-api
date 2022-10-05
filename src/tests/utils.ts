@@ -7,7 +7,6 @@ import {
   KiltAddress,
   KiltKeyringPair,
   DidDocument,
-  connect,
   init,
   ChainHelpers,
   CType,
@@ -15,7 +14,6 @@ import {
 } from '@kiltprotocol/sdk-js'
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import { Keypair } from '@polkadot/util-crypto/types'
-// import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
 import {
