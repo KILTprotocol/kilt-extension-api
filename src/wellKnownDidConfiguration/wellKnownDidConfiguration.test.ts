@@ -3,6 +3,7 @@ import {
   DidUri,
   DidDocument,
   ICredentialPresentation,
+  disconnect,
 } from '@kiltprotocol/sdk-js'
 import { ApiPromise } from '@polkadot/api'
 import { mnemonicGenerate, cryptoWaitReady } from '@polkadot/util-crypto'
@@ -91,4 +92,8 @@ describe('Well Known Did Configuration integration test', () => {
       verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
     ).rejects.toThrow()
   }, 30_000)
+})
+
+afterAll(async () => {
+  await disconnect()
 })
