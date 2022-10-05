@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ESNext",
     "outDir": "dist",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "module": "ESNext",
     "noImplicitAny": true,
     "allowJs": true,
@@ -17,6 +21,13 @@
     "isolatedModules": false,
     "noEmit": true
   },
-  "include": ["src", "examples/react-example.ts"],
-  "exclude": ["node_modules", "tsconfig.json", "jest.config.ts"] ,
+  "include": [
+    "src",
+    "examples/**/*",
+    "jest.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "tsconfig.json",
+  ],
 }

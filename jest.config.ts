@@ -7,7 +7,7 @@ module.exports = {
   transformIgnorePatterns: [
     '/node_modules/(?!@polkadot|@babel/runtime/helpers/esm/)',
   ],
-  collectCoverageFrom: ['**/*/src/**/*.ts', '!**/index.ts'],
+  collectCoverageFrom: ['**/*/src/**/*.ts'],
   resolver: 'ts-jest-resolver',
   rootDir: 'src',
   coverageDirectory: 'coverage',
