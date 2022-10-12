@@ -14,6 +14,7 @@ import {
   VerifiableDomainLinkagePresentation,
 } from '../types/types'
 import * as validUrl from 'valid-url'
+import { types, verification, toCredentialIRI } from '@kiltprotocol/vc-export'
 
 export const DEFAULT_VERIFIABLECREDENTIAL_TYPE = 'VerifiableCredential'
 export const KILT_VERIFIABLECREDENTIAL_TYPE = 'KiltCredential2020'
@@ -23,9 +24,6 @@ export const ctypeDomainLinkage = CType.fromSchema({
   $schema: 'http://kilt-protocol.org/draft-01/ctype#',
   title: 'Domain Linkage Credential',
   properties: {
-    id: {
-      type: 'string',
-    },
     origin: {
       type: 'string',
     },
@@ -51,7 +49,6 @@ export async function createCredential(
   }
 
   const domainClaimContents = {
-    id: document.uri,
     origin,
   }
 
@@ -84,13 +81,13 @@ export async function getDomainLinkagePresentation(
   ).toISOString()
 ): Promise<VerifiableDomainLinkagePresentation> {
   const claimContents = credential.claim.contents
-  if (!claimContents.id && !claimContents.origin) {
-    throw new Error('Claim contents do not content an id or origin')
+  if (!credential.claim.owner && !claimContents.origin) {
+    throw new Error('Claim do not content an owner or origin')
   }
 
-  Did.validateUri(claimContents.id)
+  Did.validateUri(credential.claim.owner)
 
-  const didUri = claimContents.id as DidUri
+  const didUri = credential.claim.owner
 
   let origin: string
   if (typeof claimContents.origin !== 'string') {
@@ -104,14 +101,13 @@ export async function getDomainLinkagePresentation(
   const credentialSubject: CredentialSubject = {
     id: didUri,
     origin,
-    rootHash: credential.rootHash,
   }
-
-  const issuer = didUri
 
   const issuanceDate = new Date().toISOString()
 
-  const { claimerSignature } = credential
+  const { claimerSignature, rootHash } = credential
+
+  const id = toCredentialIRI(credential.rootHash)
 
   await Did.verifyDidSignature({
     expectedVerificationMethod: 'assertionMethod',
@@ -119,11 +115,11 @@ export async function getDomainLinkagePresentation(
       keyUri: claimerSignature.keyUri,
       signature: claimerSignature.signature,
     },
-    message: Utils.Crypto.coToUInt8(credentialSubject.rootHash),
+    message: Utils.Crypto.coToUInt8(rootHash),
   })
 
   // add self-signed proof
-  const proof = {
+  const proof: types.SelfSignedProof = {
     type: KILT_SELF_SIGNED_PROOF_TYPE,
     proofPurpose: 'assertionMethod',
     verificationMethod: claimerSignature.keyUri,
@@ -139,7 +135,8 @@ export async function getDomainLinkagePresentation(
           'https://www.w3.org/2018/credentials/v1',
           'https://identity.foundation/.well-known/did-configuration/v1',
         ],
-        issuer,
+        id,
+        issuer: didUri,
         issuanceDate,
         expirationDate,
         type: [
@@ -158,9 +155,7 @@ async function asyncSome(
   credentials: DomainLinkageCredential[],
   verify: (credential: DomainLinkageCredential) => Promise<void>
 ) {
-  for (const credential of credentials) {
-    await verify(credential)
-  }
+  await Promise.all(credentials.map((credential) => verify(credential)))
 }
 
 export async function verifyDidConfigPresentation(
@@ -172,7 +167,7 @@ export async function verifyDidConfigPresentation(
   // https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource-verification
 
   await asyncSome(domainLinkageCredential.linked_dids, async (credential) => {
-    const { issuer, credentialSubject } = credential
+    const { issuer, credentialSubject, id } = credential
 
     const matchesSessionDid = didUri === credentialSubject.id
     if (!matchesSessionDid) throw new Error('session did doesnt match')
@@ -183,6 +178,8 @@ export async function verifyDidConfigPresentation(
 
     const matchesOrigin = origin === credentialSubject.origin
     if (!matchesOrigin) throw new Error('does not match the origin')
+    if (!validUrl.isUri(origin)) throw new Error('not a valid uri')
+
     const fullDid = await Did.resolve(didUri)
 
     if (!fullDid?.document) {
@@ -199,9 +196,9 @@ export async function verifyDidConfigPresentation(
       expectedVerificationMethod: 'assertionMethod',
       signature: {
         keyUri: credential.proof.verificationMethod,
-        signature: credential.proof.signature as string,
+        signature: credential.proof.signature,
       },
-      message: Utils.Crypto.coToUInt8(credentialSubject.rootHash),
+      message: Utils.Crypto.coToUInt8(id),
     })
   })
 }

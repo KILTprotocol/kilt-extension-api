@@ -46,7 +46,6 @@ export interface ApiWindow extends This {
 export interface CredentialSubject {
   id: DidUri
   origin: string
-  rootHash: string
 }
 
 const context = [
@@ -56,11 +55,11 @@ const context = [
 export interface DomainLinkageCredential
   extends Omit<
     VC_TYPES.VerifiableCredential,
-    '@context' | 'id' | 'legitimationIds' | 'credentialSubject' | 'proof'
+    '@context' | 'legitimationIds' | 'credentialSubject' | 'proof'
   > {
   '@context': typeof context
   credentialSubject: CredentialSubject
-  proof: VC_TYPES.Proof
+  proof: VC_TYPES.SelfSignedProof
 }
 
 export interface VerifiableDomainLinkagePresentation {
