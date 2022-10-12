@@ -7,6 +7,7 @@ import {
   DidUri,
   Utils,
   ICredentialPresentation,
+  DidResourceUri,
 } from '@kiltprotocol/sdk-js'
 import {
   CredentialSubject,
@@ -14,11 +15,18 @@ import {
   VerifiableDomainLinkagePresentation,
 } from '../types/types'
 import * as validUrl from 'valid-url'
-import { types, verification, toCredentialIRI } from '@kiltprotocol/vc-export'
+import {
+  fromCredentialIRI,
+  toCredentialIRI,
+} from '@kiltprotocol/vc-export/lib/cjs/exportToVerifiableCredential'
+import { types as VC_TYPES } from '@kiltprotocol/vc-export'
 
 export const DEFAULT_VERIFIABLECREDENTIAL_TYPE = 'VerifiableCredential'
 export const KILT_VERIFIABLECREDENTIAL_TYPE = 'KiltCredential2020'
 export const KILT_SELF_SIGNED_PROOF_TYPE = 'KILTSelfSigned2020'
+export const DID_CONFIGURATION_CONTEXT =
+  'https://identity.foundation/.well-known/did-configuration/v1'
+export const DID_VC_CONTEXT = 'https://www.w3.org/2018/credentials/v1'
 
 export const ctypeDomainLinkage = CType.fromSchema({
   $schema: 'http://kilt-protocol.org/draft-01/ctype#',
@@ -119,7 +127,7 @@ export async function getDomainLinkagePresentation(
   })
 
   // add self-signed proof
-  const proof: types.SelfSignedProof = {
+  const proof: VC_TYPES.SelfSignedProof = {
     type: KILT_SELF_SIGNED_PROOF_TYPE,
     proofPurpose: 'assertionMethod',
     verificationMethod: claimerSignature.keyUri,
@@ -128,12 +136,12 @@ export async function getDomainLinkagePresentation(
   }
 
   return {
-    '@context': 'https://identity.foundation/.well-known/did-configuration/v1',
+    '@context': DID_CONFIGURATION_CONTEXT,
     linked_dids: [
       {
         '@context': [
           'https://www.w3.org/2018/credentials/v1',
-          'https://identity.foundation/.well-known/did-configuration/v1',
+          DID_CONFIGURATION_CONTEXT,
         ],
         id,
         issuer: didUri,
@@ -192,13 +200,16 @@ export async function verifyDidConfigPresentation(
       throw new Error('No DID attestation key on-chain')
     }
 
+    // Stripping off the prefix to get the root hash
+    const rootHash = fromCredentialIRI(id)
+
     await Did.verifyDidSignature({
       expectedVerificationMethod: 'assertionMethod',
       signature: {
-        keyUri: credential.proof.verificationMethod,
+        keyUri: credential.proof.verificationMethod as DidResourceUri,
         signature: credential.proof.signature,
       },
-      message: Utils.Crypto.coToUInt8(id),
+      message: Utils.Crypto.coToUInt8(rootHash),
     })
   })
 }
