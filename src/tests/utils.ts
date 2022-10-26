@@ -1,7 +1,6 @@
 import {
   Did,
   SignCallback,
-  NewDidEncryptionKey,
   Blockchain,
   KiltKeyringPair,
   DidDocument,
@@ -9,9 +8,8 @@ import {
   CType,
   DidUri,
   ConfigService,
+  KiltEncryptionKeypair,
 } from '@kiltprotocol/sdk-js'
-import { ApiPromise } from '@polkadot/api'
-import { Keypair } from '@polkadot/util-crypto/types'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
 import {
@@ -57,7 +55,7 @@ export async function keypairs(account: KiltKeyringPair, mnemonic: string) {
     ...account.derive('//did//assertion//0'),
     type: 'ed25519',
   } as KiltKeyringPair
-  const keyAgreement: NewDidEncryptionKey & Keypair = (function () {
+  const keyAgreement: KiltEncryptionKeypair = (function () {
     const secretKeyPair = ed25519PairFromSeed(mnemonicToMiniSecret(mnemonic))
     const { path } = keyExtractPath('//did//keyAgreement//0')
     const { secretKey } = keyFromPath(secretKeyPair, path, 'ed25519')
