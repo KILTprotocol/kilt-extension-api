@@ -5,12 +5,12 @@ import {
   Blockchain,
   KiltKeyringPair,
   DidDocument,
-  init,
   ChainHelpers,
   CType,
   DidUri,
+  ConfigService,
 } from '@kiltprotocol/sdk-js'
-import { ApiPromise, WsProvider } from '@polkadot/api'
+import { ApiPromise } from '@polkadot/api'
 import { Keypair } from '@polkadot/util-crypto/types'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
@@ -25,13 +25,6 @@ import {
 } from '@polkadot/util-crypto'
 import { ctypeDomainLinkage } from '../wellKnownDidConfiguration/wellKnownDidConfiguration'
 
-export async function buildConnection(wsEndpoint: string): Promise<ApiPromise> {
-  const provider = new WsProvider(wsEndpoint)
-  const api = await ApiPromise.create({ provider })
-  await init({ api })
-  return api.isReadyOrError
-}
-
 export const faucet = async () => {
   await cryptoWaitReady()
   const keyring = new Keyring({ ss58Format: 38, type: 'ed25519' })
@@ -44,9 +37,9 @@ export const faucet = async () => {
 
 export async function fundAccount(
   address: KiltKeyringPair['address'],
-  amount: BN,
-  api: ApiPromise
+  amount: BN
 ): Promise<void> {
+  const api = ConfigService.get('api')
   const transferTx = api.tx.balances.transfer(address, amount)
   const devAccount = await faucet()
 
@@ -91,6 +84,7 @@ export async function generateDid(
   )
 
   const uri = Did.getFullDidUriFromKey(authentication)
+  console.log('handled', await Did.resolve(uri))
   let fullDid = await Did.resolve(uri)
   if (fullDid?.document) return fullDid.document
 
@@ -136,9 +130,10 @@ export async function assertionSigner({
 export async function createCtype(
   didUri: DidUri,
   account: KiltKeyringPair,
-  mnemonic: string,
-  api: ApiPromise
+  mnemonic: string
 ) {
+  const api = ConfigService.get('api')
+
   const { assertion } = await keypairs(account, mnemonic)
   const fullDid = await Did.resolve(didUri)
   if (!fullDid) throw new Error('no did')

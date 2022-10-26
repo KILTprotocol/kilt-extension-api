@@ -5,9 +5,10 @@ import {
   ICredentialPresentation,
   IClaim,
   DidResourceUri,
+  connect,
+  ConfigService,
 } from '@kiltprotocol/sdk-js'
-import { ApiPromise } from '@polkadot/api'
-import { mnemonicGenerate, cryptoWaitReady } from '@polkadot/util-crypto'
+import { mnemonicGenerate } from '@polkadot/util-crypto'
 import { VerifiableDomainLinkagePresentation } from '../types/types'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
@@ -23,13 +24,10 @@ import {
 import {
   fundAccount,
   generateDid,
-  buildConnection,
   keypairs,
   createCtype,
   assertionSigner,
 } from '../tests/utils'
-
-let api: ApiPromise
 
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string
@@ -43,16 +41,15 @@ describe('Well Known Did Configuration integration test', () => {
   let keyUri: DidResourceUri
   let claim: IClaim
   beforeAll(async () => {
-    api = await buildConnection('ws://127.0.0.1:9944')
+    await connect('ws://127.0.0.1:9944')
   })
 
   beforeAll(async () => {
-    await cryptoWaitReady()
     mnemonic = mnemonicGenerate()
     account = new Keyring({ type: 'ed25519' }).addFromMnemonic(
       mnemonic
     ) as KiltKeyringPair
-    await fundAccount(account.address, new BN('1000000000000000000'), api)
+    await fundAccount(account.address, new BN('1000000000000000000'))
     keypair = await keypairs(account, mnemonic)
 
     didDocument = await generateDid(account, mnemonic)
@@ -65,7 +62,7 @@ describe('Well Known Did Configuration integration test', () => {
       contents: { origin },
       owner: didUri,
     }
-    await createCtype(didUri, account, mnemonic, api)
+    await createCtype(didUri, account, mnemonic)
   }, 30_000)
 
   it('generate a well known did configuration credential', async () => {
@@ -146,5 +143,7 @@ describe('Well Known Did Configuration integration test', () => {
 })
 
 afterAll(async () => {
+  const api = ConfigService.get('api')
+
   await api.disconnect()
 })
