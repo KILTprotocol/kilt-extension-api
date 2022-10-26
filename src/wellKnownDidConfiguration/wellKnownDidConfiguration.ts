@@ -19,7 +19,8 @@ import {
   fromCredentialIRI,
   toCredentialIRI,
 } from '@kiltprotocol/vc-export/lib/cjs/exportToVerifiableCredential'
-import { types as VC_TYPES } from '@kiltprotocol/vc-export'
+import { SelfSignedProof } from '@kiltprotocol/vc-export'
+import { hexToU8a } from '@polkadot/util'
 
 export const DEFAULT_VERIFIABLECREDENTIAL_TYPE = 'VerifiableCredential'
 export const KILT_VERIFIABLECREDENTIAL_TYPE = 'KiltCredential2020'
@@ -28,16 +29,14 @@ export const DID_CONFIGURATION_CONTEXT =
   'https://identity.foundation/.well-known/did-configuration/v1'
 export const DID_VC_CONTEXT = 'https://www.w3.org/2018/credentials/v1'
 
-export const ctypeDomainLinkage = CType.fromSchema({
-  $schema: 'http://kilt-protocol.org/draft-01/ctype#',
-  title: 'Domain Linkage Credential',
-  properties: {
+export const ctypeDomainLinkage = CType.fromProperties(
+  'Domain Linkage Credential',
+  {
     origin: {
       type: 'string',
     },
-  },
-  type: 'object',
-})
+  }
+)
 
 export async function createCredential(
   signCallback: SignCallback,
@@ -119,15 +118,13 @@ export async function getDomainLinkagePresentation(
 
   await Did.verifyDidSignature({
     expectedVerificationMethod: 'assertionMethod',
-    signature: {
-      keyUri: claimerSignature.keyUri,
-      signature: claimerSignature.signature,
-    },
+    signature: hexToU8a(claimerSignature.signature),
+    keyUri: claimerSignature.keyUri,
     message: Utils.Crypto.coToUInt8(rootHash),
   })
 
   // add self-signed proof
-  const proof: VC_TYPES.SelfSignedProof = {
+  const proof: SelfSignedProof = {
     type: KILT_SELF_SIGNED_PROOF_TYPE,
     proofPurpose: 'assertionMethod',
     verificationMethod: claimerSignature.keyUri,
@@ -205,10 +202,8 @@ export async function verifyDidConfigPresentation(
 
     await Did.verifyDidSignature({
       expectedVerificationMethod: 'assertionMethod',
-      signature: {
-        keyUri: credential.proof.verificationMethod as DidResourceUri,
-        signature: credential.proof.signature,
-      },
+      signature: hexToU8a(credential.proof.signature),
+      keyUri: credential.proof.verificationMethod as DidResourceUri,
       message: Utils.Crypto.coToUInt8(rootHash),
     })
   })

@@ -10,10 +10,10 @@
     "test": "jest test"
   },
   "dependencies": {
-    "@kiltprotocol/sdk-js": "^0.29.0-rc.2",
-    "@kiltprotocol/types": "^0.29.0-rc.2",
-    "@kiltprotocol/utils": "^0.29.0-rc.2",
-    "@kiltprotocol/vc-export": "^0.29.0-rc.2",
+    "@kiltprotocol/sdk-js": "^0.29.0-rc.3",
+    "@kiltprotocol/types": "^0.29.0-rc.3",
+    "@kiltprotocol/utils": "^0.29.0-rc.3",
+    "@kiltprotocol/vc-export": "^0.29.0-rc.3",
     "@polkadot/api": "^9.4.2",
     "@polkadot/util": "^10.1.9",
     "@polkadot/util-crypto": "^10.1.9",

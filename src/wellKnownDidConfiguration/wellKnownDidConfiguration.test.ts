@@ -1,5 +1,5 @@
 import {
-  KeyringPair,
+  KiltKeyringPair,
   DidUri,
   DidDocument,
   ICredentialPresentation,
@@ -17,7 +17,6 @@ import {
   getDomainLinkagePresentation,
   verifyDidConfigPresentation,
   DID_VC_CONTEXT,
-  KILT_SELF_SIGNED_PROOF_TYPE,
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
   KILT_VERIFIABLECREDENTIAL_TYPE,
 } from './wellKnownDidConfiguration'
@@ -34,7 +33,7 @@ let api: ApiPromise
 
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string
-  let account: KeyringPair
+  let account: KiltKeyringPair
   const origin = 'http://localhost:3000'
   let didDocument: DidDocument
   let didUri: DidUri
@@ -50,7 +49,9 @@ describe('Well Known Did Configuration integration test', () => {
   beforeAll(async () => {
     await cryptoWaitReady()
     mnemonic = mnemonicGenerate()
-    account = new Keyring({ type: 'ed25519' }).addFromMnemonic(mnemonic)
+    account = new Keyring({ type: 'ed25519' }).addFromMnemonic(
+      mnemonic
+    ) as KiltKeyringPair
     await fundAccount(account.address, new BN('1000000000000000000'), api)
     keypair = await keypairs(account, mnemonic)
 
