@@ -23,11 +23,11 @@
   },
   "include": [
     "src",
-    "examples/**/*",
     "jest.config.ts"
   ],
   "exclude": [
     "node_modules",
     "tsconfig.json",
+    "examples/**/*",
   ],
 }
