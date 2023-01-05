@@ -82,7 +82,7 @@ export async function generateDid(
   )
 
   const uri = Did.getFullDidUriFromKey(authentication)
-  console.log('handled', await Did.resolve(uri))
+
   let fullDid = await Did.resolve(uri)
   if (fullDid?.document) return fullDid.document
 
