@@ -1,4 +1,9 @@
-import { ApiWindow, InjectedWindowProvider } from '../types/types'
+import {
+  ApiWindow,
+  InjectedWindowProvider,
+  PubSubSessionV1,
+  PubSubSessionV2,
+} from '../types/types'
 
 const apiWindow = window as Window & ApiWindow
 
@@ -13,8 +18,8 @@ function documentReadyPromise<T>(creator: () => T): Promise<T> {
 }
 
 export function getExtensions(): Promise<
-  Record<string, InjectedWindowProvider>
-  > {
+  Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>
+> {
   apiWindow.kilt = apiWindow.kilt || {}
 
   return documentReadyPromise(() => apiWindow.kilt)
