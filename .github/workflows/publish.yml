@@ -13,6 +13,7 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
+          registry-url: 'https://registry.npmjs.org'
           node-version: 16
           cache: 'yarn'
 
@@ -46,6 +47,6 @@ jobs:
       - name: yarn build
         run: yarn build
 
-      - uses: JS-DevTools/npm-publish@v1
-        with:
-          token: ${{ secrets.NPM_TOKEN }}
+      - run: yarn publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
