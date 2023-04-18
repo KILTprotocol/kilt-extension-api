@@ -29,6 +29,7 @@
     "@typescript-eslint/parser": "^5.33.0",
     "eslint": ">=8.14.0",
     "jest": "^28.0.0",
+    "testcontainers": "^9.5.0",
     "ts-jest": "^28.0.8",
     "typescript": "^4.7.4",
     "valid-url": "^1.0.9"
