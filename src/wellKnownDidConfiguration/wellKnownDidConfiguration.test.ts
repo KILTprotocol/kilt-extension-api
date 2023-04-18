@@ -7,6 +7,7 @@ import {
   DidResourceUri,
   connect,
   ConfigService,
+  CType,
 } from '@kiltprotocol/sdk-js'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
 import { VerifiableDomainLinkagePresentation } from '../types/types'
@@ -19,6 +20,7 @@ import {
   verifyDidConfigPresentation,
   DID_VC_CONTEXT,
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
+  ctypeDomainLinkage,
 } from './wellKnownDidConfiguration'
 import {
   fundAccount,
@@ -59,8 +61,7 @@ describe('Well Known Did Configuration integration test', () => {
     didUri = didDocument.uri
     keyUri = `${didUri}${didDocument.assertionMethod?.[0].id!}`
     claim = {
-      cTypeHash:
-        '0x39dc47bc933944ac66cfcf46bfdb66ca070b04a17cd8818eefb669928caf4d3e',
+      cTypeHash: CType.idToHash(ctypeDomainLinkage.$id),
       contents: { origin },
       owner: didUri,
     }
@@ -112,11 +113,7 @@ describe('Well Known Did Configuration integration test', () => {
           },
           proof: expect.any(Object),
           id: expect.any(String),
-          type: [
-            DEFAULT_VERIFIABLECREDENTIAL_TYPE,
-            'DomainLinkageCredential',
-            KILT_VERIFIABLECREDENTIAL_TYPE,
-          ],
+          type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, 'DomainLinkageCredential'],
 
           issuer: didUri,
           issuanceDate: expect.any(String),
@@ -126,7 +123,8 @@ describe('Well Known Did Configuration integration test', () => {
   }, 30_000)
 
   it('rejects if the domain linkage has no signature', async () => {
-    credential.claimerSignature.signature = '0x'
+    // @ts-ignore
+    delete credential.claimerSignature
     await expect(getDomainLinkagePresentation(credential)).rejects.toThrow()
   }, 30_000)
 

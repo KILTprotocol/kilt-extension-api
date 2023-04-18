@@ -10,12 +10,16 @@ import {
   DidResourceUri,
 } from '@kiltprotocol/sdk-js'
 import {
-  CredentialSubject,
   DomainLinkageCredential,
   VerifiableDomainLinkagePresentation,
 } from '../types/types'
 import * as validUrl from 'valid-url'
-import { SelfSignedProof, constants } from '@kiltprotocol/vc-export'
+import {
+  SelfSignedProof,
+  constants,
+  fromCredentialAndAttestation,
+  Proof,
+} from '@kiltprotocol/vc-export'
 import { hexToU8a, isHex } from '@polkadot/util'
 
 const {
@@ -40,6 +44,7 @@ export const ctypeDomainLinkage = CType.fromProperties(
   {
     origin: {
       type: 'string',
+      format: 'uri',
     },
   }
 )
@@ -93,70 +98,43 @@ export async function getDomainLinkagePresentation(
     Date.now() + 1000 * 60 * 60 * 24 * 365 * 5
   ).toISOString()
 ): Promise<VerifiableDomainLinkagePresentation> {
+  if (!Credential.isPresentation(credential)) {
+    throw new Error('Input must be an IPresentation')
+  }
   const claimContents = credential.claim.contents
   if (!credential.claim.owner && !claimContents.origin) {
     throw new Error('Claim do not content an owner or origin')
   }
+  CType.verifyClaimAgainstSchema(claimContents, ctypeDomainLinkage)
 
-  Did.validateUri(credential.claim.owner)
+  const {
+    proof: allProofs,
+    credentialSubject,
+    ...VC
+  } = fromCredentialAndAttestation(credential, {
+    owner: credential.claim.owner,
+  } as any)
 
-  const didUri = credential.claim.owner
-
-  let origin: string
-  if (typeof claimContents.origin !== 'string') {
-    throw new Error('claim contents id is not a string')
-  } else if (!validUrl.isUri(claimContents.origin)) {
-    throw new Error('The claim contents origin is not a valid url')
-  } else {
-    origin = claimContents.origin
-  }
-
-  const credentialSubject: CredentialSubject = {
-    id: didUri,
-    origin,
-  }
-
-  const issuanceDate = new Date().toISOString()
-
-  const { claimerSignature, rootHash } = credential
-
-  const id = KILT_CREDENTIAL_IRI_PREFIX + credential.rootHash
-
-  await Did.verifyDidSignature({
-    expectedVerificationMethod: 'assertionMethod',
-    signature: hexToU8a(claimerSignature.signature),
-    keyUri: claimerSignature.keyUri,
-    message: Utils.Crypto.coToUInt8(rootHash),
-  })
-
-  // add self-signed proof
-  const proof: SelfSignedProof = {
-    type: KILT_SELF_SIGNED_PROOF_TYPE,
-    proofPurpose: 'assertionMethod',
-    verificationMethod: claimerSignature.keyUri,
-    signature: claimerSignature.signature,
-    challenge: claimerSignature.challenge,
-  }
+  const proof = (allProofs as Proof[]).find(
+    ({ type }) => type === KILT_SELF_SIGNED_PROOF_TYPE
+  ) as SelfSignedProof
 
   return {
     '@context': DID_CONFIGURATION_CONTEXT,
     linked_dids: [
       {
+        ...VC,
         '@context': [
-          'https://www.w3.org/2018/credentials/v1',
+          DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
           DID_CONFIGURATION_CONTEXT,
         ],
-        id,
-        issuer: didUri,
-        issuanceDate,
         expirationDate,
-        type: [
-          DEFAULT_VERIFIABLECREDENTIAL_TYPE,
-          'DomainLinkageCredential',
-          KILT_VERIFIABLECREDENTIAL_TYPE,
-        ],
-        credentialSubject,
+        type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, 'DomainLinkageCredential'],
         proof,
+        credentialSubject: {
+          id: credentialSubject['@id'] as DidUri, // canonicalize @id to id
+          origin: credentialSubject.origin as string,
+        },
       },
     ],
   }
