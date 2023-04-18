@@ -15,19 +15,26 @@ import {
   VerifiableDomainLinkagePresentation,
 } from '../types/types'
 import * as validUrl from 'valid-url'
-import {
-  fromCredentialIRI,
-  toCredentialIRI,
-} from '@kiltprotocol/vc-export/lib/cjs/exportToVerifiableCredential'
-import { SelfSignedProof } from '@kiltprotocol/vc-export'
-import { hexToU8a } from '@polkadot/util'
+import { SelfSignedProof, constants } from '@kiltprotocol/vc-export'
+import { hexToU8a, isHex } from '@polkadot/util'
+import { HexString } from '@polkadot/util/types'
 
-export const DEFAULT_VERIFIABLECREDENTIAL_TYPE = 'VerifiableCredential'
-export const KILT_VERIFIABLECREDENTIAL_TYPE = 'KiltCredential2020'
-export const KILT_SELF_SIGNED_PROOF_TYPE = 'KILTSelfSigned2020'
+const {
+  DEFAULT_VERIFIABLECREDENTIAL_TYPE,
+  KILT_VERIFIABLECREDENTIAL_TYPE,
+  KILT_SELF_SIGNED_PROOF_TYPE,
+  DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
+  KILT_CREDENTIAL_IRI_PREFIX,
+} = constants
+
+export {
+  DEFAULT_VERIFIABLECREDENTIAL_TYPE,
+  KILT_VERIFIABLECREDENTIAL_TYPE,
+  KILT_SELF_SIGNED_PROOF_TYPE,
+  DEFAULT_VERIFIABLECREDENTIAL_CONTEXT as DID_VC_CONTEXT,
+}
 export const DID_CONFIGURATION_CONTEXT =
   'https://identity.foundation/.well-known/did-configuration/v1'
-export const DID_VC_CONTEXT = 'https://www.w3.org/2018/credentials/v1'
 
 export const ctypeDomainLinkage = CType.fromProperties(
   'Domain Linkage Credential',
@@ -114,7 +121,7 @@ export async function getDomainLinkagePresentation(
 
   const { claimerSignature, rootHash } = credential
 
-  const id = toCredentialIRI(credential.rootHash)
+  const id = KILT_CREDENTIAL_IRI_PREFIX + credential.rootHash
 
   await Did.verifyDidSignature({
     expectedVerificationMethod: 'assertionMethod',
@@ -198,7 +205,12 @@ export async function verifyDidConfigPresentation(
     }
 
     // Stripping off the prefix to get the root hash
-    const rootHash = fromCredentialIRI(id)
+    const rootHash = id.substring(KILT_CREDENTIAL_IRI_PREFIX.length)
+    if (!isHex(rootHash)) {
+      throw new Error(
+        'Credential id is not a valid identifier (could not extract base16 / hex encoded string)'
+      )
+    }
 
     await Did.verifyDidSignature({
       expectedVerificationMethod: 'assertionMethod',
