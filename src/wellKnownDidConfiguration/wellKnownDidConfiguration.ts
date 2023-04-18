@@ -17,7 +17,6 @@ import {
 import * as validUrl from 'valid-url'
 import { SelfSignedProof, constants } from '@kiltprotocol/vc-export'
 import { hexToU8a, isHex } from '@polkadot/util'
-import { HexString } from '@polkadot/util/types'
 
 const {
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
