@@ -1,16 +1,19 @@
-import {
+import type {
   IEncryptedMessage,
   DidUri,
   KiltAddress,
   DidResourceUri,
 } from '@kiltprotocol/types'
-import { HexString } from '@polkadot/util/types'
-import { SelfSignedProof, VerifiableCredential } from '@kiltprotocol/vc-export'
+import type { HexString } from '@polkadot/util/types'
+import type {
+  CredentialDigestProof,
+  SelfSignedProof,
+  VerifiableCredential,
+  constants,
+} from '@kiltprotocol/vc-export'
 
 export type This = typeof globalThis
-const DEFAULT_VERIFIABLECREDENTIAL_CONTEXT =
-  'https://www.w3.org/2018/credentials/v1'
-  
+
 export interface IEncryptedMessageV1 {
   /** ID of the key agreement key of the receiver DID used to encrypt the message */
   receiverKeyId: DidResourceUri
@@ -102,18 +105,28 @@ export interface CredentialSubject {
   origin: string
 }
 
-const context = [
-  DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
-  'https://identity.foundation/.well-known/did-configuration/v1',
+type Contexts = [
+  typeof constants.DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
+  'https://identity.foundation/.well-known/did-configuration/v1'
 ]
+
+export type DomainLinkageProof = {
+  type: Array<SelfSignedProof['type'] | CredentialDigestProof['type']>
+  rootHash: string
+} & Pick<
+  SelfSignedProof,
+  'signature' | 'verificationMethod' | 'proofPurpose' | 'created'
+> &
+  Pick<CredentialDigestProof, 'claimHashes' | 'nonces'>
+
 export interface DomainLinkageCredential
   extends Omit<
     VerifiableCredential,
-    '@context' | 'legitimationIds' | 'credentialSubject' | 'proof'
+    '@context' | 'legitimationIds' | 'credentialSubject' | 'proof' | 'id'
   > {
-  '@context': typeof context
+  '@context': Contexts
   credentialSubject: CredentialSubject
-  proof: SelfSignedProof
+  proof: DomainLinkageProof
 }
 
 export interface VerifiableDomainLinkagePresentation {

@@ -11,6 +11,7 @@ import {
 } from '@kiltprotocol/sdk-js'
 import {
   DomainLinkageCredential,
+  DomainLinkageProof,
   VerifiableDomainLinkagePresentation,
 } from '../types/types'
 import * as validUrl from 'valid-url'
@@ -19,6 +20,9 @@ import {
   constants,
   fromCredentialAndAttestation,
   Proof,
+  CredentialDigestProof,
+  verification,
+  VerifiableCredential,
 } from '@kiltprotocol/vc-export'
 import { hexToU8a, isHex } from '@polkadot/util'
 
@@ -27,7 +31,7 @@ const {
   KILT_VERIFIABLECREDENTIAL_TYPE,
   KILT_SELF_SIGNED_PROOF_TYPE,
   DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
-  KILT_CREDENTIAL_IRI_PREFIX,
+  KILT_CREDENTIAL_DIGEST_PROOF_TYPE,
 } = constants
 
 export {
@@ -110,15 +114,25 @@ export async function getDomainLinkagePresentation(
   const {
     proof: allProofs,
     credentialSubject,
+    id: _,
     ...VC
   } = fromCredentialAndAttestation(credential, {
     owner: credential.claim.owner,
   } as any)
 
-  const proof = (allProofs as Proof[]).find(
+  const ssProof = (allProofs as Proof[]).find(
     ({ type }) => type === KILT_SELF_SIGNED_PROOF_TYPE
   ) as SelfSignedProof
+  const digProof = (allProofs as Proof[]).find(
+    ({ type }) => type === KILT_CREDENTIAL_DIGEST_PROOF_TYPE
+  ) as CredentialDigestProof
 
+  const proof: DomainLinkageProof = {
+    ...ssProof,
+    ...digProof,
+    rootHash: credential.rootHash,
+    type: [KILT_SELF_SIGNED_PROOF_TYPE, KILT_CREDENTIAL_DIGEST_PROOF_TYPE],
+  }
   return {
     '@context': DID_CONFIGURATION_CONTEXT,
     linked_dids: [
@@ -134,6 +148,8 @@ export async function getDomainLinkagePresentation(
         credentialSubject: {
           id: credentialSubject['@id'] as DidUri, // canonicalize @id to id
           origin: credentialSubject.origin as string,
+          // @ts-expect-error for compatibility with older implementations, add the credential rootHash (which is also contained in the credential id)
+          rootHash: credential.rootHash,
         },
       },
     ],
@@ -156,7 +172,7 @@ export async function verifyDidConfigPresentation(
   // https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource-verification
 
   await asyncSome(domainLinkageCredential.linked_dids, async (credential) => {
-    const { issuer, credentialSubject, id } = credential
+    const { issuer, credentialSubject, proof } = credential
 
     const matchesSessionDid = didUri === credentialSubject.id
     if (!matchesSessionDid) throw new Error('session did doesnt match')
@@ -181,19 +197,41 @@ export async function verifyDidConfigPresentation(
       throw new Error('No DID attestation key on-chain')
     }
 
-    // Stripping off the prefix to get the root hash
-    const rootHash = id.substring(KILT_CREDENTIAL_IRI_PREFIX.length)
+    // get root hash incl fallback for older domain linkage credential types
+    const { rootHash = proof.rootHash, ...cleanSubject } =
+      credentialSubject as any
     if (!isHex(rootHash)) {
       throw new Error(
         'Credential id is not a valid identifier (could not extract base16 / hex encoded string)'
       )
     }
 
+    if (
+      !(
+        (proof as unknown as SelfSignedProof).type ===
+          KILT_SELF_SIGNED_PROOF_TYPE ||
+        proof.type.includes?.(KILT_SELF_SIGNED_PROOF_TYPE)
+      )
+    ) {
+      throw new Error('proof type must include ' + KILT_SELF_SIGNED_PROOF_TYPE)
+    }
+
     await Did.verifyDidSignature({
       expectedVerificationMethod: 'assertionMethod',
-      signature: hexToU8a(credential.proof.signature),
-      keyUri: credential.proof.verificationMethod as DidResourceUri,
+      signature: hexToU8a(proof.signature),
+      keyUri: proof.verificationMethod as DidResourceUri,
       message: Utils.Crypto.coToUInt8(rootHash),
     })
+
+    if (proof.type.includes?.(KILT_CREDENTIAL_DIGEST_PROOF_TYPE)) {
+      await verification.verifyCredentialDigestProof(
+        {
+          ...credential,
+          credentialSubject: cleanSubject,
+          id: `kilt:cred:${rootHash}`,
+        } as unknown as VerifiableCredential,
+        { ...proof, type: KILT_CREDENTIAL_DIGEST_PROOF_TYPE }
+      )
+    }
   })
 }

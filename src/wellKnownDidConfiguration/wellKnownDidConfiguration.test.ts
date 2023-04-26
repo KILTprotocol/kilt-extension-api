@@ -59,7 +59,7 @@ describe('Well Known Did Configuration integration test', () => {
     didDocument = await generateDid(account, mnemonic)
 
     didUri = didDocument.uri
-    keyUri = `${didUri}${didDocument.assertionMethod?.[0].id!}`
+    keyUri = `${didUri}${didDocument.assertionMethod![0].id}`
     claim = {
       cTypeHash: CType.idToHash(ctypeDomainLinkage.$id),
       contents: { origin },
@@ -112,9 +112,7 @@ describe('Well Known Did Configuration integration test', () => {
             origin,
           },
           proof: expect.any(Object),
-          id: expect.any(String),
           type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, 'DomainLinkageCredential'],
-
           issuer: didUri,
           issuanceDate: expect.any(String),
         },
@@ -123,8 +121,7 @@ describe('Well Known Did Configuration integration test', () => {
   }, 30_000)
 
   it('rejects if the domain linkage has no signature', async () => {
-    // @ts-ignore
-    delete credential.claimerSignature
+    delete (credential as any).claimerSignature
     await expect(getDomainLinkagePresentation(credential)).rejects.toThrow()
   }, 30_000)
 
