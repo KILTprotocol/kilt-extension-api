@@ -1,6 +1,6 @@
 # kilt-extension
 
-KILT Extension helper functions. The tools you need to add extension to your app, or add KILT functionality to your extension
+KILT Extension helper functions. The tools you need to add a KILT extension to your app, or add KILT functionality to your extension.
 
 ## Get Extension
 
