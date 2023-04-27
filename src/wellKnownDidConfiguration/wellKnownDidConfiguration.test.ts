@@ -19,6 +19,7 @@ import {
   verifyDidConfigPresentation,
   DID_VC_CONTEXT,
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
+  KILT_VERIFIABLECREDENTIAL_TYPE,
 } from './wellKnownDidConfiguration'
 import {
   fundAccount,
