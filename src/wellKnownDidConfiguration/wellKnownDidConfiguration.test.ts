@@ -21,6 +21,7 @@ import {
   DID_VC_CONTEXT,
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
   ctypeDomainLinkage,
+  DOMAIN_LINKAGE_CREDENTIAL_TYPE,
 } from './wellKnownDidConfiguration'
 import {
   fundAccount,
@@ -112,7 +113,7 @@ describe('Well Known Did Configuration integration test', () => {
             origin,
           },
           proof: expect.any(Object),
-          type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, 'DomainLinkageCredential'],
+          type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
           issuer: didUri,
           issuanceDate: expect.any(String),
         },

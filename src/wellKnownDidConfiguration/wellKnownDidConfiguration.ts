@@ -96,6 +96,8 @@ export async function createCredential(
   })
 }
 
+export const DOMAIN_LINKAGE_CREDENTIAL_TYPE = 'DomainLinkageCredential'
+
 export async function getDomainLinkagePresentation(
   credential: ICredentialPresentation,
   expirationDate: string = new Date(
@@ -143,7 +145,7 @@ export async function getDomainLinkagePresentation(
           DID_CONFIGURATION_CONTEXT,
         ],
         expirationDate,
-        type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, 'DomainLinkageCredential'],
+        type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
         proof,
         credentialSubject: {
           id: credentialSubject['@id'] as DidUri, // canonicalize @id to id
