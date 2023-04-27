@@ -117,6 +117,7 @@ export async function getDomainLinkagePresentation(
     proof: allProofs,
     credentialSubject,
     id: _,
+    legitimationIds: __,
     ...VC
   } = fromCredentialAndAttestation(credential, {
     owner: credential.claim.owner,
