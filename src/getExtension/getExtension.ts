@@ -5,7 +5,7 @@ import {
   PubSubSessionV2,
 } from '../types/types'
 
-const apiWindow = window as Window & ApiWindow
+const apiWindow = (global.window ?? {}) as Window & ApiWindow
 
 function documentReadyPromise<T>(creator: () => T): Promise<T> {
   return new Promise((resolve): void => {
@@ -19,7 +19,7 @@ function documentReadyPromise<T>(creator: () => T): Promise<T> {
 
 export function getExtensions(): Promise<
   Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>
-> {
+  > {
   apiWindow.kilt = apiWindow.kilt || {}
 
   return documentReadyPromise(() => apiWindow.kilt)
