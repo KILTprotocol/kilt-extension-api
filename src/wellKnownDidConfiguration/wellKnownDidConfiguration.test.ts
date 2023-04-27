@@ -27,6 +27,7 @@ import {
   keypairs,
   createCtype,
   assertionSigner,
+  startContainer,
 } from '../tests/utils'
 
 describe('Well Known Did Configuration integration test', () => {
@@ -40,9 +41,11 @@ describe('Well Known Did Configuration integration test', () => {
   let credential: ICredentialPresentation
   let keyUri: DidResourceUri
   let claim: IClaim
+
   beforeAll(async () => {
-    await connect('ws://127.0.0.1:9944')
-  })
+    const address = await startContainer()
+    await connect(address)
+  }, 20_000)
 
   beforeAll(async () => {
     mnemonic = mnemonicGenerate()

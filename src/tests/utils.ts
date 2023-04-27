@@ -21,6 +21,7 @@ import {
   mnemonicToMiniSecret,
   cryptoWaitReady,
 } from '@polkadot/util-crypto'
+import { GenericContainer, Wait } from 'testcontainers'
 import { ctypeDomainLinkage } from '../wellKnownDidConfiguration/wellKnownDidConfiguration'
 
 export const faucet = async () => {
@@ -152,4 +153,20 @@ export async function createCtype(
   await Blockchain.signAndSubmitTx(authorizedCtypeCreationTx, account, {
     resolveOn: Blockchain.IS_FINALIZED,
   })
+}
+
+export async function startContainer(): Promise<string> {
+  const WS_PORT = 9944
+  const image =
+    process.env.TESTCONTAINERS_NODE_IMG || 'kiltprotocol/mashnet-node'
+  console.log(`using testcontainer with image ${image}`)
+  const testcontainer = new GenericContainer(image)
+    .withCommand(['--dev', `--ws-port=${WS_PORT}`, '--ws-external'])
+    .withExposedPorts(WS_PORT)
+    .withWaitStrategy(Wait.forLogMessage(`:${WS_PORT}`))
+  const started = await testcontainer.start()
+  const port = started.getMappedPort(9944)
+  const host = started.getHost()
+  const WS_ADDRESS = `ws://${host}:${port}`
+  return WS_ADDRESS
 }
