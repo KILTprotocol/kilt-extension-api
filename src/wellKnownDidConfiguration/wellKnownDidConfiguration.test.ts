@@ -113,7 +113,10 @@ describe('Well Known Did Configuration integration test', () => {
             origin,
           },
           proof: expect.any(Object),
-          type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
+          type: [
+            DEFAULT_VERIFIABLECREDENTIAL_TYPE,
+            DOMAIN_LINKAGE_CREDENTIAL_TYPE,
+          ],
           issuer: didUri,
           issuanceDate: expect.any(String),
         },

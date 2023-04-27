@@ -146,7 +146,10 @@ export async function getDomainLinkagePresentation(
           DID_CONFIGURATION_CONTEXT,
         ],
         expirationDate,
-        type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
+        type: [
+          DEFAULT_VERIFIABLECREDENTIAL_TYPE,
+          DOMAIN_LINKAGE_CREDENTIAL_TYPE,
+        ],
         proof,
         credentialSubject: {
           id: credentialSubject['@id'] as DidUri, // canonicalize @id to id
@@ -209,13 +212,8 @@ export async function verifyDidConfigPresentation(
       )
     }
 
-    if (
-      !(
-        (proof as unknown as SelfSignedProof).type ===
-          KILT_SELF_SIGNED_PROOF_TYPE ||
-        proof.type.includes?.(KILT_SELF_SIGNED_PROOF_TYPE)
-      )
-    ) {
+    const pType = Array.isArray(proof.type) ? proof.type : [proof.type]
+    if (!pType.includes(KILT_SELF_SIGNED_PROOF_TYPE)) {
       throw new Error('proof type must include ' + KILT_SELF_SIGNED_PROOF_TYPE)
     }
 
@@ -226,7 +224,7 @@ export async function verifyDidConfigPresentation(
       message: Utils.Crypto.coToUInt8(rootHash),
     })
 
-    if (proof.type.includes?.(KILT_CREDENTIAL_DIGEST_PROOF_TYPE)) {
+    if (pType.includes(KILT_CREDENTIAL_DIGEST_PROOF_TYPE)) {
       await verification.verifyCredentialDigestProof(
         {
           ...credential,
