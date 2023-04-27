@@ -41,7 +41,7 @@ jobs:
       - name: run tests
         timeout-minutes: 5
         env:
-          TESTCONTAINERS_NODE_IMG: $IMG_NAME
+          TESTCONTAINERS_NODE_IMG: ${{ env.IMG_NAME }}
         run: |
           yarn test
   
