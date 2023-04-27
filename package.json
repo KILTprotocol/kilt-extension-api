@@ -12,15 +12,13 @@
   "dependencies": {
     "@kiltprotocol/sdk-js": "^0.32.0",
     "@kiltprotocol/types": "^0.32.0",
-    "@kiltprotocol/utils": "^0.32.0",
     "@kiltprotocol/vc-export": "^0.32.0",
-    "@polkadot/api": "^9.4.2",
     "@polkadot/util": "^10.1.9",
-    "@polkadot/util-crypto": "^10.1.9",
-    "react": "^18.2.0",
-    "ts-node": "^10.9.1"
+    "valid-url": "^1.0.9"
   },
   "devDependencies": {
+    "@kiltprotocol/utils": "^0.32.0",
+    "@polkadot/util-crypto": "^10.1.9",
     "@types/jest": "^28.0.0",
     "@types/node": "^18.8.2",
     "@types/react": "^18.0.21",
@@ -29,9 +27,9 @@
     "@typescript-eslint/parser": "^5.33.0",
     "eslint": ">=8.14.0",
     "jest": "^28.0.0",
+    "react": "^18.2.0",
     "testcontainers": "^9.5.0",
     "ts-jest": "^28.0.8",
-    "typescript": "^4.7.4",
-    "valid-url": "^1.0.9"
+    "typescript": "^4.7.4"
   }
 }
