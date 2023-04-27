@@ -10,9 +10,9 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-          cache: 'yarn'
+          cache: "yarn"
 
-      - name: yarn install 
+      - name: yarn install
         run: yarn install --immutable
 
       - name: Configure AWS credentials
@@ -26,15 +26,16 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: set image name
+        run: |
+          echo "IMG_NAME=${{ steps.login-ecr.outputs.registry }}/kilt/prototype-chain:latest-develop" >> "$GITHUB_ENV"
+
+      - name: pull image
+        run: docker pull $IMG_NAME
+
       - name: run tests
         timeout-minutes: 5
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: kilt/prototype-chain
-          IMAGE_TAG: latest-develop
+          TESTCONTAINERS_NODE_IMG: ${{ env.IMG_NAME }}
         run: |
-          docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker run -d --rm -p 9944:9944 $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --dev --ws-port 9944 --ws-external
-          sleep 15s
           yarn test
-          docker stop $(docker ps -f ancestor=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -q)
