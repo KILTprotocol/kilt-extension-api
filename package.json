@@ -21,7 +21,6 @@
     "valid-url": "^1.0.9"
   },
   "devDependencies": {
-    "@kiltprotocol/utils": "^0.32.0",
     "@polkadot/util-crypto": "^10.1.9",
     "@types/jest": "^28.0.0",
     "@types/node": "^18.8.2",

@@ -9,9 +9,9 @@ import {
   DidUri,
   ConfigService,
   KiltEncryptionKeypair,
+  Utils,
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
-import { Keyring } from '@kiltprotocol/utils'
 import {
   naclBoxPairFromSecret,
   blake2AsU8a,
@@ -26,7 +26,7 @@ import { ctypeDomainLinkage } from '../wellKnownDidConfiguration/wellKnownDidCon
 
 export const faucet = async () => {
   await cryptoWaitReady()
-  const keyring = new Keyring({ ss58Format: 38, type: 'ed25519' })
+  const keyring = new Utils.Keyring({ ss58Format: 38, type: 'ed25519' })
 
   const faucetSeed =
     'receive clutch item involve chaos clutch furnace arrest claw isolate okay together'

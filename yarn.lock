@@ -712,7 +712,7 @@
     "@polkadot/util" "^10.2.1"
     "@polkadot/util-crypto" "^10.2.1"
 
-"@kiltprotocol/utils@0.32.0", "@kiltprotocol/utils@^0.32.0":
+"@kiltprotocol/utils@0.32.0":
   version "0.32.0"
   resolved "https://registry.yarnpkg.com/@kiltprotocol/utils/-/utils-0.32.0.tgz#04107fe802b83628a184f758ac0293cd510694f1"
   integrity sha512-ld2mem1lpFV4kC4B0XNIeurUJ1OSsW7Ls030dy7wXD1L176sK2K3yYBKWr5dkl+NCktfJCoAxu4Z4lXdqgxqLw==
