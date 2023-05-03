@@ -1,0 +1,19 @@
+{
+  "name": "kilt-extension-api",
+  "version": "0.0.1",
+  "author": "KILT Team <devs@kilt.io>",
+  "license": "BSD-4-Clause",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@kiltprotocol/types": "^0.32.0",
+    "@kiltprotocol/vc-export": "^0.32.0",
+    "@polkadot/util": "^10.1.9"
+  }
+}

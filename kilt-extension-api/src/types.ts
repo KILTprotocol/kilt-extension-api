@@ -4,13 +4,13 @@ import {
   KiltAddress,
   DidResourceUri,
 } from '@kiltprotocol/types'
-import { HexString } from '@polkadot/util/types'
 import { SelfSignedProof, VerifiableCredential } from '@kiltprotocol/vc-export'
+import { HexString } from '@polkadot/util/types'
 
 export type This = typeof globalThis
 const DEFAULT_VERIFIABLECREDENTIAL_CONTEXT =
   'https://www.w3.org/2018/credentials/v1'
-  
+
 export interface IEncryptedMessageV1 {
   /** ID of the key agreement key of the receiver DID used to encrypt the message */
   receiverKeyId: DidResourceUri
