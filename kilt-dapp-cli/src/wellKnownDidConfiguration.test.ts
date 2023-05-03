@@ -9,9 +9,10 @@ import {
   ConfigService,
 } from '@kiltprotocol/sdk-js'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
-import { VerifiableDomainLinkagePresentation } from '../types/types'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
+import { VerifiableDomainLinkagePresentation } from 'kilt-extension-api/dist/types'
+
 import {
   createCredential,
   DID_CONFIGURATION_CONTEXT,
@@ -28,7 +29,7 @@ import {
   createCtype,
   assertionSigner,
   startContainer,
-} from '../tests/utils'
+} from './tests/utils'
 
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string

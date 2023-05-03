@@ -13,7 +13,7 @@ import {
   CredentialSubject,
   DomainLinkageCredential,
   VerifiableDomainLinkagePresentation,
-} from '../../kilt-extension-api/types'
+} from 'kilt-extension-api/dist/types'
 import * as validUrl from 'valid-url'
 import { SelfSignedProof, constants } from '@kiltprotocol/vc-export'
 import { hexToU8a, isHex } from '@polkadot/util'
