@@ -16,10 +16,13 @@ const apiWindow = window as Window & ApiWindow
  */
 export function getExtensions(): Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>> {
 
-  // copy all extensions into a new object since the caller should be allowed to change the object
+  // Copy all extensions into a new object since the caller should be allowed to change the object
   // without changing the underlying extension object.
+  // This also intentionally strips away the `meta` property.
   return { ...apiWindow.kilt }
 }
+
+export type WatchExtensionsCallback = (extensions: Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>) => void
 
 /**
  * Watch for new extensions that get injected.
@@ -32,7 +35,7 @@ export function getExtensions(): Record<string, InjectedWindowProvider<PubSubSes
  * @param callback Callback that gets called each time a new extension is injected.
  * @returns Cleanup function which removes the listener for new extensions.
  */
-export function watchExtensions(callback: (extensions: Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>) => void): () => void {
+export function watchExtensions(callback: WatchExtensionsCallback): () => void {
   function handler() {
     callback(getExtensions())
   }
