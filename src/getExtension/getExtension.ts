@@ -21,6 +21,8 @@ export function getExtensions(): Array<InjectedWindowProvider<PubSubSessionV1 | 
   return Object.values(apiWindow.kilt)
 }
 
+export type WatchExtensionsCallback = (extensions: Array<InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>) => void
+
 /**
  * Watch for new extensions that get injected.
  *
@@ -32,7 +34,7 @@ export function getExtensions(): Array<InjectedWindowProvider<PubSubSessionV1 | 
  * @param callback Callback that gets called each time a new extension is injected.
  * @returns Cleanup function which removes the listener for new extensions.
  */
-export function watchExtensions(callback: (extensions: Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>) => void): () => void {
+export function watchExtensions(callback: WatchExtensionsCallback): () => void {
   function handler() {
     callback(getExtensions())
   }
