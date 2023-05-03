@@ -7,22 +7,18 @@ import {
 
 const apiWindow = window as Window & ApiWindow
 
-function documentReadyPromise<T>(creator: () => T): Promise<T> {
-  return new Promise((resolve): void => {
-    if (document.readyState === 'complete') {
-      resolve(creator())
-    } else {
-      window.addEventListener('load', () => resolve(creator()))
-    }
-  })
-}
+/**
+ * Get all extensions that are currently initialized and support the Credential API.
+ * 
+ * Note that this method only returns the extensions that are initialized at the time when this function is called.
+ * If an extension injects itself only after this function is called, it will not be contained in the returned extensions.
+ * @returns an object containing extensions
+ */
+export function getExtensions(): Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>> {
 
-export function getExtensions(): Promise<
-  Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>
-> {
-  apiWindow.kilt = apiWindow.kilt || {}
-
-  return documentReadyPromise(() => apiWindow.kilt)
+  // copy all extensions into a new object since the caller should be allowed to change the object
+  // without changing the underlying extension object.
+  return { ...apiWindow.kilt }
 }
 
 /**
