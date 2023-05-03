@@ -5,8 +5,7 @@
   "license": "BSD-4-Clause",
   "private": true,
   "workspaces": [
-    "kilt-extension-api",
-    "kilt-dapp-cli"
+    "kilt-extension-api"
   ],
   "scripts": {
     "test": "yarn workspaces foreach run test"
