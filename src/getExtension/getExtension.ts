@@ -9,16 +9,17 @@ const apiWindow = window as Window & ApiWindow
 
 /**
  * Get all extensions that are currently initialized and support the Credential API.
- * 
+ *
  * Note that this method only returns the extensions that are initialized at the time when this function is called.
  * If an extension injects itself only after this function is called, it will not be contained in the returned extensions.
  * @returns an object containing extensions
  */
-export function getExtensions(): Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>> {
+export function getExtensions(): Array<InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>> {
 
-  // copy all extensions into a new object since the caller should be allowed to change the object
+  // Copy all extensions into a new object since the caller should be allowed to change the object
   // without changing the underlying extension object.
-  return { ...apiWindow.kilt }
+  // This also intentionally strips away the `meta` property.
+  return Object.values(apiWindow.kilt)
 }
 
 /**
