@@ -12,13 +12,12 @@ const apiWindow = window as Window & ApiWindow
  *
  * Note that this method only returns the extensions that are initialized at the time when this function is called.
  * If an extension injects itself only after this function is called, it will not be contained in the returned extensions.
- * @returns an object containing extensions
+ *
+ * @returns an array of extensions
  */
 export function getExtensions(): Array<InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>> {
 
-  // Copy all extensions into a new object since the caller should be allowed to change the object
-  // without changing the underlying extension object.
-  // This also intentionally strips away the `meta` property.
+  // Remove the meta object and return a list of extension objects
   return Object.values(apiWindow.kilt)
 }
 
