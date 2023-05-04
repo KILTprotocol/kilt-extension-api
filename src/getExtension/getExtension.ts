@@ -24,6 +24,9 @@ export function getExtensions(): Array<InjectedWindowProvider<PubSubSessionV1 | 
 export type WatchExtensionsCallback = (extensions: Array<InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>) => void
 
 /**
+ * @private
+ * This function relies on API that is not part of the Credential API standard yet and might break at any point in time.
+ *
  * Watch for new extensions that get injected.
  *
  * Each time an extension has injected itself, it will dispatch an event.
