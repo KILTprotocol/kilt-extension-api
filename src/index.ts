@@ -1,5 +1,3 @@
-export { getExtensions, initializeKiltExtensionAPI } from './getExtension/getExtension'
-import * as WellKnownDidConfiguration from './wellKnownDidConfiguration/wellKnownDidConfiguration'
+export { getExtensions, watchExtensions, initializeKiltExtensionAPI } from './getExtension/getExtension'
 import * as Types from './types/types'
-export { WellKnownDidConfiguration }
 export type { Types }
