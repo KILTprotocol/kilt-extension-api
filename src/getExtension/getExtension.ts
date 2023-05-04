@@ -21,6 +21,33 @@ export function getExtensions(): Array<InjectedWindowProvider<PubSubSessionV1 | 
   return Object.values(apiWindow.kilt)
 }
 
+export type WatchExtensionsCallback = (extensions: Array<InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>) => void
+
+/**
+ * @private
+ * This function relies on API that is not part of the Credential API standard yet and might break at any point in time.
+ *
+ * Watch for new extensions that get injected.
+ *
+ * Each time an extension has injected itself, it will dispatch an event.
+ * This function calls the provided callback with all available extensions when such an event is received.
+ *
+ * NOTE: Use the returned cleanup function to remove the event listener when the callback is not needed anymore.
+ *
+ * @param callback Callback that gets called each time a new extension is injected.
+ * @returns Cleanup function which removes the listener for new extensions.
+ */
+export function watchExtensions(callback: WatchExtensionsCallback): () => void {
+  function handler() {
+    callback(getExtensions())
+  }
+
+  window.addEventListener('kilt-extension#initialized', handler)
+  return () => {
+    window.removeEventListener('kilt-extension#initialized', handler)
+  }
+}
+
 /**
  * This function enables the communication with extensions supporting the Credential API.
  *
