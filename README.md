@@ -1,15 +1,66 @@
-# kilt-extension
+# kilt-extension-api
 
-KILT Extension helper functions. The tools you need to add a KILT extension to your app, or add KILT functionality to your extension.
+KILT Extension helper functions.
+The tools you need to communicate with KILT enabled extensions.
+
+# How to use this library
+
+Note that `initializeKiltExtensionAPI()` needs to be called before any communication with KILT extensions can happen!
+
+## initialize KILT Extension API
+
+We need to signal to the extensions which API versions we currently support, so that the extension can inject the appropriate scripts into the website.
+This library only supports a single API version at a time.
+
+```js
+import { initializeKiltExtensionAPI } from 'kilt-extension-api'
+
+initializeKiltExtensionAPI()
+```
 
 ## Get Extension
 
-In order to use the extension with KILT credential API the extension needs to be injected into the application close to the loading of the application. Here you can use `getExtensions` function to add it directly to the application and wait for its response.
+`getExtensions` returns a list of extensions that are currently injected to the website.
 
-Now you can access the extensions API and handle the data and interactions between the Dapp and Extension.
+```js
+import { getExtensions } from 'kilt-extension-api'
 
-See the `react-example.ts` example inside the get extension folder, here is how you can use `getExtensions` in a react app?
+const extensions = getExtensions()
+```
 
-## Inject Extension
+## Watch Extensions
 
-Currently work in progress.
+Extensions might take longer to load than the website.
+In that case the first call to `getExtensions()` might not return all available extensions.
+
+To list additional extensions as they arrive, you can use `watchExtensions`.
+
+```js
+import { watchExtensions, Types } from 'kilt-extension-api'
+
+export default function Home(): JSX.Element {
+  const [extensions, setExtensions] = useState<
+    Types.InjectedWindowProvider<Types.PubSubSessionV1 | Types.PubSubSessionV2>[]
+  >([])
+  async function testApi() {
+    const result = await fetch('/api')
+    const message = await result.json()
+    console.log(message)
+  }
+
+  useEffect(() => watchExtensions((extensions) => {
+    setExtensions(extensions)
+  }), [])
+
+  return <>
+    <h2>Extensions</h2>
+    <ul>
+    {
+      extensions.map((ext, i) => (
+        <li key={i}>{ext.name}</li>
+      ))
+    }
+    </ul>
+  </>
+}
+```
