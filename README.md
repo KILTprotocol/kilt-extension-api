@@ -33,7 +33,9 @@ const extensions = getExtensions()
 Extensions might take longer to load than the website.
 In that case the first call to `getExtensions()` might not return all available extensions.
 
-To list additional extensions as they arrive, you can use `watchExtensions`.
+To list additional extensions as they load, you can use `watchExtensions`.
+
+Here is an example how you could use this function in a React application
 
 ```js
 import { watchExtensions, Types } from 'kilt-extension-api'
