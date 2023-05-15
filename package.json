@@ -1,12 +1,12 @@
 {
-  "name": "kilt-extension",
-  "version": "0.0.1",
+  "name": "kilt-extension-api",
+  "version": "0.1.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
-  "author": "dudleyneedham <dudleyneedham1993@gmail.com>",
+  "author": "KILT <info@kilt.io>",
   "license": "BSD-4-Clause",
   "scripts": {
     "lint": "eslint --ext .js,.ts .",
