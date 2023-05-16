@@ -22,22 +22,18 @@ import {
   cryptoWaitReady,
 } from '@polkadot/util-crypto'
 import { GenericContainer, Wait } from 'testcontainers'
-import { ctypeDomainLinkage } from '../wellKnownDidConfiguration/wellKnownDidConfiguration'
+import { ctypeDomainLinkage } from '../wellKnownDidConfiguration'
 
 export const faucet = async () => {
   await cryptoWaitReady()
   const keyring = new Utils.Keyring({ ss58Format: 38, type: 'ed25519' })
 
-  const faucetSeed =
-    'receive clutch item involve chaos clutch furnace arrest claw isolate okay together'
+  const faucetSeed = 'receive clutch item involve chaos clutch furnace arrest claw isolate okay together'
 
   return keyring.createFromUri(faucetSeed, { type: 'ed25519' })
 }
 
-export async function fundAccount(
-  address: KiltKeyringPair['address'],
-  amount: BN
-): Promise<void> {
+export async function fundAccount(address: KiltKeyringPair['address'], amount: BN): Promise<void> {
   const api = ConfigService.get('api')
   const transferTx = api.tx.balances.transfer(address, amount)
   const devAccount = await faucet()
@@ -73,14 +69,8 @@ export async function keypairs(account: KiltKeyringPair, mnemonic: string) {
   }
 }
 
-export async function generateDid(
-  account: KiltKeyringPair,
-  mnemonic: string
-): Promise<DidDocument> {
-  const { authentication, assertion, keyAgreement } = await keypairs(
-    account,
-    mnemonic
-  )
+export async function generateDid(account: KiltKeyringPair, mnemonic: string): Promise<DidDocument> {
+  const { authentication, assertion, keyAgreement } = await keypairs(account, mnemonic)
 
   const uri = Did.getFullDidUriFromKey(authentication)
 
@@ -105,8 +95,7 @@ export async function generateDid(
   })
 
   fullDid = await Did.resolve(uri)
-  if (!fullDid || !fullDid.document)
-    throw new Error('Could not fetch created DID document')
+  if (!fullDid || !fullDid.document) throw new Error('Could not fetch created DID document')
   return fullDid.document
 }
 
@@ -126,11 +115,7 @@ export async function assertionSigner({
   })
 }
 
-export async function createCtype(
-  didUri: DidUri,
-  account: KiltKeyringPair,
-  mnemonic: string
-) {
+export async function createCtype(didUri: DidUri, account: KiltKeyringPair, mnemonic: string) {
   const api = ConfigService.get('api')
 
   const { assertion } = await keypairs(account, mnemonic)
@@ -157,8 +142,7 @@ export async function createCtype(
 
 export async function startContainer(): Promise<string> {
   const WS_PORT = 9944
-  const image =
-    process.env.TESTCONTAINERS_NODE_IMG || 'kiltprotocol/mashnet-node'
+  const image = process.env.TESTCONTAINERS_NODE_IMG || 'kiltprotocol/mashnet-node'
   console.log(`using testcontainer with image ${image}`)
   const testcontainer = new GenericContainer(image)
     .withCommand(['--dev', `--ws-port=${WS_PORT}`, '--ws-external'])
