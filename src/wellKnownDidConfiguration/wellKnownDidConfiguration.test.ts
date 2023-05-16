@@ -10,7 +10,7 @@ import {
   CType,
 } from '@kiltprotocol/sdk-js'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
-import { VerifiableDomainLinkagePresentation } from '../types/types'
+import { VerifiableDomainLinkagePresentation } from '../types'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
 import {
@@ -22,15 +22,8 @@ import {
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
   ctypeDomainLinkage,
   DOMAIN_LINKAGE_CREDENTIAL_TYPE,
-} from './wellKnownDidConfiguration'
-import {
-  fundAccount,
-  generateDid,
-  keypairs,
-  createCtype,
-  assertionSigner,
-  startContainer,
-} from '../tests/utils'
+} from './index'
+import { fundAccount, generateDid, keypairs, createCtype, assertionSigner, startContainer } from '../tests/utils'
 
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string
@@ -51,9 +44,7 @@ describe('Well Known Did Configuration integration test', () => {
 
   beforeAll(async () => {
     mnemonic = mnemonicGenerate()
-    account = new Keyring({ type: 'ed25519' }).addFromMnemonic(
-      mnemonic
-    ) as KiltKeyringPair
+    account = new Keyring({ type: 'ed25519' }).addFromMnemonic(mnemonic) as KiltKeyringPair
     await fundAccount(account.address, new BN('1000000000000000000'))
     keypair = await keypairs(account, mnemonic)
 
@@ -92,11 +83,7 @@ describe('Well Known Did Configuration integration test', () => {
 
   it('fails to generate a well known did configuration credential if origin is not a URL', async () => {
     await expect(
-      createCredential(
-        await assertionSigner({ assertion: keypair.assertion, didDocument }),
-        'bad origin',
-        didUri
-      )
+      createCredential(await assertionSigner({ assertion: keypair.assertion, didDocument }), 'bad origin', didUri)
     ).rejects.toThrow()
   }, 30_000)
 
@@ -113,10 +100,7 @@ describe('Well Known Did Configuration integration test', () => {
             origin,
           },
           proof: expect.any(Object),
-          type: [
-            DEFAULT_VERIFIABLECREDENTIAL_TYPE,
-            DOMAIN_LINKAGE_CREDENTIAL_TYPE,
-          ],
+          type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
           issuer: didUri,
           issuanceDate: expect.any(String),
         },
@@ -130,16 +114,12 @@ describe('Well Known Did Configuration integration test', () => {
   }, 30_000)
 
   it('verify did configuration presentation', async () => {
-    await expect(
-      verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
-    ).resolves.not.toThrow()
+    await expect(verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)).resolves.not.toThrow()
   }, 30_000)
 
   it('did not verify did configuration presentation', async () => {
     domainLinkageCredential.linked_dids[0].proof.signature = '0x'
-    await expect(
-      verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
-    ).rejects.toThrow()
+    await expect(verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)).rejects.toThrow()
   }, 30_000)
 })
 

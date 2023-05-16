@@ -1,9 +1,4 @@
-import {
-  ApiWindow,
-  InjectedWindowProvider,
-  PubSubSessionV1,
-  PubSubSessionV2,
-} from '../types/types'
+import { ApiWindow, InjectedWindowProvider, PubSubSessionV1, PubSubSessionV2 } from '../types'
 
 // cross-environment reference to global object (aka 'window' in browser environments)
 const apiWindow = globalThis as Window & ApiWindow
@@ -17,12 +12,13 @@ const apiWindow = globalThis as Window & ApiWindow
  * @returns an array of extensions
  */
 export function getExtensions(): Array<InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>> {
-
   // Remove the meta object and return a list of extension objects
   return Object.values(apiWindow.kilt)
 }
 
-export type WatchExtensionsCallback = (extensions: Array<InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>) => void
+export type WatchExtensionsCallback = (
+  extensions: Array<InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>
+) => void
 
 /**
  * @private
@@ -61,10 +57,10 @@ export function initializeKiltExtensionAPI() {
   Object.defineProperty(apiWindow.kilt, 'meta', {
     value: {
       versions: {
-        credentials: '3.0'
-      }
+        credentials: '3.0',
+      },
     },
-    enumerable: false
+    enumerable: false,
   })
 
   apiWindow.dispatchEvent(new CustomEvent('kilt-dapp#initialized'))

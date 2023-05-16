@@ -1,17 +1,11 @@
 import { useState, useEffect } from 'react'
-import { getExtensions } from '../src/getExtension/getExtension'
-import {
-  InjectedWindowProvider,
-  PubSubSessionV1,
-  PubSubSessionV2,
-} from '../src/types/types'
+import { getExtensions } from '../src/getExtension'
+import { InjectedWindowProvider, PubSubSessionV1, PubSubSessionV2 } from '../src/types'
 
 export default function useSporran() {
   const [extensionEnabled, setExtensionEnabled] = useState(false)
   const [extensions, setExtensions] =
-    useState<
-      Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>
-    >()
+    useState<Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>>()
 
   useEffect(() => {
     async function doEffect() {

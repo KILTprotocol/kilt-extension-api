@@ -9,11 +9,7 @@ import {
   ICredentialPresentation,
   DidResourceUri,
 } from '@kiltprotocol/sdk-js'
-import {
-  DomainLinkageCredential,
-  DomainLinkageProof,
-  VerifiableDomainLinkagePresentation,
-} from '../types/types'
+import { DomainLinkageCredential, DomainLinkageProof, VerifiableDomainLinkagePresentation } from '../types'
 import * as validUrl from 'valid-url'
 import {
   SelfSignedProof,
@@ -40,18 +36,14 @@ export {
   KILT_SELF_SIGNED_PROOF_TYPE,
   DEFAULT_VERIFIABLECREDENTIAL_CONTEXT as DID_VC_CONTEXT,
 }
-export const DID_CONFIGURATION_CONTEXT =
-  'https://identity.foundation/.well-known/did-configuration/v1'
+export const DID_CONFIGURATION_CONTEXT = 'https://identity.foundation/.well-known/did-configuration/v1'
 
-export const ctypeDomainLinkage = CType.fromProperties(
-  'Domain Linkage Credential',
-  {
-    origin: {
-      type: 'string',
-      format: 'uri',
-    },
-  }
-)
+export const ctypeDomainLinkage = CType.fromProperties('Domain Linkage Credential', {
+  origin: {
+    type: 'string',
+    format: 'uri',
+  },
+})
 
 export async function createCredential(
   signCallback: SignCallback,
@@ -74,20 +66,14 @@ export async function createCredential(
     origin,
   }
 
-  const claim = Claim.fromCTypeAndClaimContents(
-    ctypeDomainLinkage,
-    domainClaimContents,
-    document.uri
-  )
+  const claim = Claim.fromCTypeAndClaimContents(ctypeDomainLinkage, domainClaimContents, document.uri)
 
   const credential = Credential.fromClaim(claim)
 
   const assertionKey = document.assertionMethod?.[0]
 
   if (!assertionKey) {
-    throw new Error(
-      'Full DID doesnt have assertion key: Please add assertion key'
-    )
+    throw new Error('Full DID doesnt have assertion key: Please add assertion key')
   }
 
   return Credential.createPresentation({
@@ -100,9 +86,7 @@ export const DOMAIN_LINKAGE_CREDENTIAL_TYPE = 'DomainLinkageCredential'
 
 export async function getDomainLinkagePresentation(
   credential: ICredentialPresentation,
-  expirationDate: string = new Date(
-    Date.now() + 1000 * 60 * 60 * 24 * 365 * 5
-  ).toISOString()
+  expirationDate: string = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 5).toISOString()
 ): Promise<VerifiableDomainLinkagePresentation> {
   if (!Credential.isPresentation(credential)) {
     throw new Error('Input must be an IPresentation')
@@ -123,9 +107,7 @@ export async function getDomainLinkagePresentation(
     owner: credential.claim.owner,
   } as any)
 
-  const ssProof = (allProofs as Proof[]).find(
-    ({ type }) => type === KILT_SELF_SIGNED_PROOF_TYPE
-  ) as SelfSignedProof
+  const ssProof = (allProofs as Proof[]).find(({ type }) => type === KILT_SELF_SIGNED_PROOF_TYPE) as SelfSignedProof
   const digProof = (allProofs as Proof[]).find(
     ({ type }) => type === KILT_CREDENTIAL_DIGEST_PROOF_TYPE
   ) as CredentialDigestProof
@@ -141,15 +123,9 @@ export async function getDomainLinkagePresentation(
     linked_dids: [
       {
         ...VC,
-        '@context': [
-          DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
-          DID_CONFIGURATION_CONTEXT,
-        ],
+        '@context': [DEFAULT_VERIFIABLECREDENTIAL_CONTEXT, DID_CONFIGURATION_CONTEXT],
         expirationDate,
-        type: [
-          DEFAULT_VERIFIABLECREDENTIAL_TYPE,
-          DOMAIN_LINKAGE_CREDENTIAL_TYPE,
-        ],
+        type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
         proof,
         credentialSubject: {
           id: credentialSubject['@id'] as DidUri, // canonicalize @id to id
@@ -204,12 +180,9 @@ export async function verifyDidConfigPresentation(
     }
 
     // get root hash incl fallback for older domain linkage credential types
-    const { rootHash = proof.rootHash, ...cleanSubject } =
-      credentialSubject as any
+    const { rootHash = proof.rootHash, ...cleanSubject } = credentialSubject as any
     if (!isHex(rootHash)) {
-      throw new Error(
-        'Credential id is not a valid identifier (could not extract base16 / hex encoded string)'
-      )
+      throw new Error('Credential id is not a valid identifier (could not extract base16 / hex encoded string)')
     }
 
     const pType = Array.isArray(proof.type) ? proof.type : [proof.type]

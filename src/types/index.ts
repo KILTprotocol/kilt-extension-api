@@ -1,16 +1,6 @@
-import type {
-  IEncryptedMessage,
-  DidUri,
-  KiltAddress,
-  DidResourceUri,
-} from '@kiltprotocol/types'
+import type { IEncryptedMessage, DidUri, KiltAddress, DidResourceUri } from '@kiltprotocol/types'
 import type { HexString } from '@polkadot/util/types'
-import type {
-  CredentialDigestProof,
-  SelfSignedProof,
-  VerifiableCredential,
-  constants,
-} from '@kiltprotocol/vc-export'
+import type { CredentialDigestProof, SelfSignedProof, VerifiableCredential, constants } from '@kiltprotocol/vc-export'
 
 export type This = typeof globalThis
 
@@ -30,9 +20,7 @@ export interface IEncryptedMessageV1 {
 
 export interface PubSubSessionV1 {
   /** Configure the callback the extension must use to send messages to the dApp. Overrides previous values. */
-  listen: (
-    callback: (message: IEncryptedMessageV1) => Promise<void>
-  ) => Promise<void>
+  listen: (callback: (message: IEncryptedMessageV1) => Promise<void>) => Promise<void>
 
   /** send the encrypted message to the extension */
   send: (message: IEncryptedMessageV1) => Promise<void>
@@ -52,9 +40,7 @@ export interface PubSubSessionV1 {
 
 export interface PubSubSessionV2 {
   /** Configure the callback the extension must use to send messages to the dApp. Overrides previous values. */
-  listen: (
-    callback: (message: IEncryptedMessage) => Promise<void>
-  ) => Promise<void>
+  listen: (callback: (message: IEncryptedMessage) => Promise<void>) => Promise<void>
 
   /** send the encrypted message to the extension */
   send: (message: IEncryptedMessage) => Promise<void>
@@ -73,31 +59,20 @@ export interface PubSubSessionV2 {
 }
 
 export interface InjectedWindowProvider<T> {
-  startSession: (
-    dAppName: string,
-    dAppEncryptionKeyId: DidResourceUri,
-    challenge: string
-  ) => Promise<T>
+  startSession: (dAppName: string, dAppEncryptionKeyId: DidResourceUri, challenge: string) => Promise<T>
   name: string
   version: string
   specVersion: '1.0' | '3.0'
-  signWithDid: (
-    plaintext: string
-  ) => Promise<{ signature: string; didKeyUri: DidResourceUri }>
+  signWithDid: (plaintext: string) => Promise<{ signature: string; didKeyUri: DidResourceUri }>
   signExtrinsicWithDid: (
     extrinsic: HexString,
     signer: KiltAddress
   ) => Promise<{ signed: HexString; didKeyUri: DidResourceUri }>
-  getSignedDidCreationExtrinsic: (
-    submitter: KiltAddress
-  ) => Promise<{ signedExtrinsic: HexString }>
+  getSignedDidCreationExtrinsic: (submitter: KiltAddress) => Promise<{ signedExtrinsic: HexString }>
 }
 
 export interface ApiWindow extends This {
-  kilt: Record<
-    string,
-    InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>
-  >
+  kilt: Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>
 }
 
 export interface CredentialSubject {
@@ -113,17 +88,11 @@ type Contexts = [
 export type DomainLinkageProof = {
   type: Array<SelfSignedProof['type'] | CredentialDigestProof['type']>
   rootHash: string
-} & Pick<
-  SelfSignedProof,
-  'signature' | 'verificationMethod' | 'proofPurpose' | 'created'
-> &
+} & Pick<SelfSignedProof, 'signature' | 'verificationMethod' | 'proofPurpose' | 'created'> &
   Pick<CredentialDigestProof, 'claimHashes' | 'nonces'>
 
 export interface DomainLinkageCredential
-  extends Omit<
-    VerifiableCredential,
-    '@context' | 'legitimationIds' | 'credentialSubject' | 'proof' | 'id'
-  > {
+  extends Omit<VerifiableCredential, '@context' | 'legitimationIds' | 'credentialSubject' | 'proof' | 'id'> {
   '@context': Contexts
   credentialSubject: CredentialSubject
   proof: DomainLinkageProof
