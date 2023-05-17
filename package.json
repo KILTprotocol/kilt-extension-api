@@ -12,10 +12,6 @@
       "types": "./wellKnownDidConfiguration/index.d.ts",
       "default": "./wellKnownDidConfiguration/index.js"
     },
-    "./getExtension": {
-      "types": "./getExtension/index.d.ts",
-      "default": "./getExtension/index.js"
-    },
     "./types": {
       "types": "./types/index.d.ts"
     }
