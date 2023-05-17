@@ -98,7 +98,7 @@ export interface DomainLinkageCredential
   proof: DomainLinkageProof
 }
 
-export interface VerifiableDomainLinkagePresentation {
+export interface DidConfigResource {
   '@context': string
   linked_dids: [DomainLinkageCredential]
 }

@@ -23,7 +23,7 @@
   "author": "KILT <info@kilt.io>",
   "license": "BSD-4-Clause",
   "scripts": {
-    "lint": "eslint --ext .js,.ts .",
+    "lint": "eslint --ext .ts .",
     "build": "tsc -p tsconfig.build.json",
     "test": "jest test"
   },

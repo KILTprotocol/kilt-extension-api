@@ -9,7 +9,7 @@ import {
   ICredentialPresentation,
   DidResourceUri,
 } from '@kiltprotocol/sdk-js'
-import { DomainLinkageCredential, DomainLinkageProof, VerifiableDomainLinkagePresentation } from '../types'
+import { DomainLinkageCredential, DomainLinkageProof, DidConfigResource } from '../types'
 import * as validUrl from 'valid-url'
 import {
   SelfSignedProof,
@@ -84,10 +84,10 @@ export async function createCredential(
 
 export const DOMAIN_LINKAGE_CREDENTIAL_TYPE = 'DomainLinkageCredential'
 
-export async function getDomainLinkagePresentation(
+export async function makeDidConfigResourceFromCredential(
   credential: ICredentialPresentation,
   expirationDate: string = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 5).toISOString()
-): Promise<VerifiableDomainLinkagePresentation> {
+): Promise<DidConfigResource> {
   if (!Credential.isPresentation(credential)) {
     throw new Error('Input must be an IPresentation')
   }
@@ -138,74 +138,85 @@ export async function getDomainLinkagePresentation(
   }
 }
 
-async function asyncSome(
-  credentials: DomainLinkageCredential[],
-  verify: (credential: DomainLinkageCredential) => Promise<void>
-) {
-  await Promise.all(credentials.map((credential) => verify(credential)))
+async function verifyDomainLinkageCredential(
+  credential: DomainLinkageCredential,
+  expectedOrigin: string,
+  expectedDid?: DidUri
+): Promise<DidUri> {
+  const { issuer, credentialSubject, proof } = credential
+
+  if (issuer !== credentialSubject.id) throw new Error('issuer and credential subject must be identical')
+
+  const didUri = credentialSubject.id
+  Did.validateUri(didUri, 'Did')
+
+  if (expectedOrigin !== credentialSubject.origin) throw new Error('origin does not match expected')
+  if (expectedDid && expectedDid !== didUri) throw new Error('DID does not match expected')
+
+  // get root hash incl fallback for older domain linkage credential types
+  const { rootHash = proof.rootHash, ...cleanSubject } = credentialSubject as any
+  if (!isHex(rootHash)) {
+    throw new Error('rootHash must be a hex encoded string')
+  }
+
+  const pType = Array.isArray(proof.type) ? proof.type : [proof.type]
+  if (!pType.includes(KILT_SELF_SIGNED_PROOF_TYPE)) {
+    throw new Error('proof type must include ' + KILT_SELF_SIGNED_PROOF_TYPE)
+  }
+
+  await Did.verifyDidSignature({
+    expectedVerificationMethod: 'assertionMethod',
+    signature: hexToU8a(proof.signature),
+    keyUri: proof.verificationMethod as DidResourceUri,
+    message: Utils.Crypto.coToUInt8(rootHash),
+  })
+
+  if (pType.includes(KILT_CREDENTIAL_DIGEST_PROOF_TYPE)) {
+    await verification.verifyCredentialDigestProof(
+      {
+        ...credential,
+        credentialSubject: cleanSubject,
+        id: `kilt:cred:${rootHash}`,
+      } as unknown as VerifiableCredential,
+      { ...proof, type: KILT_CREDENTIAL_DIGEST_PROOF_TYPE }
+    )
+  }
+
+  return didUri
 }
 
-export async function verifyDidConfigPresentation(
-  didUri: DidUri,
-  domainLinkageCredential: VerifiableDomainLinkagePresentation,
-  origin: string
-): Promise<void> {
+async function asyncSome<T>(
+  credentials: DomainLinkageCredential[],
+  verify: (credential: DomainLinkageCredential) => Promise<T>
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const promises = credentials.map((credential) => verify(credential).then(resolve))
+    Promise.allSettled(promises).then(reject)
+  })
+}
+
+/**
+ * Verifies a DID Configuration Resource created by this library.
+ * Verification is successful if any of the Domain Linkage Credentials in linked_dids can be verified.
+ *
+ * @param didConfig A Did Configuration Resource as created by [[makeDidConfigResourceFromCredential]].
+ * @param expectedOrigin The origin (domain) from which the resource was loaded.
+ * @param expectedDid If specified, this will only accept DL credentials issued by and for this DID.
+ * @returns The credential subject (DID) contained within the first credential to be successfully verified.
+ */
+export async function verifyDidConfigResource(
+  didConfig: DidConfigResource,
+  expectedOrigin: string,
+  expectedDid?: DidUri
+): Promise<DidUri> {
   // Verification steps outlined in Well Known DID Configuration
   // https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource-verification
 
-  await asyncSome(domainLinkageCredential.linked_dids, async (credential) => {
-    const { issuer, credentialSubject, proof } = credential
+  if (!validUrl.isUri(expectedOrigin)) throw new Error('origin is not a valid uri')
 
-    const matchesSessionDid = didUri === credentialSubject.id
-    if (!matchesSessionDid) throw new Error('session did doesnt match')
-
-    Did.validateUri(credentialSubject.id)
-    const matchesIssuer = issuer === credentialSubject.id
-    if (!matchesIssuer) throw new Error('does not match the issuer')
-
-    const matchesOrigin = origin === credentialSubject.origin
-    if (!matchesOrigin) throw new Error('does not match the origin')
-    if (!validUrl.isUri(origin)) throw new Error('not a valid uri')
-
-    const fullDid = await Did.resolve(didUri)
-
-    if (!fullDid?.document) {
-      throw new Error('No Did found: Please create a Full DID')
-    }
-
-    const { document } = fullDid
-
-    if (!document?.assertionMethod?.[0].id) {
-      throw new Error('No DID attestation key on-chain')
-    }
-
-    // get root hash incl fallback for older domain linkage credential types
-    const { rootHash = proof.rootHash, ...cleanSubject } = credentialSubject as any
-    if (!isHex(rootHash)) {
-      throw new Error('Credential id is not a valid identifier (could not extract base16 / hex encoded string)')
-    }
-
-    const pType = Array.isArray(proof.type) ? proof.type : [proof.type]
-    if (!pType.includes(KILT_SELF_SIGNED_PROOF_TYPE)) {
-      throw new Error('proof type must include ' + KILT_SELF_SIGNED_PROOF_TYPE)
-    }
-
-    await Did.verifyDidSignature({
-      expectedVerificationMethod: 'assertionMethod',
-      signature: hexToU8a(proof.signature),
-      keyUri: proof.verificationMethod as DidResourceUri,
-      message: Utils.Crypto.coToUInt8(rootHash),
-    })
-
-    if (pType.includes(KILT_CREDENTIAL_DIGEST_PROOF_TYPE)) {
-      await verification.verifyCredentialDigestProof(
-        {
-          ...credential,
-          credentialSubject: cleanSubject,
-          id: `kilt:cred:${rootHash}`,
-        } as unknown as VerifiableCredential,
-        { ...proof, type: KILT_CREDENTIAL_DIGEST_PROOF_TYPE }
-      )
-    }
+  return asyncSome(didConfig.linked_dids, (credential) =>
+    verifyDomainLinkageCredential(credential, expectedOrigin, expectedDid)
+  ).catch(() => {
+    throw new Error('Did Configuration Resource could not be verified')
   })
 }

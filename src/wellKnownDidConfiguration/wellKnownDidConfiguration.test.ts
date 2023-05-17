@@ -10,14 +10,14 @@ import {
   CType,
 } from '@kiltprotocol/sdk-js'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
-import { VerifiableDomainLinkagePresentation } from '../types'
+import { DidConfigResource } from '../types'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
 import {
   createCredential,
   DID_CONFIGURATION_CONTEXT,
-  getDomainLinkagePresentation,
-  verifyDidConfigPresentation,
+  verifyDidConfigResource,
+  makeDidConfigResourceFromCredential,
   DID_VC_CONTEXT,
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
   ctypeDomainLinkage,
@@ -32,7 +32,7 @@ describe('Well Known Did Configuration integration test', () => {
   let didDocument: DidDocument
   let didUri: DidUri
   let keypair: any
-  let domainLinkageCredential: VerifiableDomainLinkagePresentation
+  let didConfigResource: DidConfigResource
   let credential: ICredentialPresentation
   let keyUri: DidResourceUri
   let claim: IClaim
@@ -89,8 +89,8 @@ describe('Well Known Did Configuration integration test', () => {
 
   it('get domain linkage presentation', async () => {
     expect(
-      (domainLinkageCredential = await getDomainLinkagePresentation(credential))
-    ).toMatchObject<VerifiableDomainLinkagePresentation>({
+      (didConfigResource = await makeDidConfigResourceFromCredential(credential))
+    ).toMatchObject<DidConfigResource>({
       '@context': DID_CONFIGURATION_CONTEXT,
       linked_dids: [
         {
@@ -110,16 +110,16 @@ describe('Well Known Did Configuration integration test', () => {
 
   it('rejects if the domain linkage has no signature', async () => {
     delete (credential as any).claimerSignature
-    await expect(getDomainLinkagePresentation(credential)).rejects.toThrow()
+    await expect(makeDidConfigResourceFromCredential(credential)).rejects.toThrow()
   }, 30_000)
 
   it('verify did configuration presentation', async () => {
-    await expect(verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)).resolves.not.toThrow()
+    await expect(verifyDidConfigResource(didConfigResource, origin, didUri)).resolves.not.toThrow()
   }, 30_000)
 
   it('did not verify did configuration presentation', async () => {
-    domainLinkageCredential.linked_dids[0].proof.signature = '0x'
-    await expect(verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)).rejects.toThrow()
+    didConfigResource.linked_dids[0].proof.signature = '0x'
+    await expect(verifyDidConfigResource(didConfigResource, origin, didUri)).rejects.toThrow()
   }, 30_000)
 })
 
