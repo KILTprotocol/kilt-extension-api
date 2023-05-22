@@ -1,0 +1,10 @@
+src
+examples
+.github
+
+jest.config.js
+.editorconfig
+.*ignore
+.*rc
+*.json
+yarn.lock

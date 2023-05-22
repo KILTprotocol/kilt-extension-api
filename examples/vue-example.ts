@@ -11,7 +11,7 @@ import Vue from 'vue'
 import { getExtensions } from '../src/getExtension'
 
 function walletSetup() {
-  let instance: null = null
+  let instance = null
 
   async function checkForExtension() {
     const allInjected = await getExtensions()

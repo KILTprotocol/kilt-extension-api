@@ -7,28 +7,23 @@ import {
   DidResourceUri,
   connect,
   ConfigService,
+  CType,
 } from '@kiltprotocol/sdk-js'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
-import { VerifiableDomainLinkagePresentation } from '../types/types'
+import { DidConfigResource } from '../types'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
 import {
   createCredential,
   DID_CONFIGURATION_CONTEXT,
-  getDomainLinkagePresentation,
-  verifyDidConfigPresentation,
+  verifyDidConfigResource,
+  makeDidConfigResourceFromCredential,
   DID_VC_CONTEXT,
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
-  KILT_VERIFIABLECREDENTIAL_TYPE,
-} from './wellKnownDidConfiguration'
-import {
-  fundAccount,
-  generateDid,
-  keypairs,
-  createCtype,
-  assertionSigner,
-  startContainer,
-} from '../tests/utils'
+  ctypeDomainLinkage,
+  DOMAIN_LINKAGE_CREDENTIAL_TYPE,
+} from './index'
+import { fundAccount, generateDid, keypairs, createCtype, assertionSigner, startContainer } from '../tests/utils'
 
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string
@@ -37,7 +32,7 @@ describe('Well Known Did Configuration integration test', () => {
   let didDocument: DidDocument
   let didUri: DidUri
   let keypair: any
-  let domainLinkageCredential: VerifiableDomainLinkagePresentation
+  let didConfigResource: DidConfigResource
   let credential: ICredentialPresentation
   let keyUri: DidResourceUri
   let claim: IClaim
@@ -49,19 +44,16 @@ describe('Well Known Did Configuration integration test', () => {
 
   beforeAll(async () => {
     mnemonic = mnemonicGenerate()
-    account = new Keyring({ type: 'ed25519' }).addFromMnemonic(
-      mnemonic
-    ) as KiltKeyringPair
+    account = new Keyring({ type: 'ed25519' }).addFromMnemonic(mnemonic) as KiltKeyringPair
     await fundAccount(account.address, new BN('1000000000000000000'))
     keypair = await keypairs(account, mnemonic)
 
     didDocument = await generateDid(account, mnemonic)
 
     didUri = didDocument.uri
-    keyUri = `${didUri}${didDocument.assertionMethod?.[0].id!}`
+    keyUri = `${didUri}${didDocument.assertionMethod![0].id}`
     claim = {
-      cTypeHash:
-        '0x39dc47bc933944ac66cfcf46bfdb66ca070b04a17cd8818eefb669928caf4d3e',
+      cTypeHash: CType.idToHash(ctypeDomainLinkage.$id),
       contents: { origin },
       owner: didUri,
     }
@@ -91,18 +83,14 @@ describe('Well Known Did Configuration integration test', () => {
 
   it('fails to generate a well known did configuration credential if origin is not a URL', async () => {
     await expect(
-      createCredential(
-        await assertionSigner({ assertion: keypair.assertion, didDocument }),
-        'bad origin',
-        didUri
-      )
+      createCredential(await assertionSigner({ assertion: keypair.assertion, didDocument }), 'bad origin', didUri)
     ).rejects.toThrow()
   }, 30_000)
 
   it('get domain linkage presentation', async () => {
     expect(
-      (domainLinkageCredential = await getDomainLinkagePresentation(credential))
-    ).toMatchObject<VerifiableDomainLinkagePresentation>({
+      (didConfigResource = await makeDidConfigResourceFromCredential(credential))
+    ).toMatchObject<DidConfigResource>({
       '@context': DID_CONFIGURATION_CONTEXT,
       linked_dids: [
         {
@@ -112,13 +100,7 @@ describe('Well Known Did Configuration integration test', () => {
             origin,
           },
           proof: expect.any(Object),
-          id: expect.any(String),
-          type: [
-            DEFAULT_VERIFIABLECREDENTIAL_TYPE,
-            'DomainLinkageCredential',
-            KILT_VERIFIABLECREDENTIAL_TYPE,
-          ],
-
+          type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
           issuer: didUri,
           issuanceDate: expect.any(String),
         },
@@ -127,21 +109,17 @@ describe('Well Known Did Configuration integration test', () => {
   }, 30_000)
 
   it('rejects if the domain linkage has no signature', async () => {
-    credential.claimerSignature.signature = '0x'
-    await expect(getDomainLinkagePresentation(credential)).rejects.toThrow()
+    delete (credential as any).claimerSignature
+    await expect(makeDidConfigResourceFromCredential(credential)).rejects.toThrow()
   }, 30_000)
 
   it('verify did configuration presentation', async () => {
-    await expect(
-      verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
-    ).resolves.not.toThrow()
+    await expect(verifyDidConfigResource(didConfigResource, origin, didUri)).resolves.not.toThrow()
   }, 30_000)
 
   it('did not verify did configuration presentation', async () => {
-    domainLinkageCredential.linked_dids[0].proof.signature = '0x'
-    await expect(
-      verifyDidConfigPresentation(didUri, domainLinkageCredential, origin)
-    ).rejects.toThrow()
+    didConfigResource.linked_dids[0].proof.signature = '0x'
+    await expect(verifyDidConfigResource(didConfigResource, origin, didUri)).rejects.toThrow()
   }, 30_000)
 })
 
