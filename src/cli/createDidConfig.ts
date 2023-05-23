@@ -1,11 +1,13 @@
+#!/usr/bin/env node
+
 import { Credential, Did, connect, disconnect } from '@kiltprotocol/sdk-js'
 import { DidResourceUri, ICredentialPresentation, SignCallback } from '@kiltprotocol/types'
 import { readFile, writeFile } from 'fs/promises'
 import yargs from 'yargs/yargs'
 import { Keyring } from '@polkadot/keyring'
 
-import { makeDidConfigResourceFromCredential, createCredential } from './wellKnownDidConfiguration'
-import { DidConfigResource } from './types'
+import { makeDidConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration'
+import { DidConfigResource } from '../types'
 
 type KeyType = 'sr25519' | 'ed25519' | 'ecdsa'
 
