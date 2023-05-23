@@ -50,6 +50,10 @@ export async function createCredential(
   origin: string,
   didUri: DidUri
 ): Promise<ICredentialPresentation> {
+  if (!validUrl.isUri(origin)) {
+    throw new Error('The origin is not a valid url')
+  }
+
   const fullDid = await Did.resolve(didUri)
 
   if (!fullDid?.document) {
@@ -58,8 +62,10 @@ export async function createCredential(
 
   const { document } = fullDid
 
-  if (!validUrl.isUri(origin)) {
-    throw new Error('The origin is not a valid url')
+  const assertionKey = document.assertionMethod?.[0]
+
+  if (!assertionKey) {
+    throw new Error('Full DID doesnt have assertion key: Please add assertion key')
   }
 
   const domainClaimContents = {
@@ -70,16 +76,16 @@ export async function createCredential(
 
   const credential = Credential.fromClaim(claim)
 
-  const assertionKey = document.assertionMethod?.[0]
-
-  if (!assertionKey) {
-    throw new Error('Full DID doesnt have assertion key: Please add assertion key')
-  }
-
-  return Credential.createPresentation({
+  const presentation = await Credential.createPresentation({
     credential,
     signCallback,
   })
+
+  if (presentation.claimerSignature.keyUri !== document.uri + assertionKey.id) {
+    throw new Error('The credential presentation needs to be signed with the assertionMethod key')
+  }
+
+  return presentation
 }
 
 export const DOMAIN_LINKAGE_CREDENTIAL_TYPE = 'DomainLinkageCredential'
