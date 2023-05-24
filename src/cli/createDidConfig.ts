@@ -51,22 +51,28 @@ async function run() {
             demandOption: true,
           }),
       async ({ pathToCredential, outFile }) => {
-        let credential: ICredentialPresentation
         try {
-          credential = JSON.parse(await readFile(pathToCredential, { encoding: 'utf-8' }))
-          if (!Credential.isPresentation(credential)) {
-            throw new Error()
+          let credential: ICredentialPresentation
+          try {
+            credential = JSON.parse(await readFile(pathToCredential, { encoding: 'utf-8' }))
+            if (!Credential.isPresentation(credential)) {
+              throw new Error('Malformed Credential Presentation')
+            }
+          } catch (cause) {
+            throw new Error('pathToCredential does not resolve to a valid Kilt Credential Presentation', { cause })
           }
-        } catch (error) {
-          throw new Error('fromCredential does not resolve to a valid Kilt Credential Presentation')
+          let didResource: DidConfigResource
+          try {
+            didResource = await makeDidConfigResourceFromCredential(credential)
+          } catch (cause) {
+            throw new Error('Credential Presentation is not suitable for use in a Did Configuration Resource', {
+              cause,
+            })
+          }
+          await write(didResource, outFile)
+        } catch (cause) {
+          console.error(cause)
         }
-        let didResource: DidConfigResource
-        try {
-          didResource = await makeDidConfigResourceFromCredential(credential)
-        } catch (e) {
-          throw new Error('Credential Presentation is not suitable for use in a Did Configuration Resource')
-        }
-        await write(didResource, outFile)
       }
     )
     .command(
@@ -86,14 +92,18 @@ async function run() {
         wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
       },
       async ({ assertionMethod, origin, seed, keyType, wsAddress, outFile }) => {
-        const credential = await issueCredential(
-          assertionMethod as DidResourceUri,
-          origin,
-          seed,
-          keyType as KeyType,
-          wsAddress
-        )
-        await write(credential, outFile)
+        try {
+          const credential = await issueCredential(
+            assertionMethod as DidResourceUri,
+            origin,
+            seed,
+            keyType as KeyType,
+            wsAddress
+          )
+          await write(credential, outFile)
+        } catch (cause) {
+          console.error(cause)
+        }
       }
     )
     .command(
@@ -113,15 +123,19 @@ async function run() {
         wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
       },
       async ({ assertionMethod, origin, seed, keyType, wsAddress, outFile }) => {
-        const credential = await issueCredential(
-          assertionMethod as DidResourceUri,
-          origin,
-          seed,
-          keyType as KeyType,
-          wsAddress
-        )
-        const didResource = await makeDidConfigResourceFromCredential(credential)
-        await write(didResource, outFile)
+        try {
+          const credential = await issueCredential(
+            assertionMethod as DidResourceUri,
+            origin,
+            seed,
+            keyType as KeyType,
+            wsAddress
+          )
+          const didResource = await makeDidConfigResourceFromCredential(credential)
+          await write(didResource, outFile)
+        } catch (cause) {
+          console.error(cause)
+        }
       }
     )
     .parseAsync()
