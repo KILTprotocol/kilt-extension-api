@@ -21,6 +21,7 @@
   "scripts": {
     "lint": "eslint --ext .ts .",
     "build": "tsc -p tsconfig.build.json",
+    "clean": "exec git clean -xf -e 'node_modules' '*'",
     "test": "jest test"
   },
   "dependencies": {
