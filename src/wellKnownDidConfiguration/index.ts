@@ -98,10 +98,15 @@ export async function makeDidConfigResourceFromCredential(
     throw new Error('Input must be an IPresentation')
   }
   const claimContents = credential.claim.contents
-  if (!credential.claim.owner && !claimContents.origin) {
-    throw new Error('Claim do not content an owner or origin')
-  }
   CType.verifyClaimAgainstSchema(claimContents, ctypeDomainLinkage)
+
+  const { origin } = claimContents
+
+  if (!(credential.claim.owner && origin)) {
+    throw new Error('Claim must have an owner and an origin property')
+  }
+  const propsToRemove = Object.keys(claimContents).filter((i) => i !== 'origin')
+  const originOnlyCredential = Credential.removeClaimProperties(credential, propsToRemove)
 
   const {
     proof: allProofs,
@@ -109,7 +114,7 @@ export async function makeDidConfigResourceFromCredential(
     id: _,
     legitimationIds: __,
     ...VC
-  } = fromCredentialAndAttestation(credential, {
+  } = fromCredentialAndAttestation(originOnlyCredential, {
     owner: credential.claim.owner,
   } as any)
 
