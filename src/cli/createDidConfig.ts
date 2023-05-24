@@ -70,7 +70,7 @@ async function run() {
       }
     )
     .command(
-      'makeCredential',
+      'credentialOnly',
       'issue a new Kilt Credential Presentation for use in a Did Configuration Resource',
       {
         origin: { alias: 'o', type: 'string', demandOption: true },
