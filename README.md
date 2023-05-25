@@ -13,3 +13,21 @@ See the `react-example.ts` example inside the get extension folder, here is how 
 ## Inject Extension
 
 Currently work in progress.
+
+## Did Configuration Resource
+
+This library also helps with setting up the [Well Known DID Configuration](https://identity.foundation/.well-known/resources/did-configuration/) as required by the [KILT Credential API specification](https://github.com/KILTprotocol/spec-ext-credential-api).
+
+A CLI tool included in this library can be used to create a [Did Configuration Resource](https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource) as described by these specs that is needed to establish a secure, e2e encrypted communication channel between a conforming browser extension and application backend.
+
+After installing this package globally our in your application directory, you can run the CLI tool from your commandline, e.g.:
+
+```bash
+yarn createDidConfig --did <your DID> --origin <your domain> --assertionMethod <id of your DIDs assertionMethod key> --seed <seed or mnemonic of the assertionMethod key>
+```
+
+Please refer to the CLI tool's helper for more information on additional commands and configuration, which is available via:
+
+```bash
+yarn createDidConfig --help
+```
