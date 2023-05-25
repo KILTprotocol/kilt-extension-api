@@ -78,7 +78,7 @@ export async function createCredential(
     signCallback,
   })
 
-  if (presentation.claimerSignature.keyUri !== document.uri + assertionKey.id) {
+  if (presentation.claimerSignature.keyUri !== `${document.uri}${assertionKey.id}`) {
     throw new Error('The credential presentation needs to be signed with the assertionMethod key')
   }
 
@@ -177,7 +177,7 @@ async function verifyDomainLinkageCredential(
 
   const pType = Array.isArray(proof.type) ? proof.type : [proof.type]
   if (!pType.includes(KILT_SELF_SIGNED_PROOF_TYPE)) {
-    throw new Error('proof type must include ' + KILT_SELF_SIGNED_PROOF_TYPE)
+    throw new Error(`proof type must include ${KILT_SELF_SIGNED_PROOF_TYPE}`)
   }
 
   await Did.verifyDidSignature({
