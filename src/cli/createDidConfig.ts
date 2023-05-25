@@ -72,11 +72,11 @@ async function run() {
           let credential: ICredentialPresentation
           try {
             credential = JSON.parse(await readFile(pathToCredential, { encoding: 'utf-8' }))
-            if (!Credential.isPresentation(credential)) {
-              throw new Error('Malformed Credential Presentation')
-            }
           } catch (cause) {
-            throw new Error('pathToCredential does not resolve to a valid Kilt Credential Presentation', { cause })
+            throw new Error(`Cannot parse file ${pathToCredential}`, { cause })
+          }
+          if (!Credential.isPresentation(credential)) {
+            throw new Error(`Malformed Credential Presentation loaded from ${pathToCredential}`)
           }
           let didResource: DidConfigResource
           try {
