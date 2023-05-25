@@ -17,7 +17,7 @@ import {
   createCredential,
   DID_CONFIGURATION_CONTEXT,
   verifyDidConfigResource,
-  makeDidConfigResourceFromCredential,
+  didConfigResourceFromCredential,
   DID_VC_CONTEXT,
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
   ctypeDomainLinkage,
@@ -88,9 +88,7 @@ describe('Well Known Did Configuration integration test', () => {
   }, 30_000)
 
   it('get domain linkage presentation', async () => {
-    expect(
-      (didConfigResource = await makeDidConfigResourceFromCredential(credential))
-    ).toMatchObject<DidConfigResource>({
+    expect((didConfigResource = await didConfigResourceFromCredential(credential))).toMatchObject<DidConfigResource>({
       '@context': DID_CONFIGURATION_CONTEXT,
       linked_dids: [
         {
@@ -110,7 +108,7 @@ describe('Well Known Did Configuration integration test', () => {
 
   it('rejects if the domain linkage has no signature', async () => {
     delete (credential as any).claimerSignature
-    await expect(makeDidConfigResourceFromCredential(credential)).rejects.toThrow()
+    await expect(didConfigResourceFromCredential(credential)).rejects.toThrow()
   }, 30_000)
 
   it('verify did configuration presentation', async () => {

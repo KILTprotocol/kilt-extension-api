@@ -9,7 +9,7 @@ import { u8aEq } from '@polkadot/util'
 import { readFile, writeFile } from 'fs/promises'
 import yargs from 'yargs/yargs'
 
-import { makeDidConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration'
+import { didConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration'
 import { DidConfigResource } from '../types'
 
 type KeyType = 'sr25519' | 'ed25519' | 'ecdsa'
@@ -86,7 +86,7 @@ async function run() {
           }
           let didResource: DidConfigResource
           try {
-            didResource = await makeDidConfigResourceFromCredential(credential)
+            didResource = await didConfigResourceFromCredential(credential)
           } catch (cause) {
             throw new Error('Credential Presentation is not suitable for use in a Did Configuration Resource', {
               cause,
@@ -118,7 +118,7 @@ async function run() {
       async ({ origin, seed, keyType, wsAddress, outFile, did }) => {
         try {
           const credential = await issueCredential(did as DidUri, origin, seed, keyType, wsAddress)
-          const didResource = await makeDidConfigResourceFromCredential(credential)
+          const didResource = await didConfigResourceFromCredential(credential)
           await write(didResource, outFile)
         } catch (cause) {
           console.error(cause)

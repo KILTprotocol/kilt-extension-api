@@ -94,7 +94,7 @@ function checkOrigin(input: string) {
 
 export const DOMAIN_LINKAGE_CREDENTIAL_TYPE = 'DomainLinkageCredential'
 
-export async function makeDidConfigResourceFromCredential(
+export async function didConfigResourceFromCredential(
   credential: ICredentialPresentation,
   expirationDate: string = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 5).toISOString()
 ): Promise<DidConfigResource> {
