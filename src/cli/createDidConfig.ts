@@ -11,6 +11,32 @@ import { DidConfigResource } from '../types'
 
 type KeyType = 'sr25519' | 'ed25519' | 'ecdsa'
 
+const commonOpts = { outFile: { alias: 'f', type: 'string' } } as const
+const createCredentialOpts = {
+  origin: { alias: 'o', type: 'string', demandOption: true },
+  did: {
+    alias: 'd',
+    type: 'string',
+    description:
+      'DID of the issuer (and subject) of the Domain Linkage Credential. If omitted, this is attempted to be inferred from the assertionMethod.',
+  },
+  assertionMethod: {
+    alias: 'k',
+    type: 'string',
+    demandOption: true,
+    description:
+      'URI (or URI fragment, if DID is specified) identifying the assertionMethod key of the issuer (and subject) of the Domain Linkage Credential.',
+  },
+  seed: {
+    type: 'string',
+    alias: 's',
+    description: 'Mnemonic or seed for the assertionMethod key to be used for issuing a new credential.',
+    demandOption: true,
+  },
+  keyType: { alias: 't', choices: ['sr25519', 'ed25519', 'ecdsa'] as const, default: 'sr25519' },
+  wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
+} as const
+
 async function issueCredential(
   key: string,
   did: DidUri | undefined,
@@ -58,15 +84,11 @@ async function run() {
       'fromCredential <pathToCredential>',
       'create a Did Configuration Resource from an existing Kilt Credential Presentation',
       (ygs) =>
-        ygs
-          .options({
-            outFile: { alias: 'f', type: 'string' },
-          })
-          .positional('pathToCredential', {
-            describe: 'Path to a json file containing the credential presentation',
-            type: 'string',
-            demandOption: true,
-          }),
+        ygs.options(commonOpts).positional('pathToCredential', {
+          describe: 'Path to a json file containing the credential presentation',
+          type: 'string',
+          demandOption: true,
+        }),
       async ({ pathToCredential, outFile }) => {
         try {
           let credential: ICredentialPresentation
@@ -95,41 +117,10 @@ async function run() {
     .command(
       'credentialOnly',
       'issue a new Kilt Credential Presentation for use in a Did Configuration Resource',
-      {
-        origin: { alias: 'o', type: 'string', demandOption: true },
-        did: {
-          alias: 'd',
-          type: 'string',
-          description:
-            'DID of the issuer (and subject) of the Domain Linkage Credential. If omitted, this is attempted to be inferred from the assertionMethod.',
-        },
-        assertionMethod: {
-          alias: 'k',
-          type: 'string',
-          demandOption: true,
-          description:
-            'URI (or URI fragment, if DID is specified) identifying the assertionMethod key of the issuer (and subject) of the Domain Linkage Credential.',
-        },
-        seed: {
-          type: 'string',
-          alias: 's',
-          description: 'Mnemonic or seed for the assertionMethod key to be used for issuing a new credential.',
-          demandOption: true,
-        },
-        keyType: { alias: 't', choices: ['sr25519', 'ed25519', 'ecdsa'], default: 'sr25519' },
-        outFile: { alias: 'f', type: 'string' },
-        wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
-      },
+      { ...createCredentialOpts, ...commonOpts },
       async ({ assertionMethod, origin, seed, keyType, wsAddress, outFile, did }) => {
         try {
-          const credential = await issueCredential(
-            assertionMethod,
-            did as DidUri,
-            origin,
-            seed,
-            keyType as KeyType,
-            wsAddress
-          )
+          const credential = await issueCredential(assertionMethod, did as DidUri, origin, seed, keyType, wsAddress)
           await write(credential, outFile)
         } catch (cause) {
           console.error(cause)
@@ -139,41 +130,10 @@ async function run() {
     .command(
       '$0',
       'create a Did Configuration Resource from a freshly issued Kilt Credential',
-      {
-        origin: { alias: 'o', type: 'string', demandOption: true },
-        did: {
-          alias: 'd',
-          type: 'string',
-          description:
-            'DID of the issuer (and subject) of the Domain Linkage Credential. If omitted, this is attempted to be inferred from the assertionMethod.',
-        },
-        assertionMethod: {
-          alias: 'k',
-          type: 'string',
-          demandOption: true,
-          description:
-            'URI (or URI fragment, if DID is specified) identifying the assertionMethod key of the issuer (and subject) of the Domain Linkage Credential.',
-        },
-        seed: {
-          type: 'string',
-          alias: 's',
-          description: 'Mnemonic or seed for the assertionMethod key to be used for issuing a new credential.',
-          demandOption: true,
-        },
-        keyType: { alias: 't', choices: ['sr25519', 'ed25519', 'ecdsa'], default: 'sr25519' },
-        outFile: { alias: 'f', type: 'string' },
-        wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
-      },
+      { ...createCredentialOpts, ...commonOpts },
       async ({ assertionMethod, origin, seed, keyType, wsAddress, outFile, did }) => {
         try {
-          const credential = await issueCredential(
-            assertionMethod,
-            did as DidUri,
-            origin,
-            seed,
-            keyType as KeyType,
-            wsAddress
-          )
+          const credential = await issueCredential(assertionMethod, did as DidUri, origin, seed, keyType, wsAddress)
           const didResource = await makeDidConfigResourceFromCredential(credential)
           await write(didResource, outFile)
         } catch (cause) {
