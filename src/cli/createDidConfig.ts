@@ -74,28 +74,24 @@ async function run() {
           demandOption: true,
         }),
       async ({ pathToCredential, outFile }) => {
+        let credential: ICredentialPresentation
         try {
-          let credential: ICredentialPresentation
-          try {
-            credential = JSON.parse(await readFile(pathToCredential, { encoding: 'utf-8' }))
-          } catch (cause) {
-            throw new Error(`Cannot parse file ${pathToCredential}`, { cause })
-          }
-          if (!Credential.isPresentation(credential)) {
-            throw new Error(`Malformed Credential Presentation loaded from ${pathToCredential}`)
-          }
-          let didResource: DidConfigResource
-          try {
-            didResource = await didConfigResourceFromCredential(credential)
-          } catch (cause) {
-            throw new Error('Credential Presentation is not suitable for use in a Did Configuration Resource', {
-              cause,
-            })
-          }
-          await write(didResource, outFile)
+          credential = JSON.parse(await readFile(pathToCredential, { encoding: 'utf-8' }))
         } catch (cause) {
-          console.error(cause)
+          throw new Error(`Cannot parse file ${pathToCredential}`, { cause })
         }
+        if (!Credential.isPresentation(credential)) {
+          throw new Error(`Malformed Credential Presentation loaded from ${pathToCredential}`)
+        }
+        let didResource: DidConfigResource
+        try {
+          didResource = await didConfigResourceFromCredential(credential)
+        } catch (cause) {
+          throw new Error('Credential Presentation is not suitable for use in a Did Configuration Resource', {
+            cause,
+          })
+        }
+        await write(didResource, outFile)
       }
     )
     .command(
@@ -103,12 +99,8 @@ async function run() {
       'issue a new Kilt Credential Presentation for use in a Did Configuration Resource',
       { ...createCredentialOpts, ...commonOpts },
       async ({ origin, seed, keyType, wsAddress, outFile, did }) => {
-        try {
-          const credential = await issueCredential(did as DidUri, origin, seed, keyType, wsAddress)
-          await write(credential, outFile)
-        } catch (cause) {
-          console.error(cause)
-        }
+        const credential = await issueCredential(did as DidUri, origin, seed, keyType, wsAddress)
+        await write(credential, outFile)
       }
     )
     .command(
@@ -116,18 +108,17 @@ async function run() {
       'create a Did Configuration Resource from a freshly issued Kilt Credential',
       { ...createCredentialOpts, ...commonOpts },
       async ({ origin, seed, keyType, wsAddress, outFile, did }) => {
-        try {
-          const credential = await issueCredential(did as DidUri, origin, seed, keyType, wsAddress)
-          const didResource = await didConfigResourceFromCredential(credential)
-          await write(didResource, outFile)
-        } catch (cause) {
-          console.error(cause)
-        }
+        const credential = await issueCredential(did as DidUri, origin, seed, keyType, wsAddress)
+        const didResource = await didConfigResourceFromCredential(credential)
+        await write(didResource, outFile)
       }
     )
     .parseAsync()
 }
 
 run()
-  .catch((e) => console.error(e))
+  .catch(async (e) => {
+    process.exitCode = 1
+    console.error(e)
+  })
   .finally(disconnect)
