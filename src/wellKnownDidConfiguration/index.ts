@@ -10,7 +10,6 @@ import {
   DidResourceUri,
 } from '@kiltprotocol/sdk-js'
 import { DomainLinkageCredential, DomainLinkageProof, DidConfigResource } from '../types'
-import * as validUrl from 'valid-url'
 import {
   SelfSignedProof,
   constants,
@@ -50,9 +49,7 @@ export async function createCredential(
   origin: string,
   didUri: DidUri
 ): Promise<ICredentialPresentation> {
-  if (!validUrl.isUri(origin)) {
-    throw new Error('The origin is not a valid url')
-  }
+  origin = new URL(origin).origin
 
   const fullDid = await Did.resolve(didUri)
 
@@ -88,6 +85,13 @@ export async function createCredential(
   return presentation
 }
 
+function checkOrigin(input: string) {
+  const { origin, protocol } = new URL(input)
+  if (input !== origin) {
+    throw new Error(`Not a valid origin: ${input}`)
+  }
+}
+
 export const DOMAIN_LINKAGE_CREDENTIAL_TYPE = 'DomainLinkageCredential'
 
 export async function makeDidConfigResourceFromCredential(
@@ -101,6 +105,7 @@ export async function makeDidConfigResourceFromCredential(
   CType.verifyClaimAgainstSchema(claimContents, ctypeDomainLinkage)
 
   const { origin } = claimContents
+  checkOrigin(origin as string)
 
   if (!(credential.claim.owner && origin)) {
     throw new Error('Claim must have an owner and an origin property')
@@ -223,7 +228,7 @@ export async function verifyDidConfigResource(
   // Verification steps outlined in Well Known DID Configuration
   // https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource-verification
 
-  if (!validUrl.isUri(expectedOrigin)) throw new Error('origin is not a valid uri')
+  checkOrigin(expectedOrigin)
 
   return asyncSome(didConfig.linked_dids, (credential) =>
     verifyDomainLinkageCredential(credential, expectedOrigin, expectedDid)
