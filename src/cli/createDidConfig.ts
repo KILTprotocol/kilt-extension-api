@@ -2,9 +2,12 @@
 
 import { Credential, Did, connect, disconnect } from '@kiltprotocol/sdk-js'
 import { DidResourceUri, DidUri, ICredentialPresentation, SignCallback } from '@kiltprotocol/types'
+
+import { Keyring } from '@polkadot/keyring'
+import { u8aEq } from '@polkadot/util'
+
 import { readFile, writeFile } from 'fs/promises'
 import yargs from 'yargs/yargs'
-import { Keyring } from '@polkadot/keyring'
 
 import { makeDidConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration'
 import { DidConfigResource } from '../types'
@@ -17,15 +20,9 @@ const createCredentialOpts = {
   did: {
     alias: 'd',
     type: 'string',
-    description:
-      'DID of the issuer (and subject) of the Domain Linkage Credential. If omitted, this is attempted to be inferred from the assertionMethod.',
-  },
-  assertionMethod: {
-    alias: 'k',
-    type: 'string',
     demandOption: true,
     description:
-      'URI (or URI fragment, if DID is specified) identifying the assertionMethod key of the issuer (and subject) of the Domain Linkage Credential.',
+      'DID of the issuer (and subject) of the Domain Linkage Credential. If omitted, this is attempted to be inferred from the assertionMethod.',
   },
   seed: {
     type: 'string',
@@ -37,35 +34,22 @@ const createCredentialOpts = {
   wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
 } as const
 
-async function issueCredential(
-  key: string,
-  did: DidUri | undefined,
-  origin: string,
-  seed: string,
-  keyType: KeyType,
-  nodeAddress: string
-) {
-  let didUri: DidUri
-  let keyUri: DidResourceUri
-  if (key.startsWith('did')) {
-    const controller = Did.parse(key as DidResourceUri).did
-    if (did && did !== controller) {
-      throw new Error('assertionMethod must be controlled by the supplied DID')
-    }
-    keyUri = key as DidResourceUri
-    didUri = controller
-  } else {
-    if (!did) {
-      throw new Error('Credential subject (DID) not supplied and not contained within assertionMethod')
-    }
-    didUri = did
-    keyUri = `${did}${key.startsWith('#') ? '' : '#'}${key}` as DidResourceUri
-  }
-
+async function issueCredential(did: DidUri, origin: string, seed: string, keyType: KeyType, nodeAddress: string) {
   await connect(nodeAddress)
+  const didDocument = await Did.resolve(did)
+  const assertionMethod = didDocument?.document?.assertionMethod?.[0]
+  if (!assertionMethod) {
+    throw new Error(
+      `Could not resolve assertionMethod of ${did}. Make sure the DID is registered to this chain and has an assertionMethod key.`
+    )
+  }
   const keypair = new Keyring({ type: keyType }).addFromUri(seed)
+  if (assertionMethod.type !== keypair.type || !u8aEq(assertionMethod.publicKey, keypair.publicKey)) {
+    throw new Error('public key and/or key type of the DIDs assertionMethod does not match the supplied signing key')
+  }
+  const keyUri: DidResourceUri = `${didDocument!.document!.uri}${assertionMethod.id}`
   const signCallback: SignCallback = async ({ data }) => ({ signature: keypair.sign(data), keyUri, keyType })
-  const credential = await createCredential(signCallback, origin, didUri)
+  const credential = await createCredential(signCallback, origin, did)
   return credential
 }
 
@@ -79,7 +63,7 @@ async function write(toWrite: unknown, outPath?: string) {
 }
 
 async function run() {
-  const args = await yargs(process.argv.slice(2))
+  await yargs(process.argv.slice(2))
     .command(
       'fromCredential <pathToCredential>',
       'create a Did Configuration Resource from an existing Kilt Credential Presentation',
@@ -118,9 +102,9 @@ async function run() {
       'credentialOnly',
       'issue a new Kilt Credential Presentation for use in a Did Configuration Resource',
       { ...createCredentialOpts, ...commonOpts },
-      async ({ assertionMethod, origin, seed, keyType, wsAddress, outFile, did }) => {
+      async ({ origin, seed, keyType, wsAddress, outFile, did }) => {
         try {
-          const credential = await issueCredential(assertionMethod, did as DidUri, origin, seed, keyType, wsAddress)
+          const credential = await issueCredential(did as DidUri, origin, seed, keyType, wsAddress)
           await write(credential, outFile)
         } catch (cause) {
           console.error(cause)
@@ -131,9 +115,9 @@ async function run() {
       '$0',
       'create a Did Configuration Resource from a freshly issued Kilt Credential',
       { ...createCredentialOpts, ...commonOpts },
-      async ({ assertionMethod, origin, seed, keyType, wsAddress, outFile, did }) => {
+      async ({ origin, seed, keyType, wsAddress, outFile, did }) => {
         try {
-          const credential = await issueCredential(assertionMethod, did as DidUri, origin, seed, keyType, wsAddress)
+          const credential = await issueCredential(did as DidUri, origin, seed, keyType, wsAddress)
           const didResource = await makeDidConfigResourceFromCredential(credential)
           await write(didResource, outFile)
         } catch (cause) {
