@@ -44,12 +44,22 @@ export const ctypeDomainLinkage = CType.fromProperties('Domain Linkage Credentia
   },
 })
 
+function checkOrigin(input: string) {
+  const { origin, protocol } = new URL(input)
+  if (input !== origin) {
+    throw new Error(`Not a valid origin: ${input}`)
+  }
+  if (!/^https?:$/.test(protocol)) {
+    throw new Error('http/https origin expected')
+  }
+}
+
 export async function createCredential(
   signCallback: SignCallback,
   origin: string,
   didUri: DidUri
 ): Promise<ICredentialPresentation> {
-  origin = new URL(origin).origin
+  checkOrigin(origin)
 
   const fullDid = await Did.resolve(didUri)
 
@@ -83,13 +93,6 @@ export async function createCredential(
   }
 
   return presentation
-}
-
-function checkOrigin(input: string) {
-  const { origin, protocol } = new URL(input)
-  if (input !== origin) {
-    throw new Error(`Not a valid origin: ${input}`)
-  }
 }
 
 export const DOMAIN_LINKAGE_CREDENTIAL_TYPE = 'DomainLinkageCredential'
