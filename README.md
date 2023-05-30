@@ -20,7 +20,9 @@ This library also helps with setting up the [Well Known DID Configuration](https
 
 A CLI tool included in this library can be used to create a [Did Configuration Resource](https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource) as described by these specs that is needed to establish a secure, e2e encrypted communication channel between a conforming browser extension and application backend.
 
-After installing this package globally or in your application directory, you can run the CLI tool from your commandline, e.g.:
+To start using this tool, add this package to your application (`yarn add --dev kilt-extension-api`) or install it globally if you need to use it outside of your application directory (`yarn global add kilt-extension-api`).
+
+You can then run the CLI tool as yarn executable, e.g.:
 
 ```bash
 yarn createDidConfig --did <your DID> --origin <your domain> --assertionMethod <id of your DIDs assertionMethod key> --seed <seed or mnemonic of the assertionMethod key>
