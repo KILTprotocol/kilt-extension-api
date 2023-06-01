@@ -10,7 +10,6 @@ import {
   DidResourceUri,
 } from '@kiltprotocol/sdk-js'
 import { DomainLinkageCredential, DomainLinkageProof, DidConfigResource } from '../types'
-import * as validUrl from 'valid-url'
 import {
   SelfSignedProof,
   constants,
@@ -45,11 +44,23 @@ export const ctypeDomainLinkage = CType.fromProperties('Domain Linkage Credentia
   },
 })
 
+function checkOrigin(input: string) {
+  const { origin, protocol } = new URL(input)
+  if (input !== origin) {
+    throw new Error(`Not a valid origin: ${input}`)
+  }
+  if (!/^https?:$/.test(protocol)) {
+    throw new Error('http/https origin expected')
+  }
+}
+
 export async function createCredential(
   signCallback: SignCallback,
   origin: string,
   didUri: DidUri
 ): Promise<ICredentialPresentation> {
+  checkOrigin(origin)
+
   const fullDid = await Did.resolve(didUri)
 
   if (!fullDid?.document) {
@@ -58,8 +69,10 @@ export async function createCredential(
 
   const { document } = fullDid
 
-  if (!validUrl.isUri(origin)) {
-    throw new Error('The origin is not a valid url')
+  const assertionKey = document.assertionMethod?.[0]
+
+  if (!assertionKey) {
+    throw new Error('Full DID doesnt have assertion key: Please add assertion key')
   }
 
   const domainClaimContents = {
@@ -70,21 +83,21 @@ export async function createCredential(
 
   const credential = Credential.fromClaim(claim)
 
-  const assertionKey = document.assertionMethod?.[0]
-
-  if (!assertionKey) {
-    throw new Error('Full DID doesnt have assertion key: Please add assertion key')
-  }
-
-  return Credential.createPresentation({
+  const presentation = await Credential.createPresentation({
     credential,
     signCallback,
   })
+
+  if (presentation.claimerSignature.keyUri !== `${document.uri}${assertionKey.id}`) {
+    throw new Error('The credential presentation needs to be signed with the assertionMethod key')
+  }
+
+  return presentation
 }
 
 export const DOMAIN_LINKAGE_CREDENTIAL_TYPE = 'DomainLinkageCredential'
 
-export async function makeDidConfigResourceFromCredential(
+export async function didConfigResourceFromCredential(
   credential: ICredentialPresentation,
   expirationDate: string = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 5).toISOString()
 ): Promise<DidConfigResource> {
@@ -92,10 +105,16 @@ export async function makeDidConfigResourceFromCredential(
     throw new Error('Input must be an IPresentation')
   }
   const claimContents = credential.claim.contents
-  if (!credential.claim.owner && !claimContents.origin) {
-    throw new Error('Claim do not content an owner or origin')
-  }
   CType.verifyClaimAgainstSchema(claimContents, ctypeDomainLinkage)
+
+  const { origin } = claimContents
+  checkOrigin(origin as string)
+
+  if (!(credential.claim.owner && origin)) {
+    throw new Error('Claim must have an owner and an origin property')
+  }
+  const propsToRemove = Object.keys(claimContents).filter((i) => i !== 'origin')
+  const originOnlyCredential = Credential.removeClaimProperties(credential, propsToRemove)
 
   const {
     proof: allProofs,
@@ -103,7 +122,7 @@ export async function makeDidConfigResourceFromCredential(
     id: _,
     legitimationIds: __,
     ...VC
-  } = fromCredentialAndAttestation(credential, {
+  } = fromCredentialAndAttestation(originOnlyCredential, {
     owner: credential.claim.owner,
   } as any)
 
@@ -161,7 +180,7 @@ async function verifyDomainLinkageCredential(
 
   const pType = Array.isArray(proof.type) ? proof.type : [proof.type]
   if (!pType.includes(KILT_SELF_SIGNED_PROOF_TYPE)) {
-    throw new Error('proof type must include ' + KILT_SELF_SIGNED_PROOF_TYPE)
+    throw new Error(`proof type must include ${KILT_SELF_SIGNED_PROOF_TYPE}`)
   }
 
   await Did.verifyDidSignature({
@@ -212,7 +231,7 @@ export async function verifyDidConfigResource(
   // Verification steps outlined in Well Known DID Configuration
   // https://identity.foundation/.well-known/resources/did-configuration/#did-configuration-resource-verification
 
-  if (!validUrl.isUri(expectedOrigin)) throw new Error('origin is not a valid uri')
+  checkOrigin(expectedOrigin)
 
   return asyncSome(didConfig.linked_dids, (credential) =>
     verifyDomainLinkageCredential(credential, expectedOrigin, expectedDid)
