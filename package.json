@@ -26,9 +26,10 @@
     "test": "jest test"
   },
   "dependencies": {
-    "@kiltprotocol/sdk-js": "^0.32.0",
-    "@kiltprotocol/types": "^0.32.0",
-    "@kiltprotocol/vc-export": "^0.32.0",
+    "@kiltprotocol/sdk-js": "^0.33.1",
+    "@kiltprotocol/types": "^0.33.1",
+    "@kiltprotocol/vc-export": "^0.33.1",
+    "@polkadot/keyring": "^12.3.2",
     "@polkadot/util": "^10.1.9",
     "yargs": "^17.7.2"
   },
