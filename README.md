@@ -8,7 +8,7 @@ It facilitates seamless communication between your application and KILT extensio
 Before you can communicate with KILT extensions, you must call the `initializeKiltExtensionAPI()` function to signal the API versions supported by your application.
 This is crucial for the extension to inject the appropriate scripts into the website.
 
-```js
+```ts
 import { initializeKiltExtensionAPI } from 'kilt-extension-api'
 
 initializeKiltExtensionAPI()
@@ -18,7 +18,7 @@ initializeKiltExtensionAPI()
 
 The `getExtensions()` function returns a list of extensions currently injected into the website.
 
-```js
+```ts
 import { getExtensions } from 'kilt-extension-api'
 
 const extensions = getExtensions()
@@ -32,7 +32,7 @@ To receive updates on additional extensions as they load, you can use `watchExte
 
 Here's an example of how you can use this function in a React application:
 
-```js
+```ts
 import { watchExtensions, Types } from 'kilt-extension-api'
 
 export default function Home(): JSX.Element {
