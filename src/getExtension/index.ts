@@ -57,7 +57,7 @@ export function initializeKiltExtensionAPI() {
   Object.defineProperty(apiWindow.kilt, 'meta', {
     value: {
       versions: {
-        credentials: '3.0',
+        credentials: '3.2',
       },
     },
     enumerable: false,

@@ -13,7 +13,6 @@ import {
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
 import {
-  naclBoxPairFromSecret,
   blake2AsU8a,
   keyFromPath,
   ed25519PairFromSeed,
@@ -57,7 +56,7 @@ export async function keypairs(account: KiltKeyringPair, mnemonic: string) {
     const { path } = keyExtractPath('//did//keyAgreement//0')
     const { secretKey } = keyFromPath(secretKeyPair, path, 'ed25519')
     return {
-      ...naclBoxPairFromSecret(blake2AsU8a(secretKey)),
+      ...Utils.Crypto.naclBoxPairFromSecret(blake2AsU8a(secretKey)),
       type: 'x25519',
     }
   })()
