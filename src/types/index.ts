@@ -1,9 +1,20 @@
 import type { IEncryptedMessage, DidUri, KiltAddress, DidResourceUri } from '@kiltprotocol/types'
 import type { HexString } from '@polkadot/util/types'
 import type { CredentialDigestProof, SelfSignedProof, VerifiableCredential, constants } from '@kiltprotocol/vc-export'
-import type * as IMessage from "./Message";
 
-export type Message = typeof IMessage;
+export * from './Attestation.js'
+export * from './CType.js'
+export * from './Claim.js'
+export * from './Delegation.js'
+export * from './Address.js'
+export * from './Message.js'
+export * from './Quote.js'
+export * from './Credential.js'
+export * from './Terms.js'
+export * from './DidDocument.js'
+export * from './Imported.js'
+export * from './CryptoCallbacks.js'
+export * from './DidResolver.js'
 export type This = typeof globalThis
 
 export interface IEncryptedMessageV1 {
