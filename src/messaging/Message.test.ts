@@ -10,6 +10,7 @@
 import { u8aToHex } from '@polkadot/util'
 import { Attestation, CType, Claim, Credential, Quote } from '@kiltprotocol/core'
 import * as Did from '@kiltprotocol/did'
+import { init } from '@kiltprotocol/sdk-js'
 import { Crypto, SDKErrors } from '@kiltprotocol/utils'
 
 import {
@@ -89,6 +90,7 @@ describe('Messaging', () => {
   }
 
   beforeAll(async () => {
+    await init()
     const aliceAuthKey = makeSigningKeyTool('ed25519')
     aliceSign = aliceAuthKey.getSignCallback
     aliceLightDid = Did.createLightDidDocument({
@@ -115,6 +117,7 @@ describe('Messaging', () => {
     })
     bobFullDid = await createLocalDemoFullDidFromLightDid(bobLightDid)
   })
+
   it('verify message encryption and signing', async () => {
     const message = Message.fromBody(
       {
@@ -556,6 +559,9 @@ describe('Error checking / Verification', () => {
   let messageSubmitCredential: IMessage
 
   beforeAll(async () => {
+
+    await init()
+
     keyAlice = makeSigningKeyTool()
     identityAlice = await createLocalDemoFullDidFromKeypair(keyAlice.keypair)
     keyBob = makeSigningKeyTool()
