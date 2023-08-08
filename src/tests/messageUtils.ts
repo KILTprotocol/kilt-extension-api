@@ -9,7 +9,8 @@ import {
   DidKey,
   DidVerificationKey,
   DecryptCallback,
-  EncryptCallback } from '../types'
+  EncryptCallback } from '@kiltprotocol/types'
+
 import {
   Did,
   SignCallback,

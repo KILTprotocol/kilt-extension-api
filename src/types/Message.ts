@@ -1,11 +1,7 @@
 import type { ITerms } from './Terms'
-import type { ICredential, ICredentialPresentation } from './Credential'
+import type { ICredential, ICredentialPresentation, IAttestation, CTypeHash, DidResourceUri, DidUri, IDelegationNode,PartialClaim } from '@kiltprotocol/types'
 import type { IQuoteAgreement } from './Quote'
-import type { IAttestation } from './Attestation'
-import type { CTypeHash } from './CType'
-import type { DidResourceUri, DidUri } from './DidDocument'
-import type { IDelegationNode } from './Delegation'
-import { PartialClaim } from './Claim'
+
 
 export interface IDelegationData {
   account: IDelegationNode['account']

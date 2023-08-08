@@ -24,17 +24,14 @@
  */
 
 import type {
-  DecryptCallback,
-  DidResolveKey,
-  DidResourceUri,
-  EncryptCallback,
   IEncryptedMessage,
   IEncryptedMessageContents,
-  ICType,
   IDelegationData,
   IMessage,
   MessageBody,
 } from '../types'
+
+import type { ICType, EncryptCallback, DidResourceUri, DidResolveKey, DecryptCallback } from '@kiltprotocol/types'
 import { Attestation, Claim, Credential, CType, Quote } from '@kiltprotocol/core'
 import { DataUtils, SDKErrors, UUID } from '@kiltprotocol/utils'
 import * as Did from '@kiltprotocol/did'

@@ -10,16 +10,30 @@
 import { u8aToHex } from '@polkadot/util'
 import { Attestation, CType, Claim, Credential, Quote } from '@kiltprotocol/core'
 import * as Did from '@kiltprotocol/did'
-import type {
-  DidDocument,
+import { Crypto, SDKErrors } from '@kiltprotocol/utils'
+
+import {
+  KeyTool,
+  KeyToolSignCallback,
+  createLocalDemoFullDidFromKeypair,
+  createLocalDemoFullDidFromLightDid,
+  makeEncryptionKeyTool,
+  makeSigningKeyTool,
+} from '../tests'
+import * as Message from './index'
+
+import type {  DidDocument,
   DidKey,
   DidResourceUri,
   DidUri,
   IAttestation,
   ICType,
+  ResolvedDidKey,
   IClaim,
   ICredential,
-  ICredentialPresentation,
+  ICredentialPresentation
+} from '@kiltprotocol/sdk-js'
+import type {
   IEncryptedMessage,
   IMessage,
   IQuote,
@@ -36,9 +50,7 @@ import type {
   ISubmitTerms,
   ITerms,
   MessageBody,
-  ResolvedDidKey,
 } from '../types'
-
 import type {
   ISubmitDelegationApproval,
   IRequestDelegationApproval,
@@ -46,17 +58,7 @@ import type {
   IRequestAcceptDelegation,
 } from '@kiltprotocol/types'
 
-import { Crypto, SDKErrors } from '@kiltprotocol/utils'
 
-import {
-  KeyTool,
-  KeyToolSignCallback,
-  createLocalDemoFullDidFromKeypair,
-  createLocalDemoFullDidFromLightDid,
-  makeEncryptionKeyTool,
-  makeSigningKeyTool,
-} from '../tests'
-import * as Message from './index'
 
 describe('Messaging', () => {
   let aliceLightDid: DidDocument
