@@ -5,9 +5,7 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import type { DidSignature, DidUri } from './DidDocument'
-import type { ICredential } from './Credential'
-import type { CTypeHash } from './CType'
+import type { DidSignature, DidUri, ICredential, CTypeHash } from '@kiltprotocol/types'
 
 export interface ICostBreakdown {
   tax: Record<string, unknown>
