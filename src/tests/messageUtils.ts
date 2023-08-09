@@ -134,6 +134,13 @@ export function makeDecryptCallback({
   }
 }
 
+/**
+ *
+ * basic encrypt callback.
+ * @param DidDocument
+ * @returns EncryptResponseData
+ *
+ * */
 export type EncryptionKeyToolCallback = (
     didDocument: DidDocument
   ) => EncryptCallback
@@ -162,17 +169,26 @@ export function makeEncryptCallback({
         secretKey
       )
       return {
+        // used nonce for encryption
         nonce,
+        // encrypted data
         data: box,
+        // used did key uri for encryption.
         keyUri: `${didDocument.uri}${keyId}`,
       }
     }
   }
 }
 
+/**
+ * Basic tool set for encrypt and decrypt messages.
+ */
 export interface EncryptionKeyTool {
+  // used keys for encrypt and decrypt.
     keyAgreement: [KiltEncryptionKeypair]
+    // callback to encrypt message.
     encrypt: EncryptionKeyToolCallback
+    // callback to decrypt messages
     decrypt: DecryptCallback
   }
 
@@ -200,6 +216,13 @@ export function computeKeyId(key: DidKey['publicKey']): DidKey['id'] {
   return `#${blake2AsHex(key, 256)}`
 }
 
+
+/**
+ * Creates a DidKey by providing the publicKey.
+ *
+ * @param KiltKeyringPair The public key and the used public-key-concept.
+ * @returns DidVerificationKey
+ */
 function makeDidKeyFromKeypair({
   publicKey,
   type,
@@ -247,6 +270,8 @@ export async function createLocalDemoFullDidFromKeypair(
   if (keyRelationships.has('keyAgreement')) {
     const encryptionKeypair = makeEncryptionKeyTool(`${keypair.publicKey}//enc`)
       .keyAgreement[0]
+
+    // encryption key with public key, private key, type, and id.
     const encKey = {
       ...encryptionKeypair,
       id: computeKeyId(encryptionKeypair.publicKey),
