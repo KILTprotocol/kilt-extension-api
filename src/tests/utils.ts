@@ -153,4 +153,3 @@ export async function startContainer(): Promise<string> {
   const WS_ADDRESS = `ws://${host}:${port}`
   return WS_ADDRESS
 }
-
