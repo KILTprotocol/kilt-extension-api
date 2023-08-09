@@ -4,7 +4,6 @@ import type { CredentialDigestProof, SelfSignedProof, VerifiableCredential, cons
 
 export * from './Message.js'
 export * from './Quote.js'
-export * from './Terms.js'
 export * from './Imported.js'
 
 export type This = typeof globalThis
