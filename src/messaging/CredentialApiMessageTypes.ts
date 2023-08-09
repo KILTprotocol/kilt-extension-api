@@ -10,6 +10,7 @@ import { DataUtils, SDKErrors } from '@kiltprotocol/utils'
 import * as Did from '@kiltprotocol/did'
 import { isHex } from '@polkadot/util'
 
+import { isSubmitTerms, isRequestAttestation, isSubmitAttestation, isRejectAttestation, isSubmitCredential, isIRequestCredential } from '../utils'
 import {verifyMessageEnvelope} from './MessageEnvelope'
 import type {
   IMessage,
@@ -24,56 +25,67 @@ import type {
 export function verifyMessageBody(body: MessageBody): void {
   switch (body.type) {
   case 'submit-terms': {
-    Claim.verifyDataStructure(body.content.claim)
-    body.content.legitimations.forEach((credential) => Credential.verifyDataStructure(credential))
-    if (body.content.delegationId) {
-      DataUtils.verifyIsHex(body.content.delegationId)
-    }
-    if (body.content.quote) {
-      Quote.validateQuoteSchema(Quote.QuoteSchema, body.content.quote)
-    }
-    if (body.content.cTypes) {
-      body.content.cTypes.forEach((val) => CType.verifyDataStructure(val))
+    if (isSubmitTerms(body)) {
+      Claim.verifyDataStructure(body.content.claim)
+      body.content.legitimations.forEach((credential) => Credential.verifyDataStructure(credential))
+      if (body.content.delegationId) {
+        DataUtils.verifyIsHex(body.content.delegationId)
+      }
+      if (body.content.quote) {
+        Quote.validateQuoteSchema(Quote.QuoteSchema, body.content.quote)
+      }
+      if (body.content.cTypes) {
+        body.content.cTypes.forEach((val) => CType.verifyDataStructure(val))
+      }
     }
     break
   }
   case 'request-attestation': {
-    Credential.verifyDataStructure(body.content.credential)
-    if (body.content.quote) {
-      Quote.validateQuoteSchema(Quote.QuoteSchema, body.content.quote)
+    if (isRequestAttestation(body)) {
+      Credential.verifyDataStructure(body.content.credential)
+      if (body.content.quote) {
+        Quote.validateQuoteSchema(Quote.QuoteSchema, body.content.quote)
+      }
     }
     break
   }
   case 'submit-attestation': {
-    Attestation.verifyDataStructure(body.content.attestation)
+    if (isSubmitAttestation(body)) {
+      Attestation.verifyDataStructure(body.content.attestation)
+    }
     break
   }
   case 'reject-attestation': {
-    if (!isHex(body.content)) {
-      throw new SDKErrors.HashMalformedError()
+    if (isRejectAttestation(body)) {
+      if (!isHex(body.content)) {
+        throw new SDKErrors.HashMalformedError()
+      }
     }
     break
   }
   case 'request-credential': {
-    body.content.cTypes.forEach(({ cTypeHash, trustedAttesters, requiredProperties }): void => {
-      DataUtils.verifyIsHex(cTypeHash)
-      trustedAttesters?.forEach((did) => Did.validateUri(did, 'Did'))
-      requiredProperties?.forEach((requiredProps) => {
-        if (typeof requiredProps !== 'string') throw new TypeError('Required properties is expected to be a string')
+    if (isIRequestCredential(body)) {
+      body.content.cTypes.forEach(({ cTypeHash, trustedAttesters, requiredProperties }) => {
+        DataUtils.verifyIsHex(cTypeHash)
+        trustedAttesters?.forEach((did) => Did.validateUri(did, 'Did'))
+        requiredProperties?.forEach((requiredProps) => {
+          if (typeof requiredProps !== 'string') throw new TypeError('Required properties is expected to be a string')
+        })
       })
-    })
+    }
     break
   }
   case 'submit-credential': {
-    body.content.forEach((presentation) => {
-      Credential.verifyDataStructure(presentation)
-      if (!Did.isDidSignature(presentation.claimerSignature)) {
-        throw new SDKErrors.SignatureMalformedError()
-      }
-    })
+    if (isSubmitCredential(body)) {
+      body.content.forEach((presentation) => {
+        Credential.verifyDataStructure(presentation)
+        if (!Did.isDidSignature(presentation.claimerSignature)) {
+          throw new SDKErrors.SignatureMalformedError()
+        }
+      })
+    }
     break
   }
-
   default:
     throw new SDKErrors.UnknownMessageBodyTypeError()
   }
@@ -86,28 +98,26 @@ export function verifyMessageBody(body: MessageBody): void {
      * @param message.body The body of the [[Message]] which depends on the [[BodyType]].
      * @param message.sender The sender's DID taken from the [[IMessage]].
      */
+
 export function ensureOwnerIsSender({ body, sender }: IMessage): void {
   switch (body.type) {
   case 'request-attestation':
-    {
-      const requestAttestation = body
-      if (!Did.isSameSubject(requestAttestation.content.credential.claim.owner, sender)) {
+    if (isRequestAttestation(body)) {
+      if (!Did.isSameSubject(body.content.credential.claim.owner, sender)) {
         throw new SDKErrors.IdentityMismatchError('Claim', 'Sender')
       }
     }
     break
   case 'submit-attestation':
-    {
-      const submitAttestation = body
-      if (!Did.isSameSubject(submitAttestation.content.attestation.owner, sender)) {
+    if (isSubmitAttestation(body)) {
+      if (!Did.isSameSubject(body.content.attestation.owner, sender)) {
         throw new SDKErrors.IdentityMismatchError('Attestation', 'Sender')
       }
     }
     break
   case 'submit-credential':
-    {
-      const submitClaimsForCtype = body
-      submitClaimsForCtype.content.forEach((presentation) => {
+    if (isSubmitCredential(body)) {
+      body.content.forEach((presentation) => {
         if (!Did.isSameSubject(presentation.claim.owner, sender)) {
           throw new SDKErrors.IdentityMismatchError('Claims', 'Sender')
         }
@@ -115,6 +125,7 @@ export function ensureOwnerIsSender({ body, sender }: IMessage): void {
     }
     break
   default:
+    break
   }
 }
 
