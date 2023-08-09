@@ -21,12 +21,12 @@ import type {
   ResolvedDidKey,
 } from '@kiltprotocol/types'
 import { Crypto, SDKErrors } from '@kiltprotocol/utils'
+import { Credential, CType } from '@kiltprotocol/sdk-js'
 
 import {
   createLocalDemoFullDidFromKeypair,
   makeSigningKeyTool,
 } from '../tests'
-import { Credential, CType } from '@kiltprotocol/sdk-js'
 import * as Quote from './Quote'
 import { QuoteSchema } from './QuoteSchema'
 
