@@ -10,135 +10,101 @@ import { DataUtils, SDKErrors } from '@kiltprotocol/utils'
 import * as Did from '@kiltprotocol/did'
 import { isHex } from '@polkadot/util'
 
-import { isSubmitTerms, isRequestAttestation, isSubmitAttestation, isRejectAttestation, isSubmitCredential, isIRequestCredential } from '../utils'
-import {verifyMessageEnvelope} from './MessageEnvelope'
-import type {
-  IMessage,
-  MessageBody,
-} from '../types'
+import {
+  isSubmitTerms,
+  isRequestAttestation,
+  isSubmitAttestation,
+  isRejectAttestation,
+  isSubmitCredential,
+  isIRequestCredential,
+} from '../utils'
+import { verifyMessageEnvelope } from './MessageEnvelope'
+import type { IMessage } from '../types'
 
 /**
-     * Checks if the message body is well-formed.
-     *
-     * @param body The message body.
-     */
-export function verifyMessageBody(body: MessageBody): void {
-  switch (body.type) {
-  case 'submit-terms': {
-    if (isSubmitTerms(body)) {
-      Claim.verifyDataStructure(body.content.claim)
-      body.content.legitimations.forEach((credential) => Credential.verifyDataStructure(credential))
-      if (body.content.delegationId) {
-        DataUtils.verifyIsHex(body.content.delegationId)
-      }
-      if (body.content.quote) {
-        Quote.validateQuoteSchema(Quote.QuoteSchema, body.content.quote)
-      }
-      if (body.content.cTypes) {
-        body.content.cTypes.forEach((val) => CType.verifyDataStructure(val))
-      }
+ * Checks if the message body is well-formed.
+ *
+ * @param body The message body.
+ */
+export function verifyMessageBody(message: IMessage): void {
+  if (isSubmitTerms(message)) {
+    const { body } = message
+    Claim.verifyDataStructure(body.content.claim)
+    body.content.legitimations.forEach((credential) => Credential.verifyDataStructure(credential))
+    if (body.content.delegationId) {
+      DataUtils.verifyIsHex(body.content.delegationId)
     }
-    break
-  }
-  case 'request-attestation': {
-    if (isRequestAttestation(body)) {
-      Credential.verifyDataStructure(body.content.credential)
-      if (body.content.quote) {
-        Quote.validateQuoteSchema(Quote.QuoteSchema, body.content.quote)
-      }
+    if (body.content.quote) {
+      Quote.validateQuoteSchema(Quote.QuoteSchema, body.content.quote)
     }
-    break
-  }
-  case 'submit-attestation': {
-    if (isSubmitAttestation(body)) {
-      Attestation.verifyDataStructure(body.content.attestation)
+    if (body.content.cTypes) {
+      body.content.cTypes.forEach((val) => CType.verifyDataStructure(val))
     }
-    break
-  }
-  case 'reject-attestation': {
-    if (isRejectAttestation(body)) {
-      if (!isHex(body.content)) {
-        throw new SDKErrors.HashMalformedError()
-      }
+  } else if (isRequestAttestation(message)) {
+    Credential.verifyDataStructure(message.body.content.credential)
+    if (message.body.content.quote) {
+      Quote.validateQuoteSchema(Quote.QuoteSchema, message.body.content.quote)
     }
-    break
-  }
-  case 'request-credential': {
-    if (isIRequestCredential(body)) {
-      body.content.cTypes.forEach(({ cTypeHash, trustedAttesters, requiredProperties }) => {
-        DataUtils.verifyIsHex(cTypeHash)
-        trustedAttesters?.forEach((did) => Did.validateUri(did, 'Did'))
-        requiredProperties?.forEach((requiredProps) => {
-          if (typeof requiredProps !== 'string') throw new TypeError('Required properties is expected to be a string')
-        })
+  } else if (isSubmitAttestation(message)) {
+    Attestation.verifyDataStructure(message.body.content.attestation)
+  } else if (isRejectAttestation(message)) {
+    if (!isHex(message.body.content)) {
+      throw new SDKErrors.HashMalformedError()
+    }
+  } else if (isIRequestCredential(message)) {
+    message.body.content.cTypes.forEach(({ cTypeHash, trustedAttesters, requiredProperties }) => {
+      DataUtils.verifyIsHex(cTypeHash)
+      trustedAttesters?.forEach((did) => Did.validateUri(did, 'Did'))
+      requiredProperties?.forEach((requiredProps) => {
+        if (typeof requiredProps !== 'string') throw new TypeError('Required properties is expected to be a string')
       })
-    }
-    break
-  }
-  case 'submit-credential': {
-    if (isSubmitCredential(body)) {
-      body.content.forEach((presentation) => {
-        Credential.verifyDataStructure(presentation)
-        if (!Did.isDidSignature(presentation.claimerSignature)) {
-          throw new SDKErrors.SignatureMalformedError()
-        }
-      })
-    }
-    break
-  }
-  default:
+    })
+  } else if (isSubmitCredential(message)) {
+    message.body.content.forEach((presentation) => {
+      Credential.verifyDataStructure(presentation)
+      if (!Did.isDidSignature(presentation.claimerSignature)) {
+        throw new SDKErrors.SignatureMalformedError()
+      }
+    })
+  } else {
     throw new SDKErrors.UnknownMessageBodyTypeError()
   }
 }
 
 /**
-     * Verifies that the sender of a [[Message]] is also the owner of it, e.g the owner's and sender's DIDs refer to the same subject.
-     *
-     * @param message The [[Message]] object which needs to be decrypted.
-     * @param message.body The body of the [[Message]] which depends on the [[BodyType]].
-     * @param message.sender The sender's DID taken from the [[IMessage]].
-     */
+ * Verifies that the sender of a [[Message]] is also the owner of it, e.g the owner's and sender's DIDs refer to the same subject.
+ *
+ * @param message The [[Message]] object which needs to be decrypted.
+ * @param message.body The body of the [[Message]] which depends on the [[BodyType]].
+ * @param message.sender The sender's DID taken from the [[IMessage]].
+ */
 
-export function ensureOwnerIsSender({ body, sender }: IMessage): void {
-  switch (body.type) {
-  case 'request-attestation':
-    if (isRequestAttestation(body)) {
-      if (!Did.isSameSubject(body.content.credential.claim.owner, sender)) {
-        throw new SDKErrors.IdentityMismatchError('Claim', 'Sender')
+export function ensureOwnerIsSender(message: IMessage): void {
+  if (isRequestAttestation(message)) {
+    if (!Did.isSameSubject(message.body.content.credential.claim.owner, message.sender)) {
+      throw new SDKErrors.IdentityMismatchError('Claim', 'Sender')
+    }
+  } else if (isSubmitAttestation(message)) {
+    if (!Did.isSameSubject(message.body.content.attestation.owner, message.sender)) {
+      throw new SDKErrors.IdentityMismatchError('Attestation', 'Sender')
+    }
+  } else if (isSubmitCredential(message)) {
+    message.body.content.forEach((presentation) => {
+      if (!Did.isSameSubject(presentation.claim.owner, message.sender)) {
+        throw new SDKErrors.IdentityMismatchError('Claims', 'Sender')
       }
-    }
-    break
-  case 'submit-attestation':
-    if (isSubmitAttestation(body)) {
-      if (!Did.isSameSubject(body.content.attestation.owner, sender)) {
-        throw new SDKErrors.IdentityMismatchError('Attestation', 'Sender')
-      }
-    }
-    break
-  case 'submit-credential':
-    if (isSubmitCredential(body)) {
-      body.content.forEach((presentation) => {
-        if (!Did.isSameSubject(presentation.claim.owner, sender)) {
-          throw new SDKErrors.IdentityMismatchError('Claims', 'Sender')
-        }
-      })
-    }
-    break
-  default:
-    break
+    })
   }
 }
 
 /**
-     * Checks the message structure and body contents (e.g. Hashes match, ensures the owner is the sender).
-     * Throws, if a check fails.
-     *
-     * @param decryptedMessage The decrypted message to check.
-     */
+ * Checks the message structure and body contents (e.g. Hashes match, ensures the owner is the sender).
+ * Throws, if a check fails.
+ *
+ * @param decryptedMessage The decrypted message to check.
+ */
 export function verify(decryptedMessage: IMessage): void {
-  verifyMessageBody(decryptedMessage.body)
+  verifyMessageBody(decryptedMessage)
   verifyMessageEnvelope(decryptedMessage)
   ensureOwnerIsSender(decryptedMessage)
 }
-
-

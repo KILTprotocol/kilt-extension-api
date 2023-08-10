@@ -12,7 +12,8 @@ import { Attestation, CType, Claim, Credential, Quote } from '@kiltprotocol/core
 import * as Did from '@kiltprotocol/did'
 import { init } from '@kiltprotocol/sdk-js'
 import { Crypto, SDKErrors } from '@kiltprotocol/utils'
-import type {  DidDocument,
+import type {
+  DidDocument,
   DidKey,
   DidResourceUri,
   DidUri,
@@ -21,7 +22,7 @@ import type {  DidDocument,
   ResolvedDidKey,
   IClaim,
   ICredential,
-  ICredentialPresentation
+  ICredentialPresentation,
 } from '@kiltprotocol/sdk-js'
 
 import {
@@ -51,10 +52,7 @@ import type {
   ISubmitCredential,
   ISubmitTerms,
   ITerms,
-  MessageBody,
 } from '../types'
-
-
 
 describe('Messaging', () => {
   let aliceLightDid: DidDocument
@@ -136,7 +134,9 @@ describe('Messaging', () => {
 
     expect(() => verify(decryptedMessage)).not.toThrow()
 
-    const encryptedMessageWrongContent = JSON.parse(JSON.stringify(encryptedMessage)) as IEncryptedMessage
+    const encryptedMessageWrongContent = JSON.parse(
+      JSON.stringify(encryptedMessage)
+    ) as IEncryptedMessage<IRequestCredential>
     const messedUpContent = Crypto.coToUInt8(encryptedMessageWrongContent.ciphertext)
     messedUpContent.set(Crypto.hash('1234'), 10)
     encryptedMessageWrongContent.ciphertext = u8aToHex(messedUpContent)
@@ -153,7 +153,7 @@ describe('Messaging', () => {
       peerPublicKey: bobLightDid.keyAgreement![0].publicKey,
       did: aliceLightDid.uri,
     })
-    const encryptedMessageWrongBody: IEncryptedMessage = {
+    const encryptedMessageWrongBody: IEncryptedMessage<IRequestCredential> = {
       ciphertext: u8aToHex(encryptedWrongBody.data),
       nonce: u8aToHex(encryptedWrongBody.nonce),
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -211,20 +211,16 @@ describe('Messaging', () => {
     }
 
     // Should not throw if the owner and sender DID is the same.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(requestAttestationBody, aliceFullDid.uri, bobFullDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceFullDid.uri, bobFullDid.uri))).not.toThrow()
 
     // Should not throw if the sender is the light DID version of the owner.
     // This is technically not to be allowed but message verification is not concerned with that.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(requestAttestationBody, aliceLightDid.uri, bobFullDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceLightDid.uri, bobFullDid.uri))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(requestAttestationBody, bobFullDid.uri, aliceFullDid.uri))
-    ).toThrowError(SDKErrors.IdentityMismatchError)
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, bobFullDid.uri, aliceFullDid.uri))).toThrowError(
+      SDKErrors.IdentityMismatchError
+    )
 
     const attestation = {
       delegationId: null,
@@ -242,20 +238,16 @@ describe('Messaging', () => {
     }
 
     // Should not throw if the owner and sender DID is the same.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitAttestationBody, bobFullDid.uri, aliceFullDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobFullDid.uri, aliceFullDid.uri))).not.toThrow()
 
     // Should not throw if the sender is the light DID version of the owner.
     // This is technically not to be allowed but message verification is not concerned with that.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDid.uri, aliceFullDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDid.uri, aliceFullDid.uri))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitAttestationBody, aliceFullDid.uri, bobFullDid.uri))
-    ).toThrowError(SDKErrors.IdentityMismatchError)
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, aliceFullDid.uri, bobFullDid.uri))).toThrowError(
+      SDKErrors.IdentityMismatchError
+    )
 
     const submitClaimsForCTypeBody: ISubmitCredential = {
       content: [presentation],
@@ -376,15 +368,11 @@ describe('Messaging', () => {
 
     // Should not throw if the owner has additional details and the sender does not.
     expect(() =>
-      ensureOwnerIsSender(
-        fromBody(requestAttestationBodyWithEncodedDetails, aliceLightDid.uri, bobLightDid.uri)
-      )
+      ensureOwnerIsSender(fromBody(requestAttestationBodyWithEncodedDetails, aliceLightDid.uri, bobLightDid.uri))
     ).not.toThrow()
 
     // Should not throw if the sender is the full DID version of the owner.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(requestAttestationBody, aliceFullDid.uri, bobLightDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceFullDid.uri, bobLightDid.uri))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
     expect(() =>
@@ -422,33 +410,25 @@ describe('Messaging', () => {
     }
 
     // Should not throw if the owner and sender DID is the same.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDid.uri, aliceLightDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDid.uri, aliceLightDid.uri))).not.toThrow()
 
     // Should not throw if the owner has no additional details and the sender does.
     expect(() =>
-      ensureOwnerIsSender(
-        fromBody(submitAttestationBody, bobLightDidWithDetails.uri, aliceLightDid.uri)
-      )
+      ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDidWithDetails.uri, aliceLightDid.uri))
     ).not.toThrow()
 
     // Should not throw if the owner has additional details and the sender does not.
     expect(() =>
-      ensureOwnerIsSender(
-        fromBody(submitAttestationBodyWithEncodedDetails, bobLightDid.uri, aliceLightDid.uri)
-      )
+      ensureOwnerIsSender(fromBody(submitAttestationBodyWithEncodedDetails, bobLightDid.uri, aliceLightDid.uri))
     ).not.toThrow()
 
     // Should not throw if the sender is the full DID version of the owner.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitAttestationBody, bobFullDid.uri, aliceLightDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobFullDid.uri, aliceLightDid.uri))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitAttestationBody, aliceLightDid.uri, bobLightDid.uri))
-    ).toThrowError(SDKErrors.IdentityMismatchError)
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, aliceLightDid.uri, bobLightDid.uri))).toThrowError(
+      SDKErrors.IdentityMismatchError
+    )
 
     const submitClaimsForCTypeBody: ISubmitCredential = {
       content: [presentation],
@@ -467,16 +447,12 @@ describe('Messaging', () => {
 
     // Should not throw if the owner has no additional details and the sender does.
     expect(() =>
-      ensureOwnerIsSender(
-        fromBody(submitClaimsForCTypeBody, aliceLightDidWithDetails.uri, bobLightDid.uri)
-      )
+      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceLightDidWithDetails.uri, bobLightDid.uri))
     ).not.toThrow()
 
     // Should not throw if the owner has additional details and the sender does not.
     expect(() =>
-      ensureOwnerIsSender(
-        fromBody(submitClaimsForCTypeBodyWithEncodedDetails, aliceLightDid.uri, bobLightDid.uri)
-      )
+      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBodyWithEncodedDetails, aliceLightDid.uri, bobLightDid.uri))
     ).not.toThrow()
 
     // Should not throw if the sender is the full DID version of the owner.
@@ -550,7 +526,6 @@ describe('Error checking / Verification', () => {
   let messageSubmitCredential: IMessage
 
   beforeAll(async () => {
-
     await init()
 
     keyAlice = makeSigningKeyTool()
@@ -608,7 +583,6 @@ describe('Error checking / Verification', () => {
       { didResolveKey }
     )
 
-
     // Submit Terms content
     submitTermsContent = {
       claim: {
@@ -619,7 +593,6 @@ describe('Error checking / Verification', () => {
       quote: quoteAttesterSigned,
       cTypes: undefined,
     }
-
 
     // Request Attestation Content
     requestAttestationContent = {
@@ -688,8 +661,6 @@ describe('Error checking / Verification', () => {
       content: submitCredentialContent,
       type: 'submit-credential',
     }
-
-
   })
 
   it('Checking required properties for given CType', () => {
@@ -697,56 +668,42 @@ describe('Error checking / Verification', () => {
       SDKErrors.CTypeUnknownPropertiesError
     )
 
-    expect(() =>
-      verifyRequiredCTypeProperties(['id', 'name'], testCTypeWithMultipleProperties)
-    ).not.toThrowError(SDKErrors.CTypeUnknownPropertiesError)
+    expect(() => verifyRequiredCTypeProperties(['id', 'name'], testCTypeWithMultipleProperties)).not.toThrowError(
+      SDKErrors.CTypeUnknownPropertiesError
+    )
 
-    expect(() =>
-      verifyRequiredCTypeProperties(['id', 'name'], testCTypeWithMultipleProperties)
-    ).not.toThrowError()
+    expect(() => verifyRequiredCTypeProperties(['id', 'name'], testCTypeWithMultipleProperties)).not.toThrowError()
   })
 
   beforeAll(async () => {
-
     messageSubmitTerms = fromBody(submitTermsBody, identityAlice.uri, identityBob.uri)
 
     messageRequestAttestationForClaim = fromBody(requestAttestationBody, identityAlice.uri, identityBob.uri)
     messageSubmitAttestationForClaim = fromBody(submitAttestationBody, identityAlice.uri, identityBob.uri)
 
-    messageRejectAttestationForClaim = fromBody(
-      rejectAttestationForClaimBody,
-      identityAlice.uri,
-      identityBob.uri
-    )
+    messageRejectAttestationForClaim = fromBody(rejectAttestationForClaimBody, identityAlice.uri, identityBob.uri)
     messageRequestCredential = fromBody(requestCredentialBody, identityAlice.uri, identityBob.uri)
     messageSubmitCredential = fromBody(submitCredentialBody, identityAlice.uri, identityBob.uri)
-
   })
   it('message body verifier should not throw errors on correct bodies', () => {
+    expect(() => verifyMessageBody(messageSubmitTerms)).not.toThrowError()
 
-    expect(() => verifyMessageBody(submitTermsBody)).not.toThrowError()
-
-    expect(() => verifyMessageBody(requestAttestationBody)).not.toThrowError()
-    expect(() => verifyMessageBody(submitAttestationBody)).not.toThrowError()
-    expect(() => verifyMessageBody(rejectAttestationForClaimBody)).not.toThrowError()
-    expect(() => verifyMessageBody(requestCredentialBody)).not.toThrowError()
-    expect(() => verifyMessageBody(submitCredentialBody)).not.toThrowError()
-
+    expect(() => verifyMessageBody(messageRequestAttestationForClaim)).not.toThrowError()
+    expect(() => verifyMessageBody(messageSubmitAttestationForClaim)).not.toThrowError()
+    expect(() => verifyMessageBody(messageRejectAttestationForClaim)).not.toThrowError()
+    expect(() => verifyMessageBody(messageRequestCredential)).not.toThrowError()
+    expect(() => verifyMessageBody(messageSubmitCredential)).not.toThrowError()
   })
 
-
   it('message envelope verifier should not throw errors on correct envelopes', () => {
-
     expect(() => verifyMessageEnvelope(messageSubmitTerms)).not.toThrowError()
     expect(() => verifyMessageEnvelope(messageRequestAttestationForClaim)).not.toThrowError()
     expect(() => verifyMessageEnvelope(messageSubmitAttestationForClaim)).not.toThrowError()
     expect(() => verifyMessageEnvelope(messageRejectAttestationForClaim)).not.toThrowError()
     expect(() => verifyMessageEnvelope(messageRequestCredential)).not.toThrowError()
     expect(() => verifyMessageEnvelope(messageSubmitCredential)).not.toThrowError()
-
   })
   it('message envelope verifier should throw errors on faulty envelopes', () => {
-
     // @ts-ignore
     messageSubmitTerms.sender = 'this is not a sender did'
     expect(() => verifyMessageEnvelope(messageSubmitTerms)).toThrowError(SDKErrors.InvalidDidFormatError)
@@ -764,27 +721,29 @@ describe('Error checking / Verification', () => {
     expect(() => verifyMessageEnvelope(messageRequestCredential)).toThrowError(TypeError)
   })
   it('message body verifier should throw errors on faulty bodies', () => {
-
     submitTermsBody.content.delegationId = 'this is not a delegation id'
-    expect(() => verifyMessageBody(submitTermsBody)).toThrowError(SDKErrors.HashMalformedError)
+    expect(() => verifyMessageBody(messageSubmitTerms)).toThrowError(SDKErrors.HashMalformedError)
 
     submitCredentialBody.content[0].claimerSignature = {
       signature: 'this is not the claimers signature',
       // @ts-ignore
       keyUri: 'this is not a key id',
     }
-    expect(() => verifyMessageBody(submitCredentialBody)).toThrowError()
+    expect(() => verifyMessageBody(messageSubmitCredential)).toThrowError()
     // @ts-ignore
     submitAttestationBody.content.attestation.claimHash = 'this is not the claim hash'
-    expect(() => verifyMessageBody(submitAttestationBody)).toThrowError(SDKErrors.HashMalformedError)
+    expect(() => verifyMessageBody(messageSubmitAttestationForClaim)).toThrowError(
+      SDKErrors.UnknownMessageBodyTypeError
+    )
     // @ts-ignore
     rejectAttestationForClaimBody.content = 'this is not the root hash'
-    expect(() => verifyMessageBody(rejectAttestationForClaimBody)).toThrowError(SDKErrors.HashMalformedError)
+    expect(() => verifyMessageBody(messageRejectAttestationForClaim)).toThrowError(
+      SDKErrors.UnknownMessageBodyTypeError
+    )
     // @ts-ignore
     requestCredentialBody.content.cTypes[0].cTypeHash = 'this is not a cTypeHash'
-    expect(() => verifyMessageBody(requestCredentialBody)).toThrowError(SDKErrors.HashMalformedError)
+    expect(() => verifyMessageBody(messageRequestCredential)).toThrowError(SDKErrors.UnknownMessageBodyTypeError)
 
-    expect(() => verifyMessageBody({} as MessageBody)).toThrowError(SDKErrors.UnknownMessageBodyTypeError)
+    expect(() => verifyMessageBody({} as IMessage)).toThrowError(SDKErrors.UnknownMessageBodyTypeError)
   })
-
 })

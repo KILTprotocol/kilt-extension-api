@@ -25,28 +25,19 @@ import type {
   DidUri,
 } from '@kiltprotocol/types'
 import { Crypto, JsonSchema, SDKErrors } from '@kiltprotocol/utils'
-import {
-  resolveKey,
-  verifyDidSignature,
-  signatureToJson,
-  signatureFromJson,
-} from '@kiltprotocol/did'
+import { resolveKey, verifyDidSignature, signatureToJson, signatureFromJson } from '@kiltprotocol/did'
 import { QuoteSchema } from './QuoteSchema'
 
 /**
-   * Validates the quote against the meta schema and quote data against the provided schema.
-   *
-   * @param schema A [[Quote]] schema object.
-   * @param validate [[Quote]] data to be validated against the provided schema.
-   * @param messages The errors messages are listed in an array.
-   *
-   * @returns Whether the quote schema is valid.
-   */
-export function validateQuoteSchema(
-  schema: JsonSchema.Schema,
-  validate: unknown,
-  messages?: string[]
-): boolean {
+ * Validates the quote against the meta schema and quote data against the provided schema.
+ *
+ * @param schema A [[Quote]] schema object.
+ * @param validate [[Quote]] data to be validated against the provided schema.
+ * @param messages The errors messages are listed in an array.
+ *
+ * @returns Whether the quote schema is valid.
+ */
+export function validateQuoteSchema(schema: JsonSchema.Schema, validate: unknown, messages?: string[]): boolean {
   const validator = new JsonSchema.Validator(schema)
   if (schema.$id !== QuoteSchema.$id) {
     validator.addSchema(QuoteSchema)
@@ -63,16 +54,13 @@ export function validateQuoteSchema(
 // TODO: should have a "create quote" function.
 
 /**
-   * Signs a [[Quote]] object as an Attester.
-   *
-   * @param quoteInput A [[Quote]] object.
-   * @param sign The callback to sign with the private key.
-   * @returns A signed [[Quote]] object.
-   */
-export async function createAttesterSignedQuote(
-  quoteInput: IQuote,
-  sign: SignCallback
-): Promise<IQuoteAttesterSigned> {
+ * Signs a [[Quote]] object as an Attester.
+ *
+ * @param quoteInput A [[Quote]] object.
+ * @param sign The callback to sign with the private key.
+ * @returns A signed [[Quote]] object.
+ */
+export async function createAttesterSignedQuote(quoteInput: IQuote, sign: SignCallback): Promise<IQuoteAttesterSigned> {
   if (!validateQuoteSchema(QuoteSchema, quoteInput)) {
     throw new SDKErrors.QuoteUnverifiableError()
   }
@@ -89,19 +77,19 @@ export async function createAttesterSignedQuote(
 }
 
 /**
-   * Verifies a [[IQuoteAttesterSigned]] object.
-   *
-   * @param quote The object which to be verified.
-   * @param options Optional settings.
-   * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
-   */
+ * Verifies a [[IQuoteAttesterSigned]] object.
+ *
+ * @param quote The object which to be verified.
+ * @param options Optional settings.
+ * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ */
 export async function verifyAttesterSignedQuote(
   quote: IQuoteAttesterSigned,
   {
     didResolveKey = resolveKey,
   }: {
-      didResolveKey?: DidResolveKey
-    } = {}
+    didResolveKey?: DidResolveKey
+  } = {}
 ): Promise<void> {
   const { attesterSignature, ...basicQuote } = quote
   await verifyDidSignature({
@@ -119,16 +107,16 @@ export async function verifyAttesterSignedQuote(
 }
 
 /**
-   * Creates a [[Quote]] signed by the Attester and the Claimer.
-   *
-   * @param attesterSignedQuote A [[Quote]] object signed by an Attester.
-   * @param credentialRootHash A root hash of the entire object.
-   * @param sign The callback to sign with the private key.
-   * @param claimerDid The DID of the Claimer, who has to sign.
-   * @param options Optional settings.
-   * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
-   * @returns A [[Quote]] agreement signed by both the Attester and Claimer.
-   */
+ * Creates a [[Quote]] signed by the Attester and the Claimer.
+ *
+ * @param attesterSignedQuote A [[Quote]] object signed by an Attester.
+ * @param credentialRootHash A root hash of the entire object.
+ * @param sign The callback to sign with the private key.
+ * @param claimerDid The DID of the Claimer, who has to sign.
+ * @param options Optional settings.
+ * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ * @returns A [[Quote]] agreement signed by both the Attester and Claimer.
+ */
 export async function createQuoteAgreement(
   attesterSignedQuote: IQuoteAttesterSigned,
   credentialRootHash: ICredential['rootHash'],
@@ -137,8 +125,8 @@ export async function createQuoteAgreement(
   {
     didResolveKey = resolveKey,
   }: {
-      didResolveKey?: DidResolveKey
-    } = {}
+    didResolveKey?: DidResolveKey
+  } = {}
 ): Promise<IQuoteAgreement> {
   const { attesterSignature, ...basicQuote } = attesterSignedQuote
 
@@ -167,30 +155,27 @@ export async function createQuoteAgreement(
 }
 
 /**
-   * Verifies a [[IQuoteAgreement]] object.
-   *
-   * @param quote The object to be verified.
-   * @param options Optional settings.
-   * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
-   */
+ * Verifies a [[IQuoteAgreement]] object.
+ *
+ * @param quote The object to be verified.
+ * @param options Optional settings.
+ * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ */
 export async function verifyQuoteAgreement(
   quote: IQuoteAgreement,
   {
     didResolveKey = resolveKey,
   }: {
-      didResolveKey?: DidResolveKey
-    } = {}
+    didResolveKey?: DidResolveKey
+  } = {}
 ): Promise<void> {
-  const { claimerSignature, claimerDid, rootHash, ...attesterSignedQuote } =
-      quote
+  const { claimerSignature, claimerDid, rootHash, ...attesterSignedQuote } = quote
   // verify attester signature
   await verifyAttesterSignedQuote(attesterSignedQuote, { didResolveKey })
   // verify claimer signature
   await verifyDidSignature({
     ...signatureFromJson(claimerSignature),
-    message: Crypto.hashStr(
-      Crypto.encodeObjectAsStr({ ...attesterSignedQuote, claimerDid, rootHash })
-    ),
+    message: Crypto.hashStr(Crypto.encodeObjectAsStr({ ...attesterSignedQuote, claimerDid, rootHash })),
     expectedSigner: claimerDid,
     expectedVerificationMethod: 'authentication',
     didResolveKey,

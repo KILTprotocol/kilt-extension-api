@@ -13,10 +13,10 @@ import { hexToU8a, stringToU8a, u8aToHex, u8aToString } from '@polkadot/util'
 import type { IEncryptedMessage, IEncryptedMessageContents, IMessage } from '../types'
 
 /**
-   * Checks if the message object is well-formed.
-   *
-   * @param message The message object.
-   */
+ * Checks if the message object is well-formed.
+ *
+ * @param message The message object.
+ */
 export function verifyMessageEnvelope(message: IMessage): void {
   const { messageId, createdAt, receiver, sender, receivedAt, inReplyTo } = message
   if (messageId !== undefined && typeof messageId !== 'string') {
@@ -35,24 +35,23 @@ export function verifyMessageEnvelope(message: IMessage): void {
   }
 }
 
-
 /**
-   * Symmetrically decrypts the result of [[encrypt]].
-   *
-   * @param encrypted The encrypted message.
-   * @param decryptCallback The callback to decrypt with the secret key.
-   * @param decryptionOptions Options to perform the decryption operation.
-   * @param decryptionOptions.resolveKey The DID key resolver to use.
-   * @returns The original [[Message]].
-   */
+ * Symmetrically decrypts the result of [[encrypt]].
+ *
+ * @param encrypted The encrypted message.
+ * @param decryptCallback The callback to decrypt with the secret key.
+ * @param decryptionOptions Options to perform the decryption operation.
+ * @param decryptionOptions.resolveKey The DID key resolver to use.
+ * @returns The original [[Message]].
+ */
 export async function decrypt(
   encrypted: IEncryptedMessage,
   decryptCallback: DecryptCallback,
   {
     resolveKey = Did.resolveKey,
   }: {
-        resolveKey?: DidResolveKey
-      } = {}
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<IMessage> {
   const { senderKeyUri, receiverKeyUri, ciphertext, nonce, receivedAt } = encrypted
 
@@ -103,16 +102,16 @@ export async function decrypt(
 }
 
 /**
-   * Encrypts the [[Message]] as a string. This can be reversed with [[decrypt]].
-   *
-   * @param message The message to encrypt.
-   * @param encryptCallback The callback to encrypt with the secret key.
-   * @param receiverKeyUri The key URI of the receiver.
-   * @param encryptionOptions Options to perform the encryption operation.
-   * @param encryptionOptions.resolveKey The DID key resolver to use.
-   *
-   * @returns The encrypted version of the original [[Message]], see [[IEncryptedMessage]].
-   */
+ * Encrypts the [[Message]] as a string. This can be reversed with [[decrypt]].
+ *
+ * @param message The message to encrypt.
+ * @param encryptCallback The callback to encrypt with the secret key.
+ * @param receiverKeyUri The key URI of the receiver.
+ * @param encryptionOptions Options to perform the encryption operation.
+ * @param encryptionOptions.resolveKey The DID key resolver to use.
+ *
+ * @returns The encrypted version of the original [[Message]], see [[IEncryptedMessage]].
+ */
 export async function encrypt(
   message: IMessage,
   encryptCallback: EncryptCallback,
@@ -120,8 +119,8 @@ export async function encrypt(
   {
     resolveKey = Did.resolveKey,
   }: {
-        resolveKey?: DidResolveKey
-      } = {}
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<IEncryptedMessage> {
   const receiverKey = await resolveKey(receiverKeyUri, 'keyAgreement')
   if (message.receiver !== receiverKey.controller) {

@@ -45,12 +45,5 @@ export const QuoteSchema: JsonSchema.Schema = {
       format: 'date-time',
     },
   },
-  required: [
-    'attesterDid',
-    'cTypeHash',
-    'cost',
-    'currency',
-    'termsAndConditions',
-    'timeframe',
-  ],
+  required: ['attesterDid', 'cTypeHash', 'cost', 'currency', 'termsAndConditions', 'timeframe'],
 }

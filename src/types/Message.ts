@@ -30,7 +30,7 @@ export type MessageBodyType =
   | 'submit-credential'
   | 'reject-terms'
 
-interface IMessageBodyBase<Type extends string = string, Content = unknown>  {
+export interface IMessageBodyBase<Type extends string = string, Content = unknown>  {
   content: Content
   type: Type
 }
@@ -46,15 +46,15 @@ interface IMessageBodyBase<Type extends string = string, Content = unknown>  {
  * - `inReplyTo` - The id of the parent-message.
  * - `references` - The references or the in-reply-to of the parent-message followed by the message-id of the parent-message.
  */
-export interface IMessage {
-  body: MessageBody
+export interface IMessage<Body extends IMessageBodyBase = {type: string, content: unknown}> {
+  body: Body
   createdAt: number
   sender: DidUri
   receiver: DidUri
   messageId?: string
   receivedAt?: number
-  inReplyTo?: IMessage['messageId']
-  references?: Array<IMessage['messageId']>
+  inReplyTo?: IMessage<Body>['messageId']
+  references?: Array<IMessage<Body>['messageId']>
 }
 
 /**
@@ -182,7 +182,7 @@ export type IConfirmPayment = IMessageBodyBase<'confirm-payment', IConfirmPaymen
 /**
  * Everything which is part of the encrypted and protected part of the [[IMessage]].
  */
-export type IEncryptedMessageContents = Omit<IMessage, 'receivedAt'>
+export type IEncryptedMessageContents<Body extends IMessageBodyBase = {type: string, content: unknown}> = Omit<IMessage<Body>, 'receivedAt'>
 
 /**
  * Removes the plaintext [[IEncryptedMessageContents]] from an [[IMessage]] and instead includes them in encrypted form.
@@ -192,7 +192,7 @@ export type IEncryptedMessageContents = Omit<IMessage, 'receivedAt'>
  * - `receiverKeyUri` - The URI of the receiver's encryption key.
  * - `senderKeyUri` - The URI of the sender's encryption key.
  */
-export type IEncryptedMessage = Pick<IMessage, 'receivedAt'> & {
+export type IEncryptedMessage<Body extends IMessageBodyBase = {type: string, content: unknown}> = Pick<IMessage<Body>, 'receivedAt'> & {
   receiverKeyUri: DidResourceUri
   senderKeyUri: DidResourceUri
   ciphertext: string

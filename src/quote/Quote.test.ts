@@ -23,10 +23,7 @@ import type {
 import { Crypto, SDKErrors } from '@kiltprotocol/utils'
 import { Credential, CType } from '@kiltprotocol/sdk-js'
 
-import {
-  createLocalDemoFullDidFromKeypair,
-  makeSigningKeyTool,
-} from '../tests'
+import { createLocalDemoFullDidFromKeypair, makeSigningKeyTool } from '../tests'
 import * as Quote from './Quote'
 import { QuoteSchema } from './QuoteSchema'
 
@@ -50,13 +47,9 @@ describe('Quote', () => {
   let invalidPropertiesQuote: IQuote
   let invalidCostQuote: IQuote
 
-  async function mockResolveKey(
-    keyUri: DidResourceUri
-  ): Promise<ResolvedDidKey> {
+  async function mockResolveKey(keyUri: DidResourceUri): Promise<ResolvedDidKey> {
     const { did } = Did.parse(keyUri)
-    const document = [claimerIdentity, attesterIdentity].find(
-      ({ uri }) => uri === did
-    )
+    const document = [claimerIdentity, attesterIdentity].find(({ uri }) => uri === did)
     if (!document) throw new Error('Cannot resolve mocked DID')
     return Did.keyToResolvedKey(document.authentication[0], did)
   }
@@ -153,9 +146,7 @@ describe('Quote', () => {
     )
     expect(signature).toEqual(quoteBothAgreed.claimerSignature)
 
-    const { fragment: attesterKeyId } = Did.parse(
-      validAttesterSignedQuote.attesterSignature.keyUri
-    )
+    const { fragment: attesterKeyId } = Did.parse(validAttesterSignedQuote.attesterSignature.keyUri)
 
     expect(() =>
       Crypto.verify(
@@ -170,8 +161,7 @@ describe('Quote', () => {
           })
         ),
         validAttesterSignedQuote.attesterSignature.signature,
-        Did.getKey(attesterIdentity, attesterKeyId!)?.publicKey ||
-          new Uint8Array()
+        Did.getKey(attesterIdentity, attesterKeyId!)?.publicKey || new Uint8Array()
       )
     ).not.toThrow()
     await expect(
@@ -184,19 +174,14 @@ describe('Quote', () => {
         didResolveKey: mockResolveKey,
       })
     ).resolves.not.toThrow()
-    expect(
-      await Quote.createAttesterSignedQuote(
-        validQuoteData,
-        attester.getSignCallback(attesterIdentity)
-      )
-    ).toEqual(validAttesterSignedQuote)
+    expect(await Quote.createAttesterSignedQuote(validQuoteData, attester.getSignCallback(attesterIdentity))).toEqual(
+      validAttesterSignedQuote
+    )
   })
   it('validates created quotes against QuoteSchema', () => {
     expect(Quote.validateQuoteSchema(QuoteSchema, validQuoteData)).toBe(true)
     expect(Quote.validateQuoteSchema(QuoteSchema, invalidCostQuote)).toBe(false)
-    expect(Quote.validateQuoteSchema(QuoteSchema, invalidPropertiesQuote)).toBe(
-      false
-    )
+    expect(Quote.validateQuoteSchema(QuoteSchema, invalidPropertiesQuote)).toBe(false)
   })
 
   it('detects tampering', async () => {
@@ -223,8 +208,7 @@ describe('Quote', () => {
   it('complains if attesterDid does not match attester signature', async () => {
     const sign = claimer.getSignCallback(claimerIdentity)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { attesterSignature, ...attesterSignedQuote } =
-      validAttesterSignedQuote
+    const { attesterSignature, ...attesterSignedQuote } = validAttesterSignedQuote
     const wrongSignerAttester: IQuoteAttesterSigned = {
       ...attesterSignedQuote,
       attesterSignature: Did.signatureToJson(

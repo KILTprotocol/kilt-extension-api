@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ICredentialPresentation } from '@kiltprotocol/types'
+import { IAttestation, ICredentialPresentation } from '@kiltprotocol/types'
 
 import type {
+  IMessage,
+  IMessageBodyBase,
   IRejectAttestation,
   IRequestAttestation,
   IRequestCredential,
@@ -9,121 +11,166 @@ import type {
   ISubmitAttestation,
   ISubmitCredential,
   ISubmitTerms,
-  MessageBody,
 } from '../types'
 
-export function isSubmitTerms(body: MessageBody): body is ISubmitTerms {
+export function isIMessage<Body extends IMessageBodyBase>(message: any): message is IMessage<Body> {
   return (
-    body.type === 'submit-terms' &&
-    typeof body === 'object' &&
-    'content' in body &&
-    'claim' in body.content &&
-    'legitimations' in body.content &&
-    (typeof body.content.legitimations === 'undefined' || Array.isArray(body.content.legitimations)) &&
-    (typeof body.content.delegationId === 'undefined' || typeof body.content.delegationId === 'string') &&
-    (typeof body.content.quote === 'undefined' || typeof body.content.quote === 'object') &&
-    (typeof body.content.cTypes === 'undefined' || Array.isArray(body.content.cTypes))
+    typeof message === 'object' &&
+    'body' in message &&
+    'type' in message.body &&
+    'createdAt' in message &&
+    'sender' in message &&
+    'receiver' in message &&
+    typeof message.createdAt === 'number' &&
+    typeof message.sender === 'string' &&
+    typeof message.receiver === 'string' &&
+    (typeof message.messageId === 'undefined' || typeof message.messageId === 'string') &&
+    (typeof message.receivedAt === 'undefined' || typeof message.receivedAt === 'number') &&
+    (typeof message.inReplyTo === 'undefined' || typeof message.inReplyTo === 'string') &&
+    (Array.isArray(message.references) || typeof message.references === 'undefined')
   )
 }
 
-export function isRequestAttestation(body: MessageBody): body is IRequestAttestation {
+export function isSubmitTerms(
+  message: IMessage<{ type: string; content: unknown }>
+): message is IMessage<ISubmitTerms> {
+  if (
+    !isIMessage(message) ||
+    message.body.type !== 'submit-terms' ||
+    typeof message.body.content !== 'object' ||
+    message.body.content === null
+  ) {
+    return false
+  }
+
+  const { claim, legitimations, delegationId, quote, cTypes } = message.body.content as ISubmitTerms['content']
+
   return (
-    body.type === 'request-attestation' &&
-    typeof body === 'object' &&
-    'credential' in body.content &&
-    typeof body.content.credential === 'object' &&
-    (typeof body.content.quote === 'undefined' || typeof body.content.quote === 'object')
+    claim !== undefined &&
+    legitimations !== undefined &&
+    (legitimations === undefined || Array.isArray(legitimations)) &&
+    (delegationId === undefined || typeof delegationId === 'string') &&
+    (quote === undefined || typeof quote === 'object') &&
+    (cTypes === undefined || Array.isArray(cTypes))
+  )
+}
+export function isSubmitAttestation(
+  message: IMessage<{ type: string; content: unknown }>
+): message is IMessage<ISubmitAttestation> {
+  if (!isIMessage(message) || message.body.type !== 'submit-attestation') {
+    return false
+  }
+
+  const content = message.body.content as ISubmitAttestation['content']
+
+  return (
+    typeof content === 'object' && content !== null && 'attestation' in content && isIAttestation(content.attestation)
   )
 }
 
-export  function isSubmitAttestation(body: MessageBody): body is ISubmitAttestation {
+export function isIAttestation(body: any): body is IAttestation {
+  if (typeof body !== 'object') {
+    return false
+  }
+
+  const { claimHash, cTypeHash, owner, delegationId, revoked } = body
+
   return (
-    body.type === 'submit-attestation' &&
-    typeof body === 'object' &&
-    'content' in body &&
-    typeof body.content === 'object' &&
-    'attestation' in body.content &&
-    typeof body.content.attestation === 'object'
+    typeof claimHash === 'string' &&
+    typeof cTypeHash === 'string' &&
+    typeof owner === 'string' &&
+    (delegationId === null || typeof delegationId === 'string') &&
+    typeof revoked === 'boolean'
   )
 }
 
-export function isRejectAttestation(body: MessageBody): body is IRejectAttestation {
+export function isRejectAttestation(
+  message: IMessage<{ type: string; content: unknown }>
+): message is IMessage<IRejectAttestation> {
   return (
-    body.type === 'reject-attestation' &&
-    typeof body === 'object' &&
-    'content' in body &&
-    typeof body.content === 'string'
+    isIMessage(message) &&
+    message.body.type === 'reject-attestation' &&
+    typeof message.body === 'object' &&
+    'content' in message.body &&
+    typeof message.body.content === 'string'
   )
 }
 
+export function isRequestAttestation(message: IMessage): message is IMessage<IRequestAttestation> {
+  if (!isIMessage(message) || !('content' in message.body)) {
+    return false
+  }
 
-
-export function isIRequestCredential(body: MessageBody): body is IRequestCredential {
+  const content = message.body.content as IRequestAttestation['content']
   return (
-    typeof body === 'object' &&
-      body !== null &&
-      'type' in body &&
-      body.type === 'request-credential' &&
-      'content' in body &&
-      isIRequestCredentialContent(body.content)
+    message.body.type === 'request-attestation' &&
+    'credential' in content &&
+    typeof content.credential === 'object' &&
+    (typeof content.quote === 'undefined' || typeof content.quote === 'object')
+  )
+}
+
+export function isIRequestCredential(
+  message: IMessage<{ type: string; content: unknown }>
+): message is IMessage<IRequestCredential> {
+  return (
+    isIMessage(message) &&
+    message.body.type === 'request-credential' &&
+    isIRequestCredentialContent(message.body.content)
   )
 }
 
 export function isIRequestCredentialContent(body: any): body is IRequestCredentialContent {
   if (
     typeof body !== 'object' ||
-      body === null ||
-      !Array.isArray(body.cTypes) ||
-      !body.cTypes.every((cType : any) =>
+    body === null ||
+    !Array.isArray(body.cTypes) ||
+    !body.cTypes.every(
+      (cType: any) =>
         typeof cType === 'object' &&
         cType !== null &&
         'cTypeHash' in cType &&
         typeof cType.cTypeHash === 'string' &&
         (typeof cType.trustedAttesters === 'undefined' || Array.isArray(cType.trustedAttesters)) &&
         (typeof cType.requiredProperties === 'undefined' || Array.isArray(cType.requiredProperties))
-      )
+    )
   ) {
     return false
   }
 
-  if ('challenge' in body &&  typeof body.challenge !== 'undefined' && typeof body.challenge !== 'string') {
+  if ('challenge' in body && typeof body.challenge !== 'undefined' && typeof body.challenge !== 'string') {
     return false
   }
 
   return true
 }
 
-export function isSubmitCredential(body: MessageBody): body is ISubmitCredential {
+export function isSubmitCredential(
+  message: IMessage<{ type: string; content: unknown }>
+): message is IMessage<ISubmitCredential> {
   return (
-    typeof body === 'object' &&
-      body !== null &&
-      'type' in body &&
-      body.type === 'submit-credential' &&
-      'content' in body &&
-      Array.isArray(body.content) &&
-      body.content.every(isICredentialPresentation)
+    isIMessage(message) &&
+    message.body.type === 'submit-credential' &&
+    Array.isArray(message.body.content) &&
+    message.body.content.every(isICredentialPresentation)
   )
 }
 
 function isICredentialPresentation(body: any): body is ICredentialPresentation {
   return (
     typeof body === 'object' &&
-      body !== null &&
-      'claimerSignature' in body &&
-      typeof body.claimerSignature === 'object' &&
-      'claim' in body &&
-      'claimNonceMap' in body &&
-      'claimHashes' in body &&
-      'delegationId' in body &&
-      (body.delegationId === null || typeof body.delegationId === 'string') &&
-      'legitimations' in body &&
-      Array.isArray(body.legitimations) &&
-      'rootHash' in body &&
-      typeof body.rootHash === 'string' &&
-      ('challenge' in body.claimerSignature ? typeof body.claimerSignature.challenge === 'string' : true)
+    body !== null &&
+    'claimerSignature' in body &&
+    typeof body.claimerSignature === 'object' &&
+    'claim' in body &&
+    'claimNonceMap' in body &&
+    'claimHashes' in body &&
+    'delegationId' in body &&
+    (body.delegationId === null || typeof body.delegationId === 'string') &&
+    'legitimations' in body &&
+    Array.isArray(body.legitimations) &&
+    'rootHash' in body &&
+    typeof body.rootHash === 'string' &&
+    ('challenge' in body.claimerSignature ? typeof body.claimerSignature.challenge === 'string' : true)
   )
 }
-
-
-
-
