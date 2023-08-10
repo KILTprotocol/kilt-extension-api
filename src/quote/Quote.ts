@@ -24,7 +24,8 @@ import type {
   DidResolveKey,
   DidUri,
 } from '@kiltprotocol/types'
-import { Crypto, JsonSchema, SDKErrors } from '@kiltprotocol/utils'
+import { Crypto, JsonSchema } from '@kiltprotocol/utils'
+import * as QuoteError from './Error'
 import { resolveKey, verifyDidSignature, signatureToJson, signatureFromJson } from '@kiltprotocol/did'
 import { QuoteSchema } from './QuoteSchema'
 
@@ -62,7 +63,7 @@ export function validateQuoteSchema(schema: JsonSchema.Schema, validate: unknown
  */
 export async function createAttesterSignedQuote(quoteInput: IQuote, sign: SignCallback): Promise<IQuoteAttesterSigned> {
   if (!validateQuoteSchema(QuoteSchema, quoteInput)) {
-    throw new SDKErrors.QuoteUnverifiableError()
+    throw new QuoteError.QuoteUnverifiableError()
   }
 
   const signature = await sign({
@@ -102,7 +103,7 @@ export async function verifyAttesterSignedQuote(
 
   const messages: string[] = []
   if (!validateQuoteSchema(QuoteSchema, basicQuote, messages)) {
-    throw new SDKErrors.QuoteUnverifiableError()
+    throw new QuoteError.QuoteUnverifiableError()
   }
 }
 

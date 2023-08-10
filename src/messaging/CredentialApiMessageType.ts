@@ -6,7 +6,7 @@
  */
 
 import { Attestation, Claim, Credential, CType, Quote } from '@kiltprotocol/core'
-import { DataUtils, SDKErrors } from '@kiltprotocol/utils'
+import { DataUtils } from '@kiltprotocol/utils'
 import * as Did from '@kiltprotocol/did'
 import { isHex } from '@polkadot/util'
 
@@ -19,6 +19,7 @@ import {
   isIRequestCredential,
 } from '../utils'
 import { verifyMessageEnvelope } from './MessageEnvelope'
+import * as MessageError from './Error'
 import type { IMessage } from '../types'
 
 /**
@@ -49,7 +50,7 @@ export function verifyMessageBody(message: IMessage): void {
     Attestation.verifyDataStructure(message.body.content.attestation)
   } else if (isRejectAttestation(message)) {
     if (!isHex(message.body.content)) {
-      throw new SDKErrors.HashMalformedError()
+      throw new MessageError.HashMalformedError()
     }
   } else if (isIRequestCredential(message)) {
     message.body.content.cTypes.forEach(({ cTypeHash, trustedAttesters, requiredProperties }) => {
@@ -63,11 +64,11 @@ export function verifyMessageBody(message: IMessage): void {
     message.body.content.forEach((presentation) => {
       Credential.verifyDataStructure(presentation)
       if (!Did.isDidSignature(presentation.claimerSignature)) {
-        throw new SDKErrors.SignatureMalformedError()
+        throw new MessageError.SignatureMalformedError()
       }
     })
   } else {
-    throw new SDKErrors.UnknownMessageBodyTypeError()
+    throw new MessageError.UnknownMessageBodyTypeError()
   }
 }
 
@@ -82,16 +83,16 @@ export function verifyMessageBody(message: IMessage): void {
 export function ensureOwnerIsSender(message: IMessage): void {
   if (isRequestAttestation(message)) {
     if (!Did.isSameSubject(message.body.content.credential.claim.owner, message.sender)) {
-      throw new SDKErrors.IdentityMismatchError('Claim', 'Sender')
+      throw new MessageError.IdentityMismatchError('Claim', 'Sender')
     }
   } else if (isSubmitAttestation(message)) {
     if (!Did.isSameSubject(message.body.content.attestation.owner, message.sender)) {
-      throw new SDKErrors.IdentityMismatchError('Attestation', 'Sender')
+      throw new MessageError.IdentityMismatchError('Attestation', 'Sender')
     }
   } else if (isSubmitCredential(message)) {
     message.body.content.forEach((presentation) => {
       if (!Did.isSameSubject(presentation.claim.owner, message.sender)) {
-        throw new SDKErrors.IdentityMismatchError('Claims', 'Sender')
+        throw new MessageError.IdentityMismatchError('Claims', 'Sender')
       }
     })
   }

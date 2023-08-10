@@ -10,8 +10,9 @@
 import { u8aToHex } from '@polkadot/util'
 import { Attestation, CType, Claim, Credential, Quote } from '@kiltprotocol/core'
 import * as Did from '@kiltprotocol/did'
-import { init } from '@kiltprotocol/sdk-js'
-import { Crypto, SDKErrors } from '@kiltprotocol/utils'
+import { SDKErrors, init } from '@kiltprotocol/sdk-js'
+import * as MessageError from './Error'
+import { Crypto } from '@kiltprotocol/utils'
 import type {
   DidDocument,
   DidKey,
@@ -35,7 +36,7 @@ import {
 } from '../tests'
 import { fromBody, verifyRequiredCTypeProperties } from './utils'
 import { decrypt, encrypt, verifyMessageEnvelope } from './MessageEnvelope'
-import { ensureOwnerIsSender, verify, verifyMessageBody } from './CredentialApiMessageTypes'
+import { ensureOwnerIsSender, verify, verifyMessageBody } from './CredentialApiMessageType'
 import type {
   IEncryptedMessage,
   IMessage,
@@ -145,7 +146,7 @@ describe('Messaging', () => {
       decrypt(encryptedMessageWrongContent, bobEncKey.decrypt, {
         resolveKey,
       })
-    ).rejects.toThrowError(SDKErrors.DecodingMessageError)
+    ).rejects.toThrowError(MessageError.DecodingMessageError)
 
     const encryptedWrongBody = await aliceEncKey.encrypt(aliceLightDid)({
       data: Crypto.coToUInt8('{ wrong JSON'),
@@ -219,7 +220,7 @@ describe('Messaging', () => {
 
     // Should throw if the sender and the owner are two different entities.
     expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, bobFullDid.uri, aliceFullDid.uri))).toThrowError(
-      SDKErrors.IdentityMismatchError
+      MessageError.IdentityMismatchError
     )
 
     const attestation = {
@@ -246,7 +247,7 @@ describe('Messaging', () => {
 
     // Should throw if the sender and the owner are two different entities.
     expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, aliceFullDid.uri, bobFullDid.uri))).toThrowError(
-      SDKErrors.IdentityMismatchError
+      MessageError.IdentityMismatchError
     )
 
     const submitClaimsForCTypeBody: ISubmitCredential = {
@@ -268,7 +269,7 @@ describe('Messaging', () => {
     // Should throw if the sender and the owner are two different entities.
     expect(() =>
       ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, bobFullDid.uri, aliceFullDid.uri))
-    ).toThrowError(SDKErrors.IdentityMismatchError)
+    ).toThrowError(MessageError.IdentityMismatchError)
   })
 
   it('verifies the message with sender is the owner (as light DID)', async () => {
@@ -377,7 +378,7 @@ describe('Messaging', () => {
     // Should throw if the sender and the owner are two different entities.
     expect(() =>
       ensureOwnerIsSender(fromBody(requestAttestationBody, bobLightDid.uri, aliceLightDid.uri))
-    ).toThrowError(SDKErrors.IdentityMismatchError)
+    ).toThrowError(MessageError.IdentityMismatchError)
 
     const attestation = {
       delegationId: null,
@@ -427,7 +428,7 @@ describe('Messaging', () => {
 
     // Should throw if the sender and the owner are two different entities.
     expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, aliceLightDid.uri, bobLightDid.uri))).toThrowError(
-      SDKErrors.IdentityMismatchError
+      MessageError.IdentityMismatchError
     )
 
     const submitClaimsForCTypeBody: ISubmitCredential = {
@@ -463,7 +464,7 @@ describe('Messaging', () => {
     // Should throw if the sender and the owner are two different entities.
     expect(() =>
       ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, bobLightDid.uri, aliceLightDid.uri))
-    ).toThrowError(SDKErrors.IdentityMismatchError)
+    ).toThrowError(MessageError.IdentityMismatchError)
   })
 })
 
@@ -722,7 +723,7 @@ describe('Error checking / Verification', () => {
   })
   it('message body verifier should throw errors on faulty bodies', () => {
     submitTermsBody.content.delegationId = 'this is not a delegation id'
-    expect(() => verifyMessageBody(messageSubmitTerms)).toThrowError(SDKErrors.HashMalformedError)
+    expect(() => verifyMessageBody(messageSubmitTerms)).toThrowError(MessageError.HashMalformedError)
 
     submitCredentialBody.content[0].claimerSignature = {
       signature: 'this is not the claimers signature',
@@ -733,17 +734,17 @@ describe('Error checking / Verification', () => {
     // @ts-ignore
     submitAttestationBody.content.attestation.claimHash = 'this is not the claim hash'
     expect(() => verifyMessageBody(messageSubmitAttestationForClaim)).toThrowError(
-      SDKErrors.UnknownMessageBodyTypeError
+      MessageError.UnknownMessageBodyTypeError
     )
     // @ts-ignore
     rejectAttestationForClaimBody.content = 'this is not the root hash'
     expect(() => verifyMessageBody(messageRejectAttestationForClaim)).toThrowError(
-      SDKErrors.UnknownMessageBodyTypeError
+      MessageError.UnknownMessageBodyTypeError
     )
     // @ts-ignore
     requestCredentialBody.content.cTypes[0].cTypeHash = 'this is not a cTypeHash'
-    expect(() => verifyMessageBody(messageRequestCredential)).toThrowError(SDKErrors.UnknownMessageBodyTypeError)
+    expect(() => verifyMessageBody(messageRequestCredential)).toThrowError(MessageError.UnknownMessageBodyTypeError)
 
-    expect(() => verifyMessageBody({} as IMessage)).toThrowError(SDKErrors.UnknownMessageBodyTypeError)
+    expect(() => verifyMessageBody({} as IMessage)).toThrowError(MessageError.UnknownMessageBodyTypeError)
   })
 })

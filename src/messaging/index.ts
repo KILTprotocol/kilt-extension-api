@@ -25,4 +25,4 @@
 
 export * from './utils'
 export * from './MessageEnvelope'
-export * from './CredentialApiMessageTypes'
+export * from './CredentialApiMessageType'

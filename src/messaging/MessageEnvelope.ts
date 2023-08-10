@@ -8,6 +8,7 @@
 import { DecryptCallback, DidResolveKey, DidResourceUri, EncryptCallback } from '@kiltprotocol/types'
 import * as Did from '@kiltprotocol/did'
 import { SDKErrors } from '@kiltprotocol/sdk-js'
+import * as MessageError from './Error'
 import { hexToU8a, stringToU8a, u8aToHex, u8aToString } from '@polkadot/util'
 
 import type { IEncryptedMessage, IEncryptedMessageContents, IMessage } from '../types'
@@ -73,9 +74,7 @@ export async function decrypt(
       })
     ).data
   } catch (cause) {
-    throw new SDKErrors.DecodingMessageError(undefined, {
-      cause: cause as Error,
-    })
+    throw new MessageError.DecodingMessageError(cause)
   }
 
   const decoded = u8aToString(data)
@@ -95,7 +94,7 @@ export async function decrypt(
   }
 
   if (sender !== senderKeyDetails.controller) {
-    throw new SDKErrors.IdentityMismatchError('Encryption key', 'Sender')
+    throw new MessageError.IdentityMismatchError('Encryption key', 'Sender')
   }
 
   return decrypted
@@ -124,7 +123,7 @@ export async function encrypt(
 ): Promise<IEncryptedMessage> {
   const receiverKey = await resolveKey(receiverKeyUri, 'keyAgreement')
   if (message.receiver !== receiverKey.controller) {
-    throw new SDKErrors.IdentityMismatchError('receiver public key', 'receiver')
+    throw new MessageError.IdentityMismatchError('receiver public key', 'receiver')
   }
 
   const toEncrypt: IEncryptedMessageContents = {
