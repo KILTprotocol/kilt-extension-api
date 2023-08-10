@@ -37,9 +37,7 @@ export function isIMessage<Body extends IMessageBodyBase>(message: any): message
   )
 }
 
-export function isSubmitTerms(
-  message: IMessage<{ type: string; content: unknown }>
-): message is IMessage<ISubmitTerms> {
+export function isSubmitTerms(message: IMessage): message is IMessage<ISubmitTerms> {
   if (
     !isIMessage(message) ||
     message.body.type !== 'submit-terms' ||
@@ -61,9 +59,7 @@ export function isSubmitTerms(
   )
 }
 
-export function isSubmitAttestation(
-  message: IMessage<{ type: string; content: unknown }>
-): message is IMessage<ISubmitAttestation> {
+export function isSubmitAttestation(message: IMessage): message is IMessage<ISubmitAttestation> {
   if (!isIMessage(message) || message.body.type !== 'submit-attestation') {
     return false
   }
@@ -91,9 +87,7 @@ export function isIAttestation(body: any): body is IAttestation {
   )
 }
 
-export function isRejectAttestation(
-  message: IMessage<{ type: string; content: unknown }>
-): message is IMessage<IRejectAttestation> {
+export function isRejectAttestation(message: IMessage): message is IMessage<IRejectAttestation> {
   return (
     isIMessage(message) &&
     message.body.type === 'reject-attestation' &&
@@ -118,9 +112,7 @@ export function isRequestAttestation(message: IMessage): message is IMessage<IRe
   )
 }
 
-export function isIRequestCredential(
-  message: IMessage<{ type: string; content: unknown }>
-): message is IMessage<IRequestCredential> {
+export function isIRequestCredential(message: IMessage): message is IMessage<IRequestCredential> {
   return (
     isIMessage(message) &&
     message.body.type === 'request-credential' &&
@@ -153,9 +145,7 @@ export function isIRequestCredentialContent(body: any): body is IRequestCredenti
   return true
 }
 
-export function isSubmitCredential(
-  message: IMessage<{ type: string; content: unknown }>
-): message is IMessage<ISubmitCredential> {
+export function isSubmitCredential(message: IMessage): message is IMessage<ISubmitCredential> {
   return (
     isIMessage(message) &&
     message.body.type === 'submit-credential' &&
