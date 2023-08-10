@@ -30,10 +30,9 @@ export type MessageBodyType =
   | 'submit-credential'
   | 'reject-terms'
 
-interface IMessageBodyBase {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  content: any
-  type: MessageBodyType
+interface IMessageBodyBase<Type extends string = string, Content = unknown>  {
+  content: Content
+  type: Type
 }
 
 
@@ -62,43 +61,24 @@ export interface IMessage {
  * Error messages signal unintentional programming errors which happened during
  * the processing of the incoming messages or when constructing a response message.
  */
-export interface IError extends IMessageBodyBase {
-  content: {
-    /** Optional machine-readable type of the error. */
-    name?: string
-    /** Optional human-readable description of the error. */
-    message?: string
-  }
-  type: 'error'
-}
+export type IError = IMessageBodyBase<'error', {name? : string, message?: string}>;
 
 /**
  * Rejection messages signal the intentional cancelling of an individual step in the flow.
  */
-export interface IReject extends IMessageBodyBase {
-  content: {
-    /** Optional machine-readable type of the rejection. */
-    name?: string
-    /** Optional human-readable description of the rejection. */
-    message?: string
-  }
-  type: 'reject'
-}
-
+export type IReject = IMessageBodyBase<'reject', {name? : string, message?: string}>;
 
 /**
  * An attester utilizes the message to propose a claim. The purpose of the extension is to enable
  * the user to authorize and endorse the claims prepared by the attester.
  */
-export interface ISubmitTerms extends IMessageBodyBase {
-  content: ITerms
-  type: 'submit-terms'
-}
+export type ISubmitTerms = IMessageBodyBase<'submit-terms', ITerms>;
 
 
 /**
  * The content of the [IRequestAttestation] message.
  */
+
 export interface IRequestAttestationContent {
   credential: ICredential
   quote?: IQuoteAgreement
@@ -108,10 +88,7 @@ export interface IRequestAttestationContent {
  * The extension only sends the request with active consent of the user. This is the first step
  * where the user’s DID is revealed to the dApp.
  */
-export interface IRequestAttestation extends IMessageBodyBase {
-  content: IRequestAttestationContent
-  type: 'request-attestation'
-}
+export type IRequestAttestation = IMessageBodyBase<'request-attestation', IRequestAttestationContent>
 
 
 /**
@@ -125,10 +102,7 @@ export interface IRequestPaymentContent {
 /**
  * An attester can send this message if it wants the user to transfer payment in KILT Coins by themselves without interrupting the flow.
  */
-export interface IRequestPayment extends IMessageBodyBase {
-  content: IRequestPaymentContent
-  type: 'request-payment'
-}
+export type IRequestPayment = IMessageBodyBase<'request-payment', IRequestPaymentContent>
 
 
 /**
@@ -141,19 +115,13 @@ export interface ISubmitAttestationContent {
 /**
  * The attester sends the valid credential to the extension.
  */
-export interface ISubmitAttestation extends IMessageBodyBase {
-  content: ISubmitAttestationContent
-  type: 'submit-attestation'
-}
+export type ISubmitAttestation = IMessageBodyBase<'submit-attestation', ISubmitAttestationContent>
 
 
 /**
  * If the attester does not approve the attestation request, the extension receives the [IRejectAttestation] message.
  */
-export interface IRejectAttestation extends IMessageBodyBase {
-  content: ICredential['rootHash']
-  type: 'reject-attestation'
-}
+export type IRejectAttestation = IMessageBodyBase<'reject-attestation', ICredential['rootHash']>
 
 
 
@@ -175,10 +143,7 @@ export interface ITerms {
 
 
 /** Message to submit credentials from the extension or dapp.*/
-export interface ISubmitCredential extends IMessageBodyBase {
-  content: ICredentialPresentation[]
-  type: 'submit-credential'
-}
+export type ISubmitCredential = IMessageBodyBase<'submit-credential', ICredentialPresentation[]>
 
 /**
  * The content of the [IRequestCredential] message.
@@ -191,10 +156,8 @@ export interface IRequestCredentialContent {
   }>
   challenge?: string
 }
-export interface IRequestCredential extends IMessageBodyBase {
-  content: IRequestCredentialContent
-  type: 'request-credential'
-}
+
+export type IRequestCredential = IMessageBodyBase<'request-credential', IRequestCredentialContent>
 
 
 /**
@@ -214,10 +177,7 @@ export interface IConfirmPaymentContent {
  * After the user has authorized the payment and it has been transferred,
  * the extension confirms the transfer to the attester by sending the [IConfirmPayment] message.
  */
-export interface IConfirmPayment extends IMessageBodyBase {
-  content: IConfirmPaymentContent
-  type: 'confirm-payment'
-}
+export type IConfirmPayment = IMessageBodyBase<'confirm-payment', IConfirmPaymentContent>
 
 /**
  * Everything which is part of the encrypted and protected part of the [[IMessage]].
