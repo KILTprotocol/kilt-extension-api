@@ -10,7 +10,7 @@
 import { u8aToHex } from '@polkadot/util'
 import { Attestation, CType, Claim, Credential, Quote } from '@kiltprotocol/core'
 import * as Did from '@kiltprotocol/did'
-import { SDKErrors, init } from '@kiltprotocol/sdk-js'
+import { init } from '@kiltprotocol/sdk-js'
 import * as MessageError from './Error'
 import { Crypto } from '@kiltprotocol/utils'
 import type {
@@ -666,11 +666,11 @@ describe('Error checking / Verification', () => {
 
   it('Checking required properties for given CType', () => {
     expect(() => verifyRequiredCTypeProperties(['id', 'name'], testCType)).toThrowError(
-      SDKErrors.CTypeUnknownPropertiesError
+      MessageError.CTypeUnknownPropertiesError
     )
 
     expect(() => verifyRequiredCTypeProperties(['id', 'name'], testCTypeWithMultipleProperties)).not.toThrowError(
-      SDKErrors.CTypeUnknownPropertiesError
+      MessageError.CTypeUnknownPropertiesError
     )
 
     expect(() => verifyRequiredCTypeProperties(['id', 'name'], testCTypeWithMultipleProperties)).not.toThrowError()
@@ -707,7 +707,7 @@ describe('Error checking / Verification', () => {
   it('message envelope verifier should throw errors on faulty envelopes', () => {
     // @ts-ignore
     messageSubmitTerms.sender = 'this is not a sender did'
-    expect(() => verifyMessageEnvelope(messageSubmitTerms)).toThrowError(SDKErrors.InvalidDidFormatError)
+    expect(() => verifyMessageEnvelope(messageSubmitTerms)).toThrowError(MessageError.InvalidDidFormatError)
     // @ts-ignore
     messageRequestAttestationForClaim.messageId = 12
     expect(() => verifyMessageEnvelope(messageRequestAttestationForClaim)).toThrowError(TypeError)

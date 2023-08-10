@@ -7,7 +7,8 @@
 
 import { ICType } from '@kiltprotocol/types'
 import { IMessage, MessageBody } from '../types'
-import { CType, SDKErrors } from '@kiltprotocol/sdk-js'
+import * as MessageError from './Error'
+import { CType } from '@kiltprotocol/sdk-js'
 import { UUID } from '@kiltprotocol/utils'
 
 /**
@@ -40,6 +41,6 @@ export function verifyRequiredCTypeProperties(requiredProperties: string[], cTyp
 
   const unknownProperties = requiredProperties.find((property) => !(property in cType.properties))
   if (unknownProperties) {
-    throw new SDKErrors.CTypeUnknownPropertiesError()
+    throw new MessageError.CTypeUnknownPropertiesError()
   }
 }

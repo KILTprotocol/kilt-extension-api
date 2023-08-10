@@ -20,12 +20,13 @@ import type {
   IQuoteAttesterSigned,
   ResolvedDidKey,
 } from '@kiltprotocol/types'
-import { Crypto, SDKErrors } from '@kiltprotocol/utils'
+import { Crypto } from '@kiltprotocol/utils'
 import { Credential, CType } from '@kiltprotocol/sdk-js'
 
 import { createLocalDemoFullDidFromKeypair, makeSigningKeyTool } from '../tests'
 import * as Quote from './Quote'
 import { QuoteSchema } from './QuoteSchema'
+import * as QuoteError from './Error'
 
 describe('Quote', () => {
   let claimerIdentity: DidDocument
@@ -193,7 +194,7 @@ describe('Quote', () => {
       Quote.verifyAttesterSignedQuote(messedWithCurrency, {
         didResolveKey: mockResolveKey,
       })
-    ).rejects.toThrow(SDKErrors.SignatureUnverifiableError)
+    ).rejects.toThrow(QuoteError.SignatureUnverifiableError)
     const messedWithRootHash: IQuoteAgreement = {
       ...quoteBothAgreed,
       rootHash: '0x1234',
@@ -202,7 +203,7 @@ describe('Quote', () => {
       Quote.verifyQuoteAgreement(messedWithRootHash, {
         didResolveKey: mockResolveKey,
       })
-    ).rejects.toThrow(SDKErrors.SignatureUnverifiableError)
+    ).rejects.toThrow(QuoteError.SignatureUnverifiableError)
   })
 
   it('complains if attesterDid does not match attester signature', async () => {
@@ -224,7 +225,7 @@ describe('Quote', () => {
       Quote.verifyAttesterSignedQuote(wrongSignerAttester, {
         didResolveKey: mockResolveKey,
       })
-    ).rejects.toThrow(SDKErrors.DidSubjectMismatchError)
+    ).rejects.toThrow(QuoteError.DidSubjectMismatchError)
   })
 
   it('complains if claimerDid does not match claimer signature', async () => {
@@ -246,6 +247,6 @@ describe('Quote', () => {
       Quote.verifyQuoteAgreement(wrongSignerClaimer, {
         didResolveKey: mockResolveKey,
       })
-    ).rejects.toThrow(SDKErrors.DidSubjectMismatchError)
+    ).rejects.toThrow(QuoteError.DidSubjectMismatchError)
   })
 })

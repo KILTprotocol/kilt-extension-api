@@ -12,3 +12,5 @@ export declare class HashMalformedError extends QuoteError {
 }
 
 export declare class QuoteUnverifiableError extends QuoteError {}
+export declare class SignatureUnverifiableError extends QuoteError {}
+export declare class DidSubjectMismatchError extends QuoteError {}
