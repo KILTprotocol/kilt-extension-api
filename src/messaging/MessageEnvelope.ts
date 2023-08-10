@@ -74,7 +74,7 @@ export async function decrypt(
       })
     ).data
   } catch (cause) {
-    throw new MessageError.DecodingMessageError(cause)
+    throw new MessageError.DecodingMessageError(cause as string)
   }
 
   const decoded = u8aToString(data)
