@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { IAttestation, ICredentialPresentation } from '@kiltprotocol/types'
+import { IAttestation, ICredentialPresentation, IRequestCredentialContent } from '@kiltprotocol/types'
 
 import type {
   IMessage,
@@ -7,27 +7,33 @@ import type {
   IRejectAttestation,
   IRequestAttestation,
   IRequestCredential,
-  IRequestCredentialContent,
   ISubmitAttestation,
   ISubmitCredential,
   ISubmitTerms,
 } from '../types'
 
 export function isIMessage<Body extends IMessageBodyBase>(message: any): message is IMessage<Body> {
+  if (
+    typeof message !== 'object' ||
+    !('body' in message) ||
+    !('type' in message.body) ||
+    !('createdAt' in message) ||
+    !('sender' in message) ||
+    !('receiver' in message) ||
+    typeof message.createdAt !== 'number' ||
+    typeof message.sender !== 'string' ||
+    typeof message.receiver !== 'string'
+  ) {
+    return false
+  }
+
+  const { messageId, receivedAt, inReplyTo, references } = message
+
   return (
-    typeof message === 'object' &&
-    'body' in message &&
-    'type' in message.body &&
-    'createdAt' in message &&
-    'sender' in message &&
-    'receiver' in message &&
-    typeof message.createdAt === 'number' &&
-    typeof message.sender === 'string' &&
-    typeof message.receiver === 'string' &&
-    (typeof message.messageId === 'undefined' || typeof message.messageId === 'string') &&
-    (typeof message.receivedAt === 'undefined' || typeof message.receivedAt === 'number') &&
-    (typeof message.inReplyTo === 'undefined' || typeof message.inReplyTo === 'string') &&
-    (Array.isArray(message.references) || typeof message.references === 'undefined')
+    (typeof messageId === 'undefined' || typeof messageId === 'string') &&
+    (typeof receivedAt === 'undefined' || typeof receivedAt === 'number') &&
+    (typeof inReplyTo === 'undefined' || typeof inReplyTo === 'string') &&
+    (Array.isArray(references) || typeof references === 'undefined')
   )
 }
 
@@ -54,6 +60,7 @@ export function isSubmitTerms(
     (cTypes === undefined || Array.isArray(cTypes))
   )
 }
+
 export function isSubmitAttestation(
   message: IMessage<{ type: string; content: unknown }>
 ): message is IMessage<ISubmitAttestation> {
@@ -102,6 +109,7 @@ export function isRequestAttestation(message: IMessage): message is IMessage<IRe
   }
 
   const content = message.body.content as IRequestAttestation['content']
+
   return (
     message.body.type === 'request-attestation' &&
     'credential' in content &&
