@@ -18,7 +18,6 @@ import {
   isSubmitCredential,
   isIRequestCredential,
 } from '../utils'
-import { verifyMessageEnvelope } from './MessageEnvelope'
 import * as MessageError from './Error'
 import type { IMessage } from '../types'
 
@@ -99,12 +98,35 @@ export function ensureOwnerIsSender(message: IMessage): void {
 }
 
 /**
+ * Checks if the message object is well-formed.
+ *
+ * @param message The message object.
+ */
+export function verifyMessageEnvelope(message: IMessage): void {
+  const { messageId, createdAt, receiver, sender, receivedAt, inReplyTo } = message
+  if (messageId !== undefined && typeof messageId !== 'string') {
+    throw new TypeError('Message id is expected to be a string')
+  }
+  if (createdAt !== undefined && typeof createdAt !== 'number') {
+    throw new TypeError('Created at is expected to be a number')
+  }
+  if (receivedAt !== undefined && typeof receivedAt !== 'number') {
+    throw new TypeError('Received at is expected to be a number')
+  }
+  Did.validateUri(sender, 'Did')
+  Did.validateUri(receiver, 'Did')
+  if (inReplyTo && typeof inReplyTo !== 'string') {
+    throw new TypeError('In reply to is expected to be a string')
+  }
+}
+
+/**
  * Checks the message structure and body contents (e.g. Hashes match, ensures the owner is the sender).
  * Throws, if a check fails.
  *
  * @param decryptedMessage The decrypted message to check.
  */
-export function verify(decryptedMessage: IMessage): void {
+export function assertKnownMessage(decryptedMessage: IMessage): void {
   verifyMessageBody(decryptedMessage)
   verifyMessageEnvelope(decryptedMessage)
   ensureOwnerIsSender(decryptedMessage)
