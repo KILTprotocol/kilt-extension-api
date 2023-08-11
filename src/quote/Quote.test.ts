@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
+
 /**
  * Copyright (c) 2018-2023, BOTLabs GmbH.
  *
