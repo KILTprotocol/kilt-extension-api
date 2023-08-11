@@ -627,7 +627,6 @@ describe('Error checking / Verification', () => {
         },
       ],
       challenge: '1234',
-      targetDid: identityAlice.uri,
     }
     // Submit Credential content
     submitCredentialContent = [
@@ -700,6 +699,11 @@ describe('Error checking / Verification', () => {
     expect(() => verifyMessageBody(messageRejectAttestationForClaim)).not.toThrowError()
     expect(() => verifyMessageBody(messageRequestCredential)).not.toThrowError()
     expect(() => verifyMessageBody(messageSubmitCredential)).not.toThrowError()
+
+    // with optinal did uri
+    // @ts-ignore
+    messageRequestCredential.body.content.targetDid = identityAlice.uri
+    expect(() => verifyMessageBody(messageRequestCredential)).not.toThrowError()
   })
 
   it('message envelope verifier should not throw errors on correct envelopes', () => {
