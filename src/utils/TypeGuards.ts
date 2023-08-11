@@ -150,6 +150,10 @@ export function isIRequestCredentialContent(body: any): body is IRequestCredenti
     return false
   }
 
+  if ('targetDid' in body && typeof body.targetDid !== 'undefined' && typeof body.targetDid !== 'string') {
+    return false
+  }
+
   return true
 }
 

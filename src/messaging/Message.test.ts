@@ -627,6 +627,7 @@ describe('Error checking / Verification', () => {
         },
       ],
       challenge: '1234',
+      targetDid: identityAlice.uri,
     }
     // Submit Credential content
     submitCredentialContent = [
@@ -748,6 +749,10 @@ describe('Error checking / Verification', () => {
     )
     // @ts-ignore
     requestCredentialBody.content.cTypes[0].cTypeHash = 'this is not a cTypeHash'
+    expect(() => verifyMessageBody(messageRequestCredential)).toThrowError(MessageError.UnknownMessageBodyTypeError)
+
+    // @ts-ignore
+    requestCredentialBody.content.targetDid = 'this is not a Did uri'
     expect(() => verifyMessageBody(messageRequestCredential)).toThrowError(MessageError.UnknownMessageBodyTypeError)
 
     expect(() => verifyMessageBody({} as IMessage)).toThrowError(MessageError.UnknownMessageBodyTypeError)
