@@ -120,9 +120,6 @@ export function isIRequestCredential(message: IMessage): message is IMessage<IRe
   )
 }
 
-
-
-
 export function isIRequestCredentialContent(body: any): body is IRequestCredentialContent {
   if (
     typeof body !== 'object' ||
