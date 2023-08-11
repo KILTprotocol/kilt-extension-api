@@ -104,8 +104,9 @@ export function ensureOwnerIsSender(message: IMessage): void {
  *
  * @param decryptedMessage The decrypted message to check.
  */
-export function verify(decryptedMessage: IMessage): void {
+export function assertKnownMessage(decryptedMessage: IMessage): IMessage['body'] {
   verifyMessageBody(decryptedMessage)
   verifyMessageEnvelope(decryptedMessage)
   ensureOwnerIsSender(decryptedMessage)
+  return decryptedMessage.body
 }
