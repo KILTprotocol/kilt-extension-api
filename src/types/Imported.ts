@@ -5,11 +5,7 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-export type {
-  ISubmittableResult,
-  AnyNumber,
-  AnyJson,
-} from '@polkadot/types/types'
+export type { ISubmittableResult, AnyNumber, AnyJson } from '@polkadot/types/types'
 export type { BN } from '@polkadot/util'
 export type { HexString } from '@polkadot/util/types'
 export type { Prefix } from '@polkadot/util-crypto/address/types'
