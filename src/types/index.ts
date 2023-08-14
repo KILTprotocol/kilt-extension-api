@@ -82,7 +82,7 @@ export interface CredentialSubject {
 
 type Contexts = [
   typeof constants.DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
-  'https://identity.foundation/.well-known/did-configuration/v1'
+  'https://identity.foundation/.well-known/did-configuration/v1',
 ]
 
 export type DomainLinkageProof = {
