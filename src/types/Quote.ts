@@ -28,7 +28,7 @@ export interface IQuote {
  * Signed quote from attester
  */
 export interface IQuoteAttesterSigned extends IQuote {
- // Signature of the attester
+  // Signature of the attester
   attesterSignature: DidSignature
 }
 
@@ -42,4 +42,3 @@ export interface IQuoteAgreement extends IQuoteAttesterSigned {
   // The signature of the claimer.
   claimerSignature: DidSignature
 }
-
