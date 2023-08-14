@@ -36,7 +36,7 @@ import {
 } from '../tests'
 import { fromBody, verifyRequiredCTypeProperties } from './utils'
 import { decrypt, encrypt, verifyMessageEnvelope } from './MessageEnvelope'
-import { ensureOwnerIsSender, verify, verifyMessageBody } from './CredentialApiMessageType'
+import { ensureOwnerIsSender, assertKnownMessage, verifyMessageBody } from './CredentialApiMessageType'
 import type {
   IEncryptedMessage,
   IMessage,
@@ -133,7 +133,7 @@ describe('Messaging', () => {
     const decryptedMessage = await decrypt(encryptedMessage, bobEncKey.decrypt, { resolveKey })
     expect(JSON.stringify(message.body)).toEqual(JSON.stringify(decryptedMessage.body))
 
-    expect(() => verify(decryptedMessage)).not.toThrow()
+    expect(() => assertKnownMessage(decryptedMessage)).not.toThrow()
 
     const encryptedMessageWrongContent = JSON.parse(
       JSON.stringify(encryptedMessage)
