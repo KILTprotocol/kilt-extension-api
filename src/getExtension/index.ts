@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) 2018-2023, BOTLabs GmbH.
+ *
+ * This source code is licensed under the BSD 4-Clause "Original" license
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
 import { ApiWindow, InjectedWindowProvider, PubSubSessionV1, PubSubSessionV2 } from '../types'
 
 // cross-environment reference to global object (aka 'window' in browser environments)
