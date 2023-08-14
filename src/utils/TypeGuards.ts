@@ -142,6 +142,10 @@ export function isIRequestCredentialContent(body: any): body is IRequestCredenti
     return false
   }
 
+  if ('owner' in body && typeof body.owner !== 'undefined' && typeof body.owner !== 'string') {
+    return false
+  }
+
   return true
 }
 

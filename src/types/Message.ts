@@ -154,6 +154,8 @@ export interface IRequestCredentialContent {
     trustedAttesters?: DidUri[]
     requiredProperties?: string[]
   }>
+  // The extension or dapp uses only the credentials of the provided DID.
+  owner?: DidUri
   challenge?: string
 }
 

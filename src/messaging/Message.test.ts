@@ -694,6 +694,11 @@ describe('Error checking / Verification', () => {
     expect(() => verifyMessageBody(messageRejectAttestationForClaim)).not.toThrowError()
     expect(() => verifyMessageBody(messageRequestCredential)).not.toThrowError()
     expect(() => verifyMessageBody(messageSubmitCredential)).not.toThrowError()
+
+    // with optinal did uri
+    // @ts-ignore
+    messageRequestCredential.body.content.owner = identityAlice.uri
+    expect(() => verifyMessageBody(messageRequestCredential)).not.toThrowError()
   })
 
   it('message envelope verifier should not throw errors on correct envelopes', () => {
@@ -743,6 +748,10 @@ describe('Error checking / Verification', () => {
     )
     // @ts-ignore
     requestCredentialBody.content.cTypes[0].cTypeHash = 'this is not a cTypeHash'
+    expect(() => verifyMessageBody(messageRequestCredential)).toThrowError(MessageError.UnknownMessageBodyTypeError)
+
+    // @ts-ignore
+    requestCredentialBody.content.owner = 'this is not a Did uri'
     expect(() => verifyMessageBody(messageRequestCredential)).toThrowError(MessageError.UnknownMessageBodyTypeError)
 
     expect(() => verifyMessageBody({} as IMessage)).toThrowError(MessageError.UnknownMessageBodyTypeError)
