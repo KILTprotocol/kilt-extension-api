@@ -7,7 +7,12 @@
 
 import {
   CTypeHash,
+  DecryptCallback,
+  DidDocument,
+  DidResolveKey,
+  DidResourceUri,
   DidUri,
+  EncryptCallback,
   IAttestation,
   ICType,
   ICredential,
@@ -15,17 +20,28 @@ import {
   IDelegationNode,
   PartialClaim,
 } from '@kiltprotocol/types'
-import { IQuoteAgreement, IQuoteAttesterSigned, MessageBody } from '../types'
-
-export function createErrorMesssageBody(name = 'Error', message: string | undefined): MessageBody {
-  return {
-    content: {
-      name,
-      message,
-    },
-    type: 'error',
-  }
-}
+import * as Kilt from '@kiltprotocol/sdk-js'
+import {
+  blake2AsU8a,
+  keyExtractPath,
+  keyFromPath,
+  mnemonicToMiniSecret,
+  randomAsHex,
+  sr25519PairFromSeed,
+} from '@polkadot/util-crypto'
+import {
+  IEncryptedMessage,
+  IError,
+  IMessage,
+  IQuoteAgreement,
+  IQuoteAttesterSigned,
+  IRequestCredential,
+  MessageBody,
+} from '../types'
+import { fromBody } from './utils'
+import { encrypt, decrypt } from './Crypto'
+import { KeyError } from './Error'
+import { stringToU8a, u8aToHex } from '@polkadot/util'
 
 export function createRejectMesssageBody(name = 'Reject', message: string | undefined): MessageBody {
   return {
@@ -95,25 +111,6 @@ export function createSubmitCredentialMessageBody(content: ICredentialPresentati
   return {
     content,
     type: 'submit-credential',
-  }
-}
-
-export function createRequestCredentialMesageBody(
-  cTypes: Array<{
-    cTypeHash: CTypeHash
-    trustedAttesters?: DidUri[]
-    requiredProperties?: string[]
-  }>,
-  targetDid?: DidUri,
-  challenge?: string
-): MessageBody {
-  return {
-    content: {
-      cTypes,
-      challenge,
-      targetDid,
-    },
-    type: 'request-credential',
   }
 }
 

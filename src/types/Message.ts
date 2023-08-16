@@ -163,7 +163,7 @@ export interface IRequestCredentialContent {
     requiredProperties?: string[]
   }>
   // The extension or dapp uses only the credentials of the provided DID.
-  targetDid?: DidUri
+  owner?: DidUri
   challenge?: string
 }
 
