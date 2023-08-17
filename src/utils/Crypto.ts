@@ -15,8 +15,9 @@ export function calculateKeyAgreementKeyFromMnemonic(mnemonic: string): Kilt.Kil
   return Kilt.Utils.Crypto.makeEncryptionKeypairFromSeed(blake2AsU8a(secretKey))
 }
 
-export function getDefaultEncryptCallback(keyAgreement: Kilt.DidEncryptionKey, did: Kilt.DidUri): EncryptCallback {
-  const keyUri: DidResourceUri = `${did}${keyAgreement.id}`
+export function getDefaultEncryptCallback(did: Kilt.DidUri, mnemonic: string): EncryptCallback {
+  const keyAgreement = calculateKeyAgreementKeyFromMnemonic(mnemonic)
+  const keyUri: DidResourceUri = `${did}${keyAgreement.publicKey.toString()}`
 
   async function encrypt({ data, peerPublicKey }: Parameters<EncryptCallback>[0]) {
     const { box, nonce } = Kilt.Utils.Crypto.encryptAsymmetric(data, peerPublicKey, keyAgreement.secretKey)

@@ -14,19 +14,21 @@ export async function submitCredential(
   decryptCallback: DecryptCallback,
   encryptCallback: Kilt.EncryptCallback,
   signCallback: Kilt.SignCallback
-): Promise<IEncryptedMessage> {
+): Promise<IEncryptedMessage<ISubmitCredential>> {
   const request = await decrypt(encryptedMessage, decryptCallback)
   if (!isIRequestCredential(request)) {
     throw new Error('Wrong message')
   }
 
-  const { challenge, cTypes } = request.body.content
+  const { challenge, cTypes, owner } = request.body.content
 
   const content = await Promise.all(
     cTypes.map(async (ctype) => {
-      const filteredCredential = credentials.filter((c) => c.claim.cTypeHash === ctype.cTypeHash)
+      const filteredCredential = credentials.filter(
+        (c) => c.claim.cTypeHash === ctype.cTypeHash && (owner ? c.claim.owner === owner : true)
+      )
 
-      if (filteredCredential.length === 0) {
+      if (!filteredCredential) {
         throw new Error('Credentials do not match')
       }
 
@@ -44,11 +46,7 @@ export async function submitCredential(
     type: 'submit-credential',
   }
 
-  const receiverDidDocument = await Kilt.Did.resolve(session.encryptionKeyUri)
-  if (receiverDidDocument === null || receiverDidDocument.document === undefined) {
-    throw new Kilt.SDKErrors.DidNotFoundError('Receiver does not exists')
-  }
-
-  const message = fromBody(body, sender, receiverDidDocument.document.uri)
+  const resolvedDid = await Kilt.Did.resolveKey(session.encryptionKeyUri)
+  const message = fromBody(body, sender, resolvedDid.id)
   return encrypt(message, encryptCallback, session.encryptionKeyUri)
 }
