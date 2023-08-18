@@ -6,7 +6,7 @@ import {
   IClaim,
   DidResourceUri,
   connect,
-  ConfigService,
+  disconnect,
   CType,
 } from '@kiltprotocol/sdk-js'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
@@ -119,7 +119,5 @@ describe('Well Known Did Configuration integration test', () => {
 })
 
 afterAll(async () => {
-  const api = ConfigService.get('api')
-
-  await api.disconnect()
+  await disconnect()
 })
