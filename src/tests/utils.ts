@@ -15,6 +15,8 @@ import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { GenericContainer, Wait } from 'testcontainers'
 import { ctypeDomainLinkage } from '../wellKnownDidConfiguration'
 
+const signingKeyPairType = 'sr25519'
+
 export const faucet = async () => {
   await cryptoWaitReady()
   const keyring = new Utils.Keyring({ ss58Format: 38, type: 'ed25519' })
@@ -35,7 +37,6 @@ export async function fundAccount(address: KiltKeyringPair['address'], amount: B
 }
 
 export async function keypairs(mnemonic: string) {
-  const signingKeyPairType = 'sr25519'
   const authentication = Utils.Crypto.makeKeypairFromUri(mnemonic, signingKeyPairType)
 
   const assertionMethod = Utils.Crypto.makeKeypairFromUri(mnemonic, signingKeyPairType)
@@ -50,6 +51,8 @@ export async function keypairs(mnemonic: string) {
 }
 
 export async function generateDid(account: KiltKeyringPair, mnemonic: string): Promise<DidDocument> {
+  ConfigService.get('api')
+
   const { authentication, assertionMethod, keyAgreement } = await keypairs(mnemonic)
 
   const uri = Did.getFullDidUriFromKey(authentication)
@@ -90,7 +93,7 @@ export async function assertionSigner({
   if (!assertionMethod) throw new Error('no assertionMethod')
   return async ({ data }) => ({
     signature: assertion.sign(data),
-    keyType: 'ed25519',
+    keyType: signingKeyPairType,
     keyUri: `${didDocument.uri}${assertionMethod[0].id}`,
   })
 }
