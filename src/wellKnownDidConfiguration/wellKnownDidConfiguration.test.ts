@@ -46,7 +46,7 @@ describe('Well Known Did Configuration integration test', () => {
     mnemonic = mnemonicGenerate()
     account = new Keyring({ type: 'ed25519' }).addFromMnemonic(mnemonic) as KiltKeyringPair
     await fundAccount(account.address, new BN('1000000000000000000'))
-    keypair = await keypairs(account, mnemonic)
+    keypair = await keypairs(mnemonic)
 
     didDocument = await generateDid(account, mnemonic)
 
