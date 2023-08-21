@@ -1,34 +1,21 @@
-import { DidDocument, EncryptCallback } from '@kiltprotocol/types'
-import { IRequestSession, Session } from './types'
-import * as Kilt from '@kiltprotocol/sdk-js'
+import { DidResourceUri, DidDocument, EncryptCallback, DecryptCallback } from '@kiltprotocol/types'
 import { stringToU8a, u8aToHex } from '@polkadot/util'
-import { IEncryptedMessage } from '../../types'
+import { Did } from '@kiltprotocol/sdk-js'
+
+import { IRequestSession, ISession, ISessionResponse } from '../../types/Session'
 
 export async function receiveSessionRequest(
   didDocument: DidDocument,
-  sessionRequest: IRequestSession,
-  // TODO: meaningfull default?
+  { challenge, encryptionKeyUri }: IRequestSession,
   encryptCallback: EncryptCallback,
-  listen?: (callback: (message: IEncryptedMessage) => Promise<void>) => Promise<void>,
-  send?: (message: IEncryptedMessage) => Promise<void>,
-  close?: () => Promise<void>
-): Promise<Session> {
-  const encryptionKeyUri = `${didDocument.uri}${didDocument.keyAgreement?.[0].id}` as Kilt.DidResourceUri
-
-  const { challenge, senderEncryptionKeyUri } = sessionRequest
-
-  const receiverDid = await Kilt.Did.resolve(senderEncryptionKeyUri)
-
-  if (
-    receiverDid === null ||
-    receiverDid.document === undefined ||
-    receiverDid.document.keyAgreement === undefined ||
-    receiverDid.document.keyAgreement.length === 0
-  ) {
-    throw new Error('No keyagreement')
+  decryptCallback: DecryptCallback
+): Promise<{ session: ISession; sessionResponse: ISessionResponse }> {
+  if (!didDocument.keyAgreement) {
+    throw new Error('keyAgreement is necessary')
   }
+  const senderEncryptionKeyUri = `${didDocument.uri}#${didDocument.keyAgreement?.[0].id}` as DidResourceUri
 
-  const receiverKey = receiverDid.document.keyAgreement[0]
+  const receiverKey = await Did.resolveKey(encryptionKeyUri)
 
   const serializedChallenge = stringToU8a(challenge)
 
@@ -41,16 +28,19 @@ export async function receiveSessionRequest(
   const encryptedChallenge = u8aToHex(encrypted.data)
   const nonce = u8aToHex(encrypted.nonce)
 
-  if (listen && send && close) {
-    return {
-      listen,
-      send,
-      close,
+  return {
+    sessionResponse: {
+      encryptionKeyUri,
+      encryptedChallenge,
+      nonce,
+    },
+    session: {
+      receiverEncryptionKeyUri: encryptionKeyUri,
+      senderEncryptionKeyUri,
       nonce,
       encryptedChallenge,
-      encryptionKeyUri,
-    }
+      encryptCallback,
+      decryptCallback,
+    },
   }
-
-  return { encryptionKeyUri, nonce, encryptedChallenge }
 }

@@ -17,6 +17,8 @@ import {
   isRejectAttestation,
   isSubmitCredential,
   isIRequestCredential,
+  isIRequestPayment,
+  isIConfirmPayment,
 } from '../utils'
 import * as MessageError from './Error'
 import type { IMessage } from '../types'
@@ -66,6 +68,8 @@ export function verifyMessageBody(message: IMessage): void {
         throw new MessageError.SignatureMalformedError()
       }
     })
+  } else if (isIRequestPayment(message) || isIConfirmPayment(message)) {
+    return
   } else {
     throw new MessageError.UnknownMessageBodyTypeError()
   }

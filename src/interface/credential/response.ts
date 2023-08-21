@@ -1,26 +1,28 @@
-import { DecryptCallback } from '@kiltprotocol/types'
+import { Credential } from '@kiltprotocol/sdk-js'
+import { ICredential, SignCallback } from '@kiltprotocol/types'
+
 import { IEncryptedMessage, ISubmitCredential } from '../../types'
-import { Session } from '../session/types'
-import * as Kilt from '@kiltprotocol/sdk-js'
+import { ISession } from '../../types/Session'
 import { decrypt, encrypt } from '../../messaging/Crypto'
 import { isIRequestCredential } from '../../utils/TypeGuards'
 import { fromBody } from '../../messaging/utils'
+import { getDidUriFromDidResourceUri } from '../../utils/Crypto'
+import { assertKnownMessage } from '../../messaging/CredentialApiMessageType'
 
 export async function submitCredential(
-  sender: Kilt.DidUri,
+  credentials: ICredential[],
+  signCallback: SignCallback,
   encryptedMessage: IEncryptedMessage,
-  session: Session,
-  credentials: Kilt.ICredential[],
-  decryptCallback: DecryptCallback,
-  encryptCallback: Kilt.EncryptCallback,
-  signCallback: Kilt.SignCallback
+  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback }: ISession
 ): Promise<IEncryptedMessage<ISubmitCredential>> {
-  const request = await decrypt(encryptedMessage, decryptCallback)
-  if (!isIRequestCredential(request)) {
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
+  assertKnownMessage(decryptedMessage)
+
+  if (!isIRequestCredential(decryptedMessage)) {
     throw new Error('Wrong message')
   }
 
-  const { challenge, cTypes, owner } = request.body.content
+  const { challenge, cTypes, owner } = decryptedMessage.body.content
 
   const content = await Promise.all(
     cTypes.map(async (ctype) => {
@@ -32,7 +34,7 @@ export async function submitCredential(
         throw new Error('Credentials do not match')
       }
 
-      return await Kilt.Credential.createPresentation({
+      return await Credential.createPresentation({
         credential: filteredCredential[0],
         signCallback,
         selectedAttributes: ctype.requiredProperties,
@@ -46,7 +48,11 @@ export async function submitCredential(
     type: 'submit-credential',
   }
 
-  const resolvedDid = await Kilt.Did.resolveKey(session.encryptionKeyUri)
-  const message = fromBody(body, sender, resolvedDid.id)
-  return encrypt(message, encryptCallback, session.encryptionKeyUri)
+  const sender = getDidUriFromDidResourceUri(senderEncryptionKeyUri)
+  const receiver = getDidUriFromDidResourceUri(receiverEncryptionKeyUri)
+
+  const message = fromBody(body, sender, receiver)
+  message.inReplyTo = decryptedMessage.messageId
+
+  return encrypt(message, encryptCallback, receiverEncryptionKeyUri)
 }

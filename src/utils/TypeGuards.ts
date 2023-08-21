@@ -10,11 +10,13 @@
 import { IAttestation, ICredentialPresentation, IRequestCredentialContent } from '@kiltprotocol/types'
 
 import type {
+  IConfirmPayment,
   IMessage,
   IMessageBodyBase,
   IRejectAttestation,
   IRequestAttestation,
   IRequestCredential,
+  IRequestPayment,
   ISubmitAttestation,
   ISubmitCredential,
   ISubmitTerms,
@@ -117,6 +119,38 @@ export function isRequestAttestation(message: IMessage): message is IMessage<IRe
     'credential' in content &&
     typeof content.credential === 'object' &&
     (typeof content.quote === 'undefined' || typeof content.quote === 'object')
+  )
+}
+
+export function isIConfirmPayment(message: IMessage): message is IMessage<IConfirmPayment> {
+  if (!isIMessage(message) || !('content' in message.body)) {
+    return false
+  }
+
+  const content = message.body.content as IConfirmPayment['content']
+
+  return (
+    message.body.type === 'confirm-payment' &&
+    typeof content === 'object' &&
+    content !== null &&
+    typeof content.claimHash === 'string' &&
+    typeof content.txHash === 'string' &&
+    typeof content.blockHash === 'string'
+  )
+}
+
+export function isIRequestPayment(message: IMessage): message is IMessage<IRequestPayment> {
+  if (!isIMessage(message) || !('content' in message.body)) {
+    return false
+  }
+
+  const content = message.body.content as IRequestPayment['content']
+
+  return (
+    message.body.type === 'request-payment' &&
+    typeof content === 'object' &&
+    content !== null &&
+    typeof content.claimHash === 'string'
   )
 }
 

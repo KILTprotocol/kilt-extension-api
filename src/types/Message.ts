@@ -212,3 +212,22 @@ export type IEncryptedMessage<Body extends IMessageBodyBase = { type: string; co
   ciphertext: string
   nonce: string
 }
+
+export interface IEncryptedMessageV1 {
+  /** ID of the key agreement key of the receiver DID used to encrypt the message */
+  receiverKeyId: DidResourceUri
+
+  /** ID of the key agreement key of the sender DID used to encrypt the message */
+  senderKeyId: DidResourceUri
+
+  /** ciphertext as hexadecimal */
+  ciphertext: string
+
+  /** 24 bytes nonce as hexadecimal */
+  nonce: string
+}
+
+export interface IMessageWorkflow {
+  message: IMessage
+  encryptedMessage: IEncryptedMessage
+}
