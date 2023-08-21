@@ -1,4 +1,4 @@
-import { DecryptCallback, DidResourceUri, EncryptCallback } from '@kiltprotocol/types'
+import { DecryptCallback, DidResourceUri, EncryptCallback, SignCallback } from '@kiltprotocol/types'
 
 import { IEncryptedMessage, IEncryptedMessageV1 } from '.'
 
@@ -21,6 +21,7 @@ export interface ISession {
   nonce: string
   encryptCallback: EncryptCallback
   decryptCallback: DecryptCallback
+  signCallback: SignCallback
 }
 
 export interface PubSubSessionV1 {

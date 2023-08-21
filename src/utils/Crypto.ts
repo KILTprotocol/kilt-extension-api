@@ -5,8 +5,14 @@ import {
   DecryptCallback,
   DidUri,
   KiltKeyringPair,
+  SignCallback,
+  DidDocument,
+  SignRequestData,
+  VerificationKeyRelationship,
+  UriFragment,
+  DidVerificationKey,
 } from '@kiltprotocol/types'
-import { Utils } from '@kiltprotocol/sdk-js'
+import { Utils, Did } from '@kiltprotocol/sdk-js'
 import {
   blake2AsU8a,
   keyExtractPath,
@@ -14,6 +20,7 @@ import {
   mnemonicToMiniSecret,
   sr25519PairFromSeed,
 } from '@polkadot/util-crypto'
+import { KeypairType } from '@polkadot/util-crypto/types'
 
 function calculateKeyAgreementKeyFromMnemonic(mnemonic: string): KiltEncryptionKeypair {
   const secretKeyPair = sr25519PairFromSeed(mnemonicToMiniSecret(mnemonic))
@@ -57,20 +64,47 @@ export function getDidUriFromDidResourceUri(didResourceUri: DidResourceUri): Did
   return didResourceUri.substring(didResourceUri.indexOf('#')) as DidUri
 }
 
-export function getDefaultSignCallback(keypair: KiltKeyringPair) {
-  return (didDocument) =>
-    async function sign({ data, keyRelationship }) {
-      const keyId = didDocument[keyRelationship]?.[0].id
-      const keyType = didDocument[keyRelationship]?.[0].type
-      if (keyId === undefined || keyType === undefined) {
-        throw new Error(`Key for purpose "${keyRelationship}" not found in did "${didDocument.uri}"`)
-      }
-      const signature = keypair.sign(data, { withType: false })
+export function getDefaultSignCallback(
+  mnemonic: string,
+  keyRelationship: VerificationKeyRelationship = 'assertionMethod',
+  type?: KeypairType,
+  ss58Format?: number
+): SignCallback {
+  const keyring = new Utils.Keyring({ type, ss58Format })
+  const keypair = keyring.addFromMnemonic(mnemonic) as KiltKeyringPair
 
-      return {
-        signature,
-        keyUri: `${didDocument.uri}${keyId}`,
-        keyType,
-      }
+  const authentication = {
+    ...keypair.derive('//did//0'),
+    type,
+  } as KiltKeyringPair
+
+  const uri = Did.getFullDidUriFromKey(authentication)
+  let didDocument: DidDocument | undefined
+  let keyId: UriFragment | undefined
+  let keyType: DidVerificationKey['type'] | undefined
+
+  Did.resolve(uri).then((response) => {
+    if (!response?.document) {
+      throw new Error('Could not fetch DID document. Is DID on chain?')
     }
+    const { document } = response
+    keyId = document[keyRelationship]?.[0].id
+    keyType = document[keyRelationship]?.[0].type
+  })
+
+  async function sign({ data }: SignRequestData) {
+    if (!didDocument) {
+      throw new Error('didDocument not fetched yet')
+    }
+    if (keyId === undefined || keyType === undefined) {
+      throw new Error(`Key for purpose "${keyRelationship}" not found in did "${didDocument.uri}"`)
+    }
+    const signature = keypair.sign(data, { withType: false })
+    return {
+      signature,
+      keyUri: `${didDocument.uri}#${keyId}` as DidResourceUri,
+      keyType,
+    }
+  }
+  return sign
 }

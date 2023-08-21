@@ -1,4 +1,4 @@
-import { ICredential, IEncryptedMessage, SignCallback } from '@kiltprotocol/types'
+import { ICredential, IEncryptedMessage } from '@kiltprotocol/types'
 import { Credential } from '@kiltprotocol/sdk-js'
 
 import {
@@ -10,19 +10,17 @@ import {
   IRequestAttestation,
   ISession,
   ISubmitAttestation,
-} from '../../types'
-import { decrypt, encrypt } from '../../messaging/Crypto'
-import { assertKnownMessage } from '../../messaging/CredentialApiMessageType'
-import { getDidUriFromDidResourceUri, isIRequestPayment, isSubmitAttestation, isSubmitTerms } from '../../utils'
-import { fromBody } from '../../messaging/utils'
-import { verifyAttesterSignedQuote, createQuoteAgreement } from '../../quote'
+} from '../../../types'
+import { decrypt, encrypt } from '../../Crypto'
+import { assertKnownMessage } from '../../CredentialApiMessageType'
+import { getDidUriFromDidResourceUri, isIRequestPayment, isSubmitAttestation, isSubmitTerms } from '../../../utils'
+import { fromBody } from '../../utils'
+import { verifyAttesterSignedQuote, createQuoteAgreement } from '../../../quote'
 
 export async function requestAttestation(
   encryptedMessage: IEncryptedMessage,
   credential: ICredential,
-  //TODO put it into ISession
-  signCallback: SignCallback,
-  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback }: ISession
+  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback, signCallback }: ISession
 ) {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
   assertKnownMessage(decryptedMessage)

@@ -2,13 +2,16 @@ import { randomAsHex } from '@polkadot/util-crypto'
 import { CTypeHash, DidUri } from '@kiltprotocol/types'
 import { CType, Credential } from '@kiltprotocol/sdk-js'
 
-import { ISession } from '../../types/Session'
-import { ICredentialRequest, IEncryptedMessage, IMessage, IRequestCredential, ISubmitCredential } from '../../types'
-import { isIRequestCredential, isSubmitCredential } from '../../utils/TypeGuards'
-import { decrypt, encrypt } from '../../messaging/Crypto'
-import { fromBody } from '../../messaging/utils'
-import { getDidUriFromDidResourceUri } from '../../utils/Crypto'
-import { assertKnownMessage } from '../../messaging/CredentialApiMessageType'
+import {
+  ISession,
+  ICredentialRequest,
+  IEncryptedMessage,
+  IMessage,
+  IRequestCredential,
+  ISubmitCredential,
+} from 'types/index'
+import { getDidUriFromDidResourceUri, isIRequestCredential, isSubmitCredential } from 'utils/index'
+import { assertKnownMessage, decrypt, encrypt, fromBody } from 'message/index'
 
 export async function requestCredential(
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession,

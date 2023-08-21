@@ -1,22 +1,19 @@
-import { DidDocument, DidResourceUri } from '@kiltprotocol/types'
+import { DidDocument, DidResourceUri, SignCallback } from '@kiltprotocol/types'
 import { Did, Utils } from '@kiltprotocol/sdk-js'
 import { randomAsHex } from '@polkadot/util-crypto'
 import { stringToU8a } from '@polkadot/util'
 import { DecryptCallback, EncryptCallback } from '@kiltprotocol/types'
 
-import { KeyError } from '../../messaging/Error'
-import { IRequestSession, ISession, ISessionResponse } from '../../types/Session'
-import { getDefaultDecryptCallback, getDefaultEncryptCallback } from '../../utils/Crypto'
+import { IRequestSession, ISession, ISessionResponse } from '../../../types'
+import { getDefaultDecryptCallback, getDefaultEncryptCallback, getDefaultSignCallback } from '../../../utils'
+import { KeyError } from '../../Error'
 
 export function requestSession(didDocument: DidDocument, name: string): IRequestSession {
-  if (typeof didDocument.keyAgreement === undefined) {
-    throw new KeyError('Key missing')
+  if (typeof didDocument.keyAgreement === undefined || !didDocument.keyAgreement) {
+    throw new KeyError('KeyAgreement does not exists')
   }
-
-  const encryptionKeyUri = `${didDocument.uri}#${didDocument.keyAgreement?.[0].id}` as DidResourceUri
-
+  const encryptionKeyUri = `${didDocument.uri}${didDocument.keyAgreement?.[0].id}` as DidResourceUri
   const challenge = randomAsHex(24)
-
   return {
     name,
     encryptionKeyUri,
@@ -29,9 +26,10 @@ export async function verifySession(
   { encryptedChallenge, nonce, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionResponse,
   mnemonic: string,
   decryptCallback: DecryptCallback = getDefaultDecryptCallback(mnemonic),
-  encryptCallback: EncryptCallback = getDefaultEncryptCallback(encryptionKeyUri, mnemonic)
+  encryptCallback: EncryptCallback = getDefaultEncryptCallback(encryptionKeyUri, mnemonic),
+  signCallback: SignCallback = getDefaultSignCallback(mnemonic)
 ): Promise<ISession> {
-  const encryptionKey = await Did.resolveKey(encryptionKeyUri)
+  const encryptionKey = await Did.resolveKey(receiverEncryptionKeyUri)
   if (!encryptionKey) {
     throw new Error('an encryption key is required')
   }
@@ -56,6 +54,7 @@ export async function verifySession(
   return {
     encryptCallback,
     decryptCallback,
+    signCallback,
     receiverEncryptionKeyUri,
     encryptedChallenge,
     nonce,

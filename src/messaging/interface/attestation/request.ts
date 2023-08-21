@@ -9,12 +9,12 @@ import {
   ISubmitAttestation,
   ISubmitTerms,
   ITerms,
-} from '../../types'
-import { getDidUriFromDidResourceUri, isIConfirmPayment, isRequestAttestation } from '../../utils'
-import { fromBody } from '../../messaging/utils'
-import { decrypt, encrypt } from '../../messaging/Crypto'
-import { assertKnownMessage } from '../../messaging/CredentialApiMessageType'
-import { verifyQuoteAgreement } from '../../quote'
+} from '../../../types'
+import { getDidUriFromDidResourceUri, isIConfirmPayment, isRequestAttestation } from '../../../utils'
+import { fromBody } from '../../utils'
+import { decrypt, encrypt } from '../../Crypto'
+import { assertKnownMessage } from 'message/index'
+import { verifyQuoteAgreement } from 'src/quote'
 
 export async function submitTerms(
   content: ITerms,
