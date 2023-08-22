@@ -36,7 +36,7 @@ import {
 } from '../tests'
 import { fromBody, verifyRequiredCTypeProperties } from './utils'
 import { decrypt, encrypt, verifyMessageEnvelope } from './MessageEnvelope'
-import { ensureOwnerIsSender, assertKnownMessage, isKnownMessageBody } from './CredentialApiMessageType'
+import { ensureOwnerIsSender, assertKnownMessage, assertKnownMessageBody } from './CredentialApiMessageType'
 import type {
   IEncryptedMessage,
   IMessage,
@@ -687,13 +687,13 @@ describe('Error checking / Verification', () => {
     messageSubmitCredential = fromBody(submitCredentialBody, identityAlice.uri, identityBob.uri)
   })
   it('message body verifier should not throw errors on correct bodies', () => {
-    expect(() => isKnownMessageBody(messageSubmitTerms)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageSubmitTerms)).not.toThrowError()
 
-    expect(() => isKnownMessageBody(messageRequestAttestationForClaim)).not.toThrowError()
-    expect(() => isKnownMessageBody(messageSubmitAttestationForClaim)).not.toThrowError()
-    expect(() => isKnownMessageBody(messageRejectAttestationForClaim)).not.toThrowError()
-    expect(() => isKnownMessageBody(messageRequestCredential)).not.toThrowError()
-    expect(() => isKnownMessageBody(messageSubmitCredential)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageRequestAttestationForClaim)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageSubmitAttestationForClaim)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageRejectAttestationForClaim)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageRequestCredential)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageSubmitCredential)).not.toThrowError()
   })
 
   it('message envelope verifier should not throw errors on correct envelopes', () => {
@@ -723,28 +723,30 @@ describe('Error checking / Verification', () => {
   })
   it('message body verifier should throw errors on faulty bodies', () => {
     submitTermsBody.content.delegationId = 'this is not a delegation id'
-    expect(() => isKnownMessageBody(messageSubmitTerms)).toThrowError(MessageError.HashMalformedError)
+    expect(() => assertKnownMessageBody(messageSubmitTerms)).toThrowError(MessageError.HashMalformedError)
 
     submitCredentialBody.content[0].claimerSignature = {
       signature: 'this is not the claimers signature',
       // @ts-ignore
       keyUri: 'this is not a key id',
     }
-    expect(() => isKnownMessageBody(messageSubmitCredential)).toThrowError()
+    expect(() => assertKnownMessageBody(messageSubmitCredential)).toThrowError()
     // @ts-ignore
     submitAttestationBody.content.attestation.claimHash = 'this is not the claim hash'
-    expect(() => isKnownMessageBody(messageSubmitAttestationForClaim)).toThrowError(
+    expect(() => assertKnownMessageBody(messageSubmitAttestationForClaim)).toThrowError(
       MessageError.UnknownMessageBodyTypeError
     )
     // @ts-ignore
     rejectAttestationForClaimBody.content = 'this is not the root hash'
-    expect(() => isKnownMessageBody(messageRejectAttestationForClaim)).toThrowError(
+    expect(() => assertKnownMessageBody(messageRejectAttestationForClaim)).toThrowError(
       MessageError.UnknownMessageBodyTypeError
     )
     // @ts-ignore
     requestCredentialBody.content.cTypes[0].cTypeHash = 'this is not a cTypeHash'
-    expect(() => isKnownMessageBody(messageRequestCredential)).toThrowError(MessageError.UnknownMessageBodyTypeError)
+    expect(() => assertKnownMessageBody(messageRequestCredential)).toThrowError(
+      MessageError.UnknownMessageBodyTypeError
+    )
 
-    expect(() => isKnownMessageBody({} as IMessage)).toThrowError(MessageError.UnknownMessageBodyTypeError)
+    expect(() => assertKnownMessageBody({} as IMessage)).toThrowError(MessageError.UnknownMessageBodyTypeError)
   })
 })

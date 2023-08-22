@@ -27,7 +27,7 @@ import type { IMessage, MessageBody } from '../types'
  *
  * @param body The message body.
  */
-export function isKnownMessageBody(message: IMessage): message is IMessage<MessageBody> {
+export function assertKnownMessageBody(message: IMessage): void {
   if (isSubmitTerms(message)) {
     const { body } = message
     Claim.verifyDataStructure(body.content.claim)
@@ -70,7 +70,6 @@ export function isKnownMessageBody(message: IMessage): message is IMessage<Messa
   } else {
     throw new MessageError.UnknownMessageBodyTypeError()
   }
-  return true
 }
 
 /**
@@ -105,11 +104,9 @@ export function ensureOwnerIsSender(message: IMessage): void {
  *
  * @param decryptedMessage The decrypted message to check.
  */
-export function assertKnownMessage(decryptedMessage: IMessage): IMessage<MessageBody>['body'] {
-  if (!isKnownMessageBody(decryptedMessage)) {
-    throw new MessageError.UnknownMessageBodyTypeError()
-  }
+export function assertKnownMessage(decryptedMessage: IMessage): MessageBody {
+  assertKnownMessageBody(decryptedMessage)
   verifyMessageEnvelope(decryptedMessage)
   ensureOwnerIsSender(decryptedMessage)
-  return decryptedMessage.body
+  return decryptedMessage.body as MessageBody
 }
