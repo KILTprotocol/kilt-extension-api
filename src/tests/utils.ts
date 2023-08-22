@@ -51,7 +51,6 @@ export async function keypairs(mnemonic: string) {
 }
 
 export async function generateDid(account: KiltKeyringPair, mnemonic: string): Promise<DidDocument> {
-  ConfigService.get('api')
 
   const { authentication, assertionMethod, keyAgreement } = await keypairs(mnemonic)
 
