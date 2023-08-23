@@ -17,7 +17,7 @@ import type { IEncryptedMessage, IEncryptedMessageContents, IMessage } from '../
  *
  * @param message The message object.
  */
-function verifyMessageEnvelope(message: IMessage): void {
+export function verifyMessageEnvelope(message: IMessage): void {
   const { messageId, createdAt, receiver, sender, receivedAt, inReplyTo } = message
   if (messageId !== undefined && typeof messageId !== 'string') {
     throw new TypeError('Message id is expected to be a string')

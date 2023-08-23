@@ -24,6 +24,6 @@
  */
 
 export { fromBody } from './utils'
-export * from './MessageEnvelope'
+export { encrypt, decrypt } from './MessageEnvelope'
 export { assertKnownMessage } from './CredentialApiMessageType'
 export * from './Error'

@@ -6,7 +6,7 @@
  */
 
 import { ICType } from '@kiltprotocol/types'
-import { IMessage, MessageBody } from '../types'
+import { IMessage, IMessageBodyBase } from '../types'
 import * as MessageError from './Error'
 import { CType } from '@kiltprotocol/sdk-js'
 import { UUID } from '@kiltprotocol/utils'
@@ -20,7 +20,12 @@ import { UUID } from '@kiltprotocol/utils'
  * @param receiver The DID of the receiver.
  * @returns The message created.
  */
-export function fromBody(body: MessageBody, sender: IMessage['sender'], receiver: IMessage['receiver']): IMessage {
+
+export function fromBody<Body extends IMessageBodyBase>(
+  body: Body,
+  sender: IMessage['sender'],
+  receiver: IMessage['receiver']
+): IMessage {
   return {
     body,
     createdAt: Date.now(),
