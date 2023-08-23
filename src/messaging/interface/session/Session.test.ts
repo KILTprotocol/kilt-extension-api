@@ -1,39 +1,144 @@
-import { Did, DidDocument, DidResourceUri, init } from '@kiltprotocol/sdk-js'
+import { Did, DidDocument, DidKey, DidResourceUri, ResolvedDidKey, init } from '@kiltprotocol/sdk-js'
 
-import { KeyTool, createLocalDemoFullDidFromKeypair, makeSigningKeyTool } from '../../../tests'
-import { requestSession } from '.'
-import { IRequestSession } from 'src/types'
+import {
+  KeyToolSignCallback,
+  createLocalDemoFullDidFromLightDid,
+  makeEncryptionKeyTool,
+  makeSigningKeyTool,
+} from '../../../tests'
+import { receiveSessionRequest, requestSession, verifySession } from '.'
+import { ISession, ISessionRequest, ISessionResponse } from 'src/types'
 import { KeyError } from '../../Error'
+import { u8aToString } from '@polkadot/util'
 
 describe('Session', () => {
-  let keyAlice: KeyTool
-  let identityAlice: DidDocument
+  //Alice
+  let aliceLightDid: DidDocument
+  let aliceLightDidWithDetails: DidDocument
+  let aliceFullDid: DidDocument
+  let aliceSign: KeyToolSignCallback
+  const aliceEncKey = makeEncryptionKeyTool('Alice//enc')
 
-  let keyBob: KeyTool
-  let identityBob: DidDocument
+  //Bob
+  let bobLightDid: DidDocument
+  let bobLightDidWithDetails: DidDocument
+  let bobFullDid: DidDocument
+  let bobSign: KeyToolSignCallback
+  const bobEncKey = makeEncryptionKeyTool('Bob//enc')
+
+  //session
+  let sessionRequest: ISessionRequest
+  let sessionResponse: { session: ISession; sessionResponse: ISessionResponse }
+
+  async function resolveKey(keyUri: DidResourceUri, keyRelationship = 'authentication'): Promise<ResolvedDidKey> {
+    const { did } = Did.parse(keyUri)
+    const document = [
+      aliceLightDidWithDetails,
+      aliceLightDid,
+      aliceFullDid,
+      bobLightDidWithDetails,
+      bobLightDid,
+      bobFullDid,
+    ].find(({ uri }) => uri === did)
+    if (!document) throw new Error('Cannot resolve mocked DID')
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return Did.keyToResolvedKey(document[keyRelationship as keyof DidDocument]![0] as DidKey, did)
+  }
 
   beforeAll(async () => {
     await init()
-    keyAlice = makeSigningKeyTool()
-    identityAlice = await createLocalDemoFullDidFromKeypair(keyAlice.keypair)
-    keyBob = makeSigningKeyTool()
-    identityBob = await createLocalDemoFullDidFromKeypair(keyBob.keypair)
+    const aliceAuthKey = makeSigningKeyTool('ed25519')
+    aliceSign = aliceAuthKey.getSignCallback
+    aliceLightDid = Did.createLightDidDocument({
+      authentication: aliceAuthKey.authentication,
+      keyAgreement: aliceEncKey.keyAgreement,
+    })
+    aliceLightDidWithDetails = Did.createLightDidDocument({
+      authentication: aliceAuthKey.authentication,
+      keyAgreement: aliceEncKey.keyAgreement,
+      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
+    })
+    aliceFullDid = await createLocalDemoFullDidFromLightDid(aliceLightDid)
+
+    const bobAuthKey = makeSigningKeyTool('ed25519')
+    bobSign = bobAuthKey.getSignCallback
+    bobLightDid = Did.createLightDidDocument({
+      authentication: bobAuthKey.authentication,
+      keyAgreement: bobEncKey.keyAgreement,
+    })
+    bobLightDidWithDetails = Did.createLightDidDocument({
+      authentication: bobAuthKey.authentication,
+      keyAgreement: bobEncKey.keyAgreement,
+      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
+    })
+    bobFullDid = await createLocalDemoFullDidFromLightDid(bobLightDid)
+
+    sessionRequest = requestSession(aliceFullDid, 'MyApp')
+    sessionResponse = await receiveSessionRequest(
+      bobFullDid,
+      sessionRequest,
+      bobEncKey.encrypt(bobFullDid),
+      bobEncKey.decrypt,
+      bobSign(bobFullDid),
+      {
+        resolveKey,
+      }
+    )
   })
 
   it('Create valid session request', () => {
-    const result: IRequestSession = requestSession(identityAlice, 'MyApp')
+    const result: ISessionRequest = requestSession(aliceFullDid, 'MyApp')
+
+    const encryptionKeyUri = `${aliceFullDid.uri}${aliceFullDid.keyAgreement?.[0].id}` as DidResourceUri
     expect(result.name).toBe('MyApp')
-    expect(Did.validateUri(result.encryptionKeyUri)).toBe(undefined)
+    expect(result.encryptionKeyUri).toBe(encryptionKeyUri)
     expect(result.challenge.length).toBe(50)
   })
 
   it('Create invalid session', () => {
-    identityBob.keyAgreement = undefined
-    expect(() => requestSession(identityBob, 'MyApp')).toThrowError(KeyError)
+    const copyBobFullDid = { ...bobFullDid, keyAgreement: undefined }
+    expect(() => requestSession(copyBobFullDid, 'MyApp')).toThrowError(KeyError)
   })
 
-  it('Receive Session Request', () => {
-    const encryptionKeyUri = `${identityAlice.uri}${identityAlice.keyAgreement?.[0].id}` as DidResourceUri
-    const session_request: IRequestSession = requestSession(identityAlice, 'MyApp')
+  it('Receive valid session request', async () => {
+    const response = await receiveSessionRequest(
+      bobFullDid,
+      sessionRequest,
+      bobEncKey.encrypt(bobFullDid),
+      bobEncKey.decrypt,
+      bobSign(bobFullDid),
+      { resolveKey }
+    )
+
+    const { session, sessionResponse } = response
+    const { receiverEncryptionKeyUri } = session
+    const { encryptedChallenge, nonce, encryptionKeyUri } = sessionResponse
+    const { challenge } = sessionRequest
+    expect(receiverEncryptionKeyUri).toBe(sessionRequest.encryptionKeyUri)
+    const { data: decryptedChallenge } = await aliceEncKey.decrypt({
+      data: encryptedChallenge,
+      nonce: nonce,
+      peerPublicKey: bobEncKey.keyAgreement[0].publicKey,
+      keyUri: sessionRequest.encryptionKeyUri,
+    })
+    expect(u8aToString(decryptedChallenge)).toBe(challenge)
+    const bobsEncryptionKey = await resolveKey(encryptionKeyUri, 'keyAgreement')
+    expect(bobsEncryptionKey.publicKey).toBe(bobEncKey.keyAgreement[0].publicKey)
+  })
+
+  //TODO what about an invalid session?
+
+  it('validate session', async () => {
+    expect(
+      async () =>
+        await verifySession(
+          sessionRequest,
+          sessionResponse.sessionResponse,
+          aliceEncKey.decrypt,
+          aliceEncKey.encrypt(aliceFullDid),
+          aliceSign(aliceFullDid),
+          { resolveKey }
+        )
+    )
   })
 })

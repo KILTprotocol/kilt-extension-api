@@ -1,18 +1,19 @@
-import { DidDocument, DidResourceUri, SignCallback } from '@kiltprotocol/types'
-import { Did, Utils } from '@kiltprotocol/sdk-js'
+import { DidDocument, DidResolveKey, DidResourceUri, SignCallback } from '@kiltprotocol/types'
+import { Did } from '@kiltprotocol/sdk-js'
 import { randomAsHex } from '@polkadot/util-crypto'
-import { stringToU8a } from '@polkadot/util'
 import { DecryptCallback, EncryptCallback } from '@kiltprotocol/types'
 
-import { IRequestSession, ISession, ISessionResponse } from '../../../types'
-import { getDefaultDecryptCallback, getDefaultEncryptCallback, getDefaultSignCallback } from '../../../utils'
+import { ISessionRequest, ISession, ISessionResponse } from '../../../types'
 import { KeyError } from '../../Error'
+import { u8aToString } from '@polkadot/util'
 
-export function requestSession(didDocument: DidDocument, name: string): IRequestSession {
+export function requestSession(didDocument: DidDocument, name: string): ISessionRequest {
   if (typeof didDocument.keyAgreement === undefined || !didDocument.keyAgreement) {
     throw new KeyError('KeyAgreement does not exists')
   }
+
   const encryptionKeyUri = `${didDocument.uri}${didDocument.keyAgreement?.[0].id}` as DidResourceUri
+
   const challenge = randomAsHex(24)
   return {
     name,
@@ -22,21 +23,25 @@ export function requestSession(didDocument: DidDocument, name: string): IRequest
 }
 
 export async function verifySession(
-  { encryptionKeyUri, challenge }: IRequestSession,
+  { encryptionKeyUri, challenge }: ISessionRequest,
   { encryptedChallenge, nonce, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionResponse,
-  mnemonic: string,
-  decryptCallback: DecryptCallback = getDefaultDecryptCallback(mnemonic),
-  encryptCallback: EncryptCallback = getDefaultEncryptCallback(encryptionKeyUri, mnemonic),
-  signCallback: SignCallback = getDefaultSignCallback(mnemonic)
+  decryptCallback: DecryptCallback,
+  encryptCallback: EncryptCallback,
+  signCallback: SignCallback,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<ISession> {
-  const encryptionKey = await Did.resolveKey(receiverEncryptionKeyUri)
+  const encryptionKey = await resolveKey(receiverEncryptionKeyUri, 'keyAgreement')
   if (!encryptionKey) {
     throw new Error('an encryption key is required')
   }
 
   const decryptedBytes = await decryptCallback({
-    data: stringToU8a(encryptedChallenge),
-    nonce: stringToU8a(nonce),
+    data: encryptedChallenge,
+    nonce,
     peerPublicKey: encryptionKey.publicKey,
     keyUri: encryptionKeyUri,
   })
@@ -45,7 +50,7 @@ export async function verifySession(
     throw new Error('Could not decode/decrypt the challenge from the extension')
   }
 
-  const decryptedChallenge = Utils.Crypto.u8aToHex(decryptedBytes.data)
+  const decryptedChallenge = u8aToString(decryptedBytes.data)
 
   if (decryptedChallenge !== challenge) {
     throw new Error('Invalid challenge')
@@ -56,8 +61,6 @@ export async function verifySession(
     decryptCallback,
     signCallback,
     receiverEncryptionKeyUri,
-    encryptedChallenge,
-    nonce,
     senderEncryptionKeyUri: encryptionKeyUri,
   }
 }

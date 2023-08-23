@@ -1,24 +1,35 @@
-import { DidResourceUri, DidDocument, EncryptCallback, DecryptCallback, SignCallback } from '@kiltprotocol/types'
-import { stringToU8a, u8aToHex } from '@polkadot/util'
+import {
+  DidResourceUri,
+  DidDocument,
+  EncryptCallback,
+  DecryptCallback,
+  SignCallback,
+  DidResolveKey,
+} from '@kiltprotocol/types'
+import { stringToU8a } from '@polkadot/util'
 import { Did } from '@kiltprotocol/sdk-js'
 
-import { IRequestSession, ISession, ISessionResponse } from 'types/index'
-import { getDefaultDecryptCallback, getDefaultEncryptCallback, getDefaultSignCallback } from 'src/utils'
+import { ISessionRequest, ISession, ISessionResponse } from 'types/index'
 
 export async function receiveSessionRequest(
   didDocument: DidDocument,
-  mnemonic: string,
-  { challenge, encryptionKeyUri }: IRequestSession,
-  encryptCallback: EncryptCallback = getDefaultEncryptCallback(mnemonic),
-  decryptCallback: DecryptCallback = getDefaultDecryptCallback(mnemonic),
-  signCallback: SignCallback = getDefaultSignCallback(mnemonic)
+  { challenge, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionRequest,
+  encryptCallback: EncryptCallback,
+  decryptCallback: DecryptCallback,
+  signCallback: SignCallback,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<{ session: ISession; sessionResponse: ISessionResponse }> {
   if (!didDocument.keyAgreement) {
     throw new Error('keyAgreement is necessary')
   }
-  const senderEncryptionKeyUri = `${didDocument.uri}${didDocument.keyAgreement?.[0].id}` as DidResourceUri
+  const responseEncryptionKey = `${didDocument.uri}${didDocument.keyAgreement?.[0].id}` as DidResourceUri
 
-  const receiverKey = await Did.resolveKey(encryptionKeyUri)
+  Did.validateUri(receiverEncryptionKeyUri)
+  const receiverKey = await resolveKey(receiverEncryptionKeyUri, 'keyAgreement')
 
   const serializedChallenge = stringToU8a(challenge)
 
@@ -28,20 +39,17 @@ export async function receiveSessionRequest(
     peerPublicKey: receiverKey.publicKey,
   })
 
-  const encryptedChallenge = u8aToHex(encrypted.data)
-  const nonce = u8aToHex(encrypted.nonce)
+  const { data: encryptedChallenge, nonce } = encrypted
 
   return {
     sessionResponse: {
-      encryptionKeyUri,
+      encryptionKeyUri: responseEncryptionKey,
       encryptedChallenge,
       nonce,
     },
     session: {
-      receiverEncryptionKeyUri: encryptionKeyUri,
-      senderEncryptionKeyUri,
-      nonce,
-      encryptedChallenge,
+      receiverEncryptionKeyUri,
+      senderEncryptionKeyUri: responseEncryptionKey,
       encryptCallback,
       decryptCallback,
       signCallback,

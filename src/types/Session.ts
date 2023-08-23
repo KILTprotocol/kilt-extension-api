@@ -2,7 +2,7 @@ import { DecryptCallback, DidResourceUri, EncryptCallback, SignCallback } from '
 
 import { IEncryptedMessage, IEncryptedMessageV1 } from '.'
 
-export interface IRequestSession {
+export interface ISessionRequest {
   name: string
   encryptionKeyUri: DidResourceUri
   challenge: string
@@ -10,15 +10,13 @@ export interface IRequestSession {
 
 export interface ISessionResponse {
   encryptionKeyUri: DidResourceUri
-  encryptedChallenge: string
-  nonce: string
+  encryptedChallenge: Uint8Array
+  nonce: Uint8Array
 }
 
 export interface ISession {
   receiverEncryptionKeyUri: DidResourceUri
   senderEncryptionKeyUri: DidResourceUri
-  encryptedChallenge: string
-  nonce: string
   encryptCallback: EncryptCallback
   decryptCallback: DecryptCallback
   signCallback: SignCallback
