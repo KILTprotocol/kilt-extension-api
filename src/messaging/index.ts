@@ -23,6 +23,7 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-export * from './utils'
+export { fromBody } from './utils'
 export * from './MessageEnvelope'
-export * from './CredentialApiMessageType'
+export { assertKnownMessage } from './CredentialApiMessageType'
+export * from './Error'
