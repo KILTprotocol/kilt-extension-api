@@ -1,16 +1,21 @@
-import { Credential } from '@kiltprotocol/sdk-js'
-import { ICredential } from '@kiltprotocol/types'
+import { Credential, Did } from '@kiltprotocol/sdk-js'
+import { DidResolveKey, ICredential } from '@kiltprotocol/types'
 
 import { ISession, IEncryptedMessage, ISubmitCredential } from 'types/index'
-import { decrypt, encrypt, assertKnownMessage, fromBody } from 'message/index'
-import { isIRequestCredential, getDidUriFromDidResourceUri } from 'utils/index'
+import { decrypt, encrypt, assertKnownMessage, fromBody } from '../../index'
+import { getDidUriFromDidResourceUri, isIRequestCredential } from '../../../utils'
 
 export async function submitCredential(
   credentials: ICredential[],
   encryptedMessage: IEncryptedMessage,
-  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback, signCallback }: ISession
+  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback, signCallback }: ISession,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<IEncryptedMessage<ISubmitCredential>> {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
   assertKnownMessage(decryptedMessage)
 
   if (!isIRequestCredential(decryptedMessage)) {
@@ -22,11 +27,10 @@ export async function submitCredential(
   const content = await Promise.all(
     cTypes.map(async (ctype) => {
       const filteredCredential = credentials.filter(
-        //TODO: check if I really have to filter against ctypeHash.
         (c) => c.claim.cTypeHash === ctype.cTypeHash && (owner ? c.claim.owner === owner : true)
       )
 
-      if (!filteredCredential) {
+      if (filteredCredential.length === 0) {
         throw new Error('Credentials do not match')
       }
 
@@ -49,6 +53,5 @@ export async function submitCredential(
 
   const message = fromBody(body, sender, receiver)
   message.inReplyTo = decryptedMessage.messageId
-
-  return encrypt(message, encryptCallback, receiverEncryptionKeyUri)
+  return encrypt(message, encryptCallback, receiverEncryptionKeyUri, { resolveKey })
 }

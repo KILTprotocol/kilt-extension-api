@@ -1,6 +1,6 @@
 import { randomAsHex } from '@polkadot/util-crypto'
-import { CTypeHash, DidUri } from '@kiltprotocol/types'
-import { CType, Credential } from '@kiltprotocol/sdk-js'
+import { CTypeHash, DidResolveKey, DidUri } from '@kiltprotocol/types'
+import { CType, Credential, Did } from '@kiltprotocol/sdk-js'
 
 import {
   ISession,
@@ -9,9 +9,9 @@ import {
   IMessage,
   IRequestCredential,
   ISubmitCredential,
-} from 'types/index'
-import { getDidUriFromDidResourceUri, isIRequestCredential, isSubmitCredential } from 'utils/index'
-import { assertKnownMessage, decrypt, encrypt, fromBody } from 'message/index'
+} from '../../../types'
+import { getDidUriFromDidResourceUri, isIRequestCredential, isSubmitCredential } from '../../../utils'
+import { decrypt, encrypt, fromBody } from '../../index'
 
 export async function requestCredential(
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession,
@@ -20,7 +20,12 @@ export async function requestCredential(
     trustedAttesters?: DidUri[]
     requiredProperties?: string[]
   }>,
-  owner?: DidUri
+  owner?: DidUri,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<ICredentialRequest> {
   const challenge = randomAsHex(24)
   const body: IRequestCredential = {
@@ -35,20 +40,28 @@ export async function requestCredential(
   const sender = getDidUriFromDidResourceUri(senderEncryptionKeyUri)
   const receiver = getDidUriFromDidResourceUri(receiverEncryptionKeyUri)
 
-  const message = fromBody(body, sender, receiver)
-  return { encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri), message, challenge }
+  const message = fromBody(body, sender, receiver) as IMessage<IRequestCredential>
+
+  return {
+    encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    message,
+    challenge,
+  }
 }
 
 export async function verifySubmitedCredentialMessage(
   encryptedMessage: IEncryptedMessage<ISubmitCredential>,
   { decryptCallback }: ISession,
-  { message: requestMessage, challenge }: ICredentialRequest
+  { message: requestMessage, challenge }: ICredentialRequest,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<IMessage<ISubmitCredential>> {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
-  assertKnownMessage(decryptedMessage)
-  assertKnownMessage(requestMessage)
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
 
-  if (decryptedMessage.inReplyTo === requestMessage.messageId) {
+  if (decryptedMessage.inReplyTo !== requestMessage.messageId) {
     throw new Error('Wrong Reply to')
   }
 
@@ -71,8 +84,15 @@ async function validateMessageBody(
       (ctype) => ctype.cTypeHash === credentialPresentation.claim.cTypeHash
     )
 
-    if (!requestedCtype) {
+    if (requestedCtype.length === 0) {
       throw new Error('Ctype does not match')
+    }
+
+    if (
+      originalMessage.body.content.owner &&
+      originalMessage.body.content.owner !== credentialPresentation.claim.owner
+    ) {
+      throw new Error('Users do not match')
     }
 
     const ctypeDetails: CType.ICTypeDetails = await CType.fetchFromChain(`kilt:ctype:${requestedCtype[0].cTypeHash}`)

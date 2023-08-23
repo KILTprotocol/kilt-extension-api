@@ -85,22 +85,21 @@ describe('Session', () => {
       }
     )
   })
-
-  it('Create valid session request', () => {
+  it('should create a valid session request', () => {
     const result: ISessionRequest = requestSession(aliceFullDid, 'MyApp')
 
     const encryptionKeyUri = `${aliceFullDid.uri}${aliceFullDid.keyAgreement?.[0].id}` as DidResourceUri
     expect(result.name).toBe('MyApp')
     expect(result.encryptionKeyUri).toBe(encryptionKeyUri)
-    expect(result.challenge.length).toBe(50)
+    expect(result.challenge).toHaveLength(50)
   })
 
-  it('Create invalid session', () => {
+  it('should throw an error when creating an invalid session request', () => {
     const copyBobFullDid = { ...bobFullDid, keyAgreement: undefined }
     expect(() => requestSession(copyBobFullDid, 'MyApp')).toThrowError(KeyError)
   })
 
-  it('Receive valid session request', async () => {
+  it('should receive and process a valid session request', async () => {
     const response = await receiveSessionRequest(
       bobFullDid,
       sessionRequest,
@@ -114,21 +113,23 @@ describe('Session', () => {
     const { receiverEncryptionKeyUri } = session
     const { encryptedChallenge, nonce, encryptionKeyUri } = sessionResponse
     const { challenge } = sessionRequest
+
     expect(receiverEncryptionKeyUri).toBe(sessionRequest.encryptionKeyUri)
-    const { data: decryptedChallenge } = await aliceEncKey.decrypt({
+
+    const decryptedChallengeBytes = await aliceEncKey.decrypt({
       data: encryptedChallenge,
       nonce: nonce,
       peerPublicKey: bobEncKey.keyAgreement[0].publicKey,
       keyUri: sessionRequest.encryptionKeyUri,
     })
-    expect(u8aToString(decryptedChallenge)).toBe(challenge)
+    const decryptedChallenge = u8aToString(decryptedChallengeBytes.data)
+    expect(decryptedChallenge).toBe(challenge)
+
     const bobsEncryptionKey = await resolveKey(encryptionKeyUri, 'keyAgreement')
     expect(bobsEncryptionKey.publicKey).toBe(bobEncKey.keyAgreement[0].publicKey)
   })
 
-  //TODO what about an invalid session?
-
-  it('validate session', async () => {
+  it('provide legit session response', async () => {
     expect(
       async () =>
         await verifySession(
@@ -140,5 +141,22 @@ describe('Session', () => {
           { resolveKey }
         )
     )
+  })
+
+  it('should throw an error when session verification fails', async () => {
+    // Intentionally altering the challenge
+    const alteredChallenge = sessionRequest.challenge + 'A'
+    const alteredSessionRequest = { ...sessionRequest, challenge: alteredChallenge }
+
+    await expect(
+      verifySession(
+        alteredSessionRequest,
+        sessionResponse.sessionResponse,
+        aliceEncKey.decrypt,
+        aliceEncKey.encrypt(aliceFullDid),
+        aliceSign(aliceFullDid),
+        { resolveKey }
+      )
+    ).rejects.toThrowError('Invalid challenge')
   })
 })

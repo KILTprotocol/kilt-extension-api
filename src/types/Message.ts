@@ -228,6 +228,6 @@ export interface IEncryptedMessageV1 {
 }
 
 export interface IMessageWorkflow {
-  message: IMessage
+  message: IMessage<IRequestCredential>
   encryptedMessage: IEncryptedMessage
 }

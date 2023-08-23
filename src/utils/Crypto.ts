@@ -61,7 +61,7 @@ export function getDefaultDecryptCallback(mnemonic: string): DecryptCallback {
 }
 
 export function getDidUriFromDidResourceUri(didResourceUri: DidResourceUri): DidUri {
-  return didResourceUri.substring(didResourceUri.indexOf('#')) as DidUri
+  return didResourceUri.substring(0, didResourceUri.indexOf('#')) as DidUri
 }
 
 export function getDefaultSignCallback(
