@@ -10,7 +10,7 @@ import {
   IRequestCredential,
   ISubmitCredential,
 } from '../../../types'
-import { getDidUriFromDidResourceUri, isIRequestCredential, isSubmitCredential } from '../../../utils'
+import { isIRequestCredential, isSubmitCredential } from '../../../utils'
 import { decrypt, encrypt, fromBody } from '../../index'
 
 export async function requestCredential(
@@ -37,8 +37,8 @@ export async function requestCredential(
     type: 'request-credential',
   }
 
-  const sender = getDidUriFromDidResourceUri(senderEncryptionKeyUri)
-  const receiver = getDidUriFromDidResourceUri(receiverEncryptionKeyUri)
+  const { did: sender } = Did.parse(senderEncryptionKeyUri)
+  const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
 
   const message = fromBody(body, sender, receiver) as IMessage<IRequestCredential>
 

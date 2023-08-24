@@ -1,5 +1,5 @@
-import { IAttestation } from '@kiltprotocol/types'
-import { Attestation } from '@kiltprotocol/sdk-js'
+import { DidResolveKey, IAttestation } from '@kiltprotocol/types'
+import { Attestation, Did } from '@kiltprotocol/sdk-js'
 
 import {
   IEncryptedMessage,
@@ -10,26 +10,34 @@ import {
   ISubmitTerms,
   ITerms,
 } from '../../../types'
-import { getDidUriFromDidResourceUri, isIConfirmPayment, isRequestAttestation } from '../../../utils'
+import { isIConfirmPayment, isRequestAttestation } from '../../../utils'
 import { fromBody } from '../../utils'
 import { decrypt, encrypt } from '../../Crypto'
-import { assertKnownMessage } from 'message/index'
-import { verifyQuoteAgreement } from 'src/quote'
+import { assertKnownMessage } from '../../CredentialApiMessageType'
+import { verifyQuoteAgreement } from '../../../quote'
 
 export async function submitTerms(
   content: ITerms,
-  { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession
+  { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<IMessageWorkflow> {
   const body: ISubmitTerms = {
     content,
     type: 'submit-terms',
   }
 
-  const sender = getDidUriFromDidResourceUri(senderEncryptionKeyUri)
-  const receiver = getDidUriFromDidResourceUri(receiverEncryptionKeyUri)
+  const { did: sender } = Did.parse(senderEncryptionKeyUri)
+  const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
 
   const message = fromBody(body, sender, receiver)
-  return { encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri), message }
+  return {
+    encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    message,
+  }
 }
 
 export async function requestPayment(
@@ -56,8 +64,8 @@ export async function requestPayment(
     content: { claimHash: rootHash },
   }
 
-  const sender = getDidUriFromDidResourceUri(senderEncryptionKeyUri)
-  const receiver = getDidUriFromDidResourceUri(receiverEncryptionKeyUri)
+  const { did: sender } = Did.parse(senderEncryptionKeyUri)
+  const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
   const response = fromBody(body, sender, receiver)
   response.inReplyTo = decryptedMessage.messageId
   return { encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri), message: response }
@@ -117,8 +125,8 @@ export async function submitAttestation(
     verifyQuoteAgreement(quote)
   }
 
-  const sender = getDidUriFromDidResourceUri(senderEncryptionKeyUri)
-  const receiver = getDidUriFromDidResourceUri(receiverEncryptionKeyUri)
+  const { did: sender } = Did.parse(senderEncryptionKeyUri)
+  const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
 
   const responseBody: ISubmitAttestation = {
     content: {

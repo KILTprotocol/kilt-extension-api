@@ -3,7 +3,7 @@ import { DidResolveKey, ICredential } from '@kiltprotocol/types'
 
 import { ISession, IEncryptedMessage, ISubmitCredential } from 'types/index'
 import { decrypt, encrypt, assertKnownMessage, fromBody } from '../../index'
-import { getDidUriFromDidResourceUri, isIRequestCredential } from '../../../utils'
+import { isIRequestCredential } from '../../../utils'
 
 export async function submitCredential(
   credentials: ICredential[],
@@ -48,8 +48,8 @@ export async function submitCredential(
     type: 'submit-credential',
   }
 
-  const sender = getDidUriFromDidResourceUri(senderEncryptionKeyUri)
-  const receiver = getDidUriFromDidResourceUri(receiverEncryptionKeyUri)
+  const { did: sender } = Did.parse(senderEncryptionKeyUri)
+  const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
 
   const message = fromBody(body, sender, receiver)
   message.inReplyTo = decryptedMessage.messageId

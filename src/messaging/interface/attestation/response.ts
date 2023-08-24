@@ -1,5 +1,5 @@
-import { ICredential, IEncryptedMessage } from '@kiltprotocol/types'
-import { Credential } from '@kiltprotocol/sdk-js'
+import { DidResolveKey, ICredential, IEncryptedMessage } from '@kiltprotocol/types'
+import { Credential, Did } from '@kiltprotocol/sdk-js'
 
 import {
   IConfirmPayment,
@@ -13,24 +13,29 @@ import {
 } from '../../../types'
 import { decrypt, encrypt } from '../../Crypto'
 import { assertKnownMessage } from '../../CredentialApiMessageType'
-import { getDidUriFromDidResourceUri, isIRequestPayment, isSubmitAttestation, isSubmitTerms } from '../../../utils'
+import { isIRequestPayment, isSubmitAttestation, isSubmitTerms } from '../../../utils'
 import { fromBody } from '../../utils'
-import { verifyAttesterSignedQuote, createQuoteAgreement } from '../../../quote'
+import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote'
 
 export async function requestAttestation(
   encryptedMessage: IEncryptedMessage,
   credential: ICredential,
-  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback, signCallback }: ISession
+  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback, signCallback }: ISession,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ) {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
   assertKnownMessage(decryptedMessage)
   if (!isSubmitTerms(decryptedMessage)) {
     throw new Error('Wrong message')
   }
 
-  Credential.verifyCredential(credential)
+  Credential.verifyWellFormed(credential)
 
-  const { claim: requestClaim } = credential
+  const { claim: requestClaim, rootHash } = credential
   const { claim: proposedClaim, quote: attesterQuote } = decryptedMessage.body.content
 
   if (JSON.stringify(proposedClaim) !== JSON.stringify(requestClaim)) {
@@ -39,12 +44,14 @@ export async function requestAttestation(
 
   let quote: IQuoteAgreement | undefined = undefined
 
-  const sender = getDidUriFromDidResourceUri(senderEncryptionKeyUri)
-  const receiver = getDidUriFromDidResourceUri(receiverEncryptionKeyUri)
+  const { did: sender } = Did.parse(senderEncryptionKeyUri)
+  const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
 
   if (attesterQuote) {
-    verifyAttesterSignedQuote(attesterQuote)
-    quote = await createQuoteAgreement(attesterQuote, proposedClaim.cTypeHash, signCallback, sender)
+    verifyAttesterSignedQuote(attesterQuote, { didResolveKey: resolveKey })
+    quote = await createQuoteAgreement(attesterQuote, rootHash, signCallback, sender, {
+      didResolveKey: resolveKey,
+    })
   }
 
   const body: IRequestAttestation = {
@@ -54,7 +61,10 @@ export async function requestAttestation(
 
   const message = fromBody(body, sender, receiver)
   message.inReplyTo = decryptedMessage.messageId
-  return { encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri), message }
+  return {
+    encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    message,
+  }
 }
 
 export async function confirmPayment(
@@ -78,8 +88,8 @@ export async function confirmPayment(
     content: paymentConfirmation,
   }
 
-  const sender = getDidUriFromDidResourceUri(senderEncryptionKeyUri)
-  const receiver = getDidUriFromDidResourceUri(receiverEncryptionKeyUri)
+  const { did: sender } = Did.parse(senderEncryptionKeyUri)
+  const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
 
   const response = fromBody(body, sender, receiver)
   response.inReplyTo = decryptedMessage.messageId
