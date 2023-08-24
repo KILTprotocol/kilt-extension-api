@@ -1,23 +1,20 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import {
-  Attestation,
   CType,
   Claim,
   Did,
   DidDocument,
   DidKey,
   DidResourceUri,
-  DidUri,
-  IAttestation,
   ICType,
   IClaim,
-  ICredential,
   ResolvedDidKey,
   init,
   Credential,
   Quote,
+  IConfirmPaymentContent,
+  IAttestation,
 } from '@kiltprotocol/sdk-js'
-import { Crypto } from '@kiltprotocol/utils'
 
 import {
   KeyToolSignCallback,
@@ -26,7 +23,7 @@ import {
   makeSigningKeyTool,
 } from '../../../tests'
 import { receiveSessionRequest, requestSession, verifySession } from '../session'
-import { IRequestAttestation, ISession, ISessionRequest, ISubmitTerms, ITerms } from 'src/types'
+import { IRequestAttestation, IRequestPayment, ISession, ISessionRequest, ISubmitTerms, ITerms } from 'src/types'
 import {
   confirmPayment,
   receiveAttestation,
@@ -36,7 +33,13 @@ import {
   submitTerms,
   validateConfirmedPayment,
 } from '.'
-import { isIRequestCredential, isRequestAttestation, isSubmitCredential, isSubmitTerms } from '../../../utils'
+import {
+  isIConfirmPayment,
+  isIRequestPayment,
+  isRequestAttestation,
+  isSubmitAttestation,
+  isSubmitTerms,
+} from '../../../utils'
 import { decrypt } from '../../Crypto'
 import { verifyAttesterSignedQuote, verifyQuoteAgreement } from '../../../quote'
 
@@ -65,9 +68,6 @@ describe('Verifier', () => {
   let claimContents: IClaim['contents']
   let testCType: ICType
   let submitTermsContent: ITerms
-
-  //messages
-  let requestMessage
 
   async function resolveKey(keyUri: DidResourceUri, keyRelationship = 'authentication'): Promise<ResolvedDidKey> {
     const { did } = Did.parse(keyUri)
@@ -237,11 +237,146 @@ describe('Verifier', () => {
 
   it('request payment', async () => {
     const credential = Credential.fromClaim(claim)
-    const { encryptedMessage: requestMessageEncrypted } = await submitTerms(submitTermsContent, aliceSession, {
+    const requestTerms = await submitTerms(submitTermsContent, aliceSession, {
       resolveKey,
     })
-    const { encryptedMessage } = await requestAttestation(requestMessageEncrypted, credential, bobSession, {
+    const { encryptedMessage: encryptedRequestAttestationMessage, message: requestMessage } = await requestAttestation(
+      requestTerms.encryptedMessage,
+      credential,
+      bobSession,
+      {
+        resolveKey,
+      }
+    )
+
+    const { encryptedMessage, message } = await requestPayment(
+      encryptedRequestAttestationMessage,
+      requestTerms,
+      aliceSession,
+      {
+        resolveKey,
+      }
+    )
+
+    expect(message.inReplyTo).toBe(requestMessage.messageId)
+    expect(isIRequestPayment(message)).toBeTruthy()
+
+    const messageBody = message.body as IRequestPayment
+    const messageBodyRequest = requestMessage.body as IRequestAttestation
+
+    expect(messageBody.content.claimHash).toBe(messageBodyRequest.content.credential.rootHash)
+
+    //Bob should be able to decrypt the message
+    await expect(decrypt(encryptedMessage, bobEncKey.decrypt, { resolveKey })).resolves.not.toThrow()
+  })
+
+  it('confirm payment', async () => {
+    const credential = Credential.fromClaim(claim)
+    const requestTerms = await submitTerms(submitTermsContent, aliceSession, {
       resolveKey,
     })
+    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession, {
+      resolveKey,
+    })
+
+    const requestPaymentMessages = await requestPayment(
+      requestAttestationMessages.encryptedMessage,
+      requestTerms,
+      aliceSession,
+      {
+        resolveKey,
+      }
+    )
+    const paymentConfirmation: IConfirmPaymentContent = {
+      blockHash: '123456',
+      claimHash: '123456',
+      txHash: '123456',
+    }
+
+    const { encryptedMessage, message } = await confirmPayment(
+      requestPaymentMessages.encryptedMessage,
+      paymentConfirmation,
+      requestAttestationMessages,
+      bobSession,
+      { resolveKey }
+    )
+
+    expect(message.inReplyTo).toBe(requestPaymentMessages.message.messageId)
+    expect(isIConfirmPayment(message)).toBeTruthy()
+
+    //Alice should be able to decrypt the message
+    await expect(decrypt(encryptedMessage, aliceEncKey.decrypt, { resolveKey })).resolves.not.toThrow()
+  })
+
+  it('submit attestation', async () => {
+    const credential = Credential.fromClaim(claim)
+
+    const attestation: IAttestation = {
+      delegationId: null,
+      claimHash: credential.rootHash,
+      cTypeHash: claim.cTypeHash,
+      owner: bobFullDid.uri,
+      revoked: false,
+    }
+
+    const requestTerms = await submitTerms(submitTermsContent, aliceSession, {
+      resolveKey,
+    })
+
+    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession, {
+      resolveKey,
+    })
+
+    const { encryptedMessage, message } = await submitAttestation(
+      attestation,
+      requestAttestationMessages.encryptedMessage,
+      requestTerms,
+      aliceSession,
+      {
+        resolveKey,
+      }
+    )
+
+    expect(message.inReplyTo).toBe(requestAttestationMessages.message.messageId)
+    expect(isSubmitAttestation(message)).toBeTruthy()
+
+    //Bob should be able to decrypt the message
+    await expect(decrypt(encryptedMessage, bobEncKey.decrypt, { resolveKey })).resolves.not.toThrow()
+  })
+
+  it('receive attestation', async () => {
+    const credential = Credential.fromClaim(claim)
+
+    const attestation: IAttestation = {
+      delegationId: null,
+      claimHash: credential.rootHash,
+      cTypeHash: claim.cTypeHash,
+      owner: bobFullDid.uri,
+      revoked: false,
+    }
+
+    const requestTerms = await submitTerms(submitTermsContent, aliceSession, {
+      resolveKey,
+    })
+
+    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession, {
+      resolveKey,
+    })
+
+    const submitAttestationMessage = await submitAttestation(
+      attestation,
+      requestAttestationMessages.encryptedMessage,
+      requestTerms,
+      aliceSession,
+      {
+        resolveKey,
+      }
+    )
+
+    await expect(
+      receiveAttestation(submitAttestationMessage.encryptedMessage, requestAttestationMessages, bobSession, {
+        resolveKey,
+      })
+    ).resolves.not.toThrowError()
   })
 })

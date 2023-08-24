@@ -43,9 +43,14 @@ export async function submitTerms(
 export async function requestPayment(
   encryptedMessage: IEncryptedMessage,
   { message }: IMessageWorkflow,
-  { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback, decryptCallback }: ISession
+  { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback, decryptCallback }: ISession,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ) {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
   assertKnownMessage(decryptedMessage)
   if (!isRequestAttestation(decryptedMessage)) {
     throw new Error('Wrong message')
@@ -68,7 +73,10 @@ export async function requestPayment(
   const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
   const response = fromBody(body, sender, receiver)
   response.inReplyTo = decryptedMessage.messageId
-  return { encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri), message: response }
+  return {
+    encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    message: response,
+  }
 }
 
 export async function validateConfirmedPayment(
@@ -80,14 +88,16 @@ export async function validateConfirmedPayment(
   if (!decryptedMessage) {
     throw new Error('Wrong message')
   }
-  assertKnownMessage(decryptedMessage)
 
   if (!isIConfirmPayment(decryptedMessage)) {
     throw new Error('Wrong message')
   }
 
-  const { inReplyTo } = decryptedMessage
+  const { inReplyTo, body } = decryptedMessage
   const { messageId } = message
+
+  //TODO check if blockHash is on blockchain and txHash is there 2.
+  const { blockHash, claimHash, txHash } = body.content
 
   if (messageId !== inReplyTo) {
     throw new Error('Message Ids do not match')
@@ -98,9 +108,14 @@ export async function submitAttestation(
   attestation: IAttestation,
   encryptedMessage: IEncryptedMessage,
   { message }: IMessageWorkflow,
-  { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback, decryptCallback }: ISession
+  { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback, decryptCallback }: ISession,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<IMessageWorkflow> {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
   assertKnownMessage(decryptedMessage)
   if (!isRequestAttestation(decryptedMessage)) {
     throw new Error('Wrong message')
@@ -137,5 +152,8 @@ export async function submitAttestation(
 
   const response = fromBody(responseBody, sender, receiver)
   response.inReplyTo = decryptedMessage.messageId
-  return { encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri), message: response }
+  return {
+    encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    message: response,
+  }
 }

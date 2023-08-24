@@ -1,5 +1,5 @@
 import { DidResolveKey, ICredential, IEncryptedMessage } from '@kiltprotocol/types'
-import { Credential, Did } from '@kiltprotocol/sdk-js'
+import { Attestation, Credential, Did } from '@kiltprotocol/sdk-js'
 
 import {
   IConfirmPayment,
@@ -71,15 +71,20 @@ export async function confirmPayment(
   encryptedMessage: IEncryptedMessage,
   paymentConfirmation: IConfirmPaymentContent,
   { message }: IMessageWorkflow,
-  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback }: ISession
+  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback }: ISession,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ) {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
   assertKnownMessage(decryptedMessage)
   if (!isIRequestPayment(decryptedMessage)) {
     throw new Error('Wrong message')
   }
 
-  if (message.messageId === decryptedMessage.inReplyTo) {
+  if (message.messageId !== decryptedMessage.inReplyTo) {
     throw new Error('wrong response')
   }
 
@@ -93,23 +98,36 @@ export async function confirmPayment(
 
   const response = fromBody(body, sender, receiver)
   response.inReplyTo = decryptedMessage.messageId
-  return { encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri), message }
+  return {
+    encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    message: response,
+  }
 }
 
 export async function receiveAttestation(
   encryptedMessage: IEncryptedMessage,
   { message }: IMessageWorkflow,
-  { decryptCallback }: ISession
+  { decryptCallback }: ISession,
+  {
+    resolveKey = Did.resolveKey,
+  }: {
+    resolveKey?: DidResolveKey
+  } = {}
 ): Promise<IMessage<ISubmitAttestation>> {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
-  assertKnownMessage(decryptedMessage)
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
   if (!isSubmitAttestation(decryptedMessage)) {
     throw new Error('Wrong message')
   }
 
-  if (message.messageId === decryptedMessage.inReplyTo) {
+  if (message.messageId !== decryptedMessage.inReplyTo) {
     throw new Error('wrong response')
   }
+
+  const { attestation } = decryptedMessage.body.content
+
+  Attestation.verifyDataStructure(attestation)
+
+  //TODO check against blockchain.
 
   return decryptedMessage
 }
