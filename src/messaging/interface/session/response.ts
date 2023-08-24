@@ -9,7 +9,7 @@ import {
 import { stringToU8a } from '@polkadot/util'
 import { Did } from '@kiltprotocol/sdk-js'
 
-import { ISessionRequest, ISession, ISessionResponse } from 'types/index'
+import { ISessionRequest, ISession, ISessionResponse } from '../../../types'
 
 export async function receiveSessionRequest(
   didDocument: DidDocument,

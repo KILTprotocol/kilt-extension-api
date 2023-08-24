@@ -11,7 +11,7 @@ import {
   ISession,
   ISubmitAttestation,
 } from '../../../types'
-import { decrypt, encrypt } from '../../Crypto'
+import { decrypt, encrypt } from '../../MessageEnvelope.'
 import { assertKnownMessage } from '../../CredentialApiMessageType'
 import { isIRequestPayment, isSubmitAttestation, isSubmitTerms } from '../../../utils'
 import { fromBody } from '../../utils'

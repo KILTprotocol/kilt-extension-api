@@ -7,7 +7,7 @@ import {
   makeSigningKeyTool,
 } from '../../../tests'
 import { receiveSessionRequest, requestSession, verifySession } from '.'
-import { ISession, ISessionRequest, ISessionResponse } from 'src/types'
+import { ISession, ISessionRequest, ISessionResponse } from '../../../types'
 import { KeyError } from '../../Error'
 import { u8aToString } from '@polkadot/util'
 

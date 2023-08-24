@@ -6,5 +6,5 @@
  */
 
 export { getExtensions, watchExtensions, initializeKiltExtensionAPI } from './getExtension'
-export * from './messaging'
-export * from './quote'
+export * as Message from './messaging'
+export * as Quote from './quote'

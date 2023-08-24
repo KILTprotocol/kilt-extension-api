@@ -12,7 +12,7 @@ import {
 } from '../../../types'
 import { isIConfirmPayment, isRequestAttestation } from '../../../utils'
 import { fromBody } from '../../utils'
-import { decrypt, encrypt } from '../../Crypto'
+import { decrypt, encrypt } from '../../MessageEnvelope.'
 import { assertKnownMessage } from '../../CredentialApiMessageType'
 import { verifyQuoteAgreement } from '../../../quote'
 

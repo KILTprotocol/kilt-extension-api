@@ -21,14 +21,14 @@ import {
   isIConfirmPayment,
 } from '../utils'
 import * as MessageError from './Error'
-import type { IMessage } from '../types'
+import type { IMessage, MessageBody } from '../types'
 
 /**
  * Checks if the message body is well-formed.
  *
  * @param body The message body.
  */
-export function verifyMessageBody(message: IMessage): void {
+export function assertKnownMessageBody(message: IMessage): void {
   if (isSubmitTerms(message)) {
     const { body } = message
     Claim.verifyDataStructure(body.content.claim)
@@ -130,9 +130,9 @@ export function verifyMessageEnvelope(message: IMessage): void {
  *
  * @param decryptedMessage The decrypted message to check.
  */
-export function assertKnownMessage(decryptedMessage: IMessage): IMessage['body'] {
-  verifyMessageBody(decryptedMessage)
+export function assertKnownMessage(decryptedMessage: IMessage): MessageBody {
+  assertKnownMessageBody(decryptedMessage)
   verifyMessageEnvelope(decryptedMessage)
   ensureOwnerIsSender(decryptedMessage)
-  return decryptedMessage.body
+  return decryptedMessage.body as MessageBody
 }

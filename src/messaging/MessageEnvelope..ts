@@ -11,6 +11,7 @@ import * as MessageError from './Error'
 import { hexToU8a, stringToU8a, u8aToHex, u8aToString } from '@polkadot/util'
 
 import type { IEncryptedMessage, IEncryptedMessageContents, IMessage } from '../types'
+import { verifyMessageEnvelope } from './CredentialApiMessageType'
 
 /**
  * Symmetrically decrypts the result of [[encrypt]].
@@ -69,6 +70,7 @@ export async function decrypt(
     references,
   }
 
+  verifyMessageEnvelope(decrypted)
   if (sender !== senderKeyDetails.controller) {
     throw new MessageError.IdentityMismatchError('Encryption key', 'Sender')
   }
@@ -97,6 +99,7 @@ export async function encrypt(
     resolveKey?: DidResolveKey
   } = {}
 ): Promise<IEncryptedMessage> {
+  verifyMessageEnvelope(message)
   const receiverKey = await resolveKey(receiverKeyUri, 'keyAgreement')
   if (message.receiver !== receiverKey.controller) {
     throw new MessageError.IdentityMismatchError('receiver public key', 'receiver')

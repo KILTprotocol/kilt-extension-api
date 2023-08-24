@@ -9,10 +9,10 @@ import {
   makeSigningKeyTool,
 } from '../../../tests'
 import { receiveSessionRequest, requestSession, verifySession } from '../session'
-import { IRequestCredential, ISession, ISessionRequest, ISubmitCredential } from 'src/types'
+import { IRequestCredential, ISession, ISessionRequest, ISubmitCredential } from '../../../types'
 import { requestCredential, submitCredential, verifySubmitedCredentialMessage } from '.'
 import { isIRequestCredential, isSubmitCredential } from '../../../utils'
-import { decrypt } from '../../Crypto'
+import { decrypt } from '../../MessageEnvelope.'
 
 describe('Verifier', () => {
   //Alice

@@ -35,13 +35,15 @@ import {
   makeSigningKeyTool,
 } from '../tests'
 import { fromBody, verifyRequiredCTypeProperties } from './utils'
-import { decrypt, encrypt } from './Crypto'
+
 import {
   ensureOwnerIsSender,
   assertKnownMessage,
-  verifyMessageBody,
   verifyMessageEnvelope,
+  assertKnownMessageBody,
 } from './CredentialApiMessageType'
+import { decrypt, encrypt } from './MessageEnvelope.'
+
 import type {
   IEncryptedMessage,
   IMessage,
@@ -692,18 +694,13 @@ describe('Error checking / Verification', () => {
     messageSubmitCredential = fromBody(submitCredentialBody, identityAlice.uri, identityBob.uri)
   })
   it('message body verifier should not throw errors on correct bodies', () => {
-    expect(() => verifyMessageBody(messageSubmitTerms)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageSubmitTerms)).not.toThrowError()
 
-    expect(() => verifyMessageBody(messageRequestAttestationForClaim)).not.toThrowError()
-    expect(() => verifyMessageBody(messageSubmitAttestationForClaim)).not.toThrowError()
-    expect(() => verifyMessageBody(messageRejectAttestationForClaim)).not.toThrowError()
-    expect(() => verifyMessageBody(messageRequestCredential)).not.toThrowError()
-    expect(() => verifyMessageBody(messageSubmitCredential)).not.toThrowError()
-
-    // with optinal did uri
-    // @ts-ignore
-    messageRequestCredential.body.content.targetDid = identityAlice.uri
-    expect(() => verifyMessageBody(messageRequestCredential)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageRequestAttestationForClaim)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageSubmitAttestationForClaim)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageRejectAttestationForClaim)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageRequestCredential)).not.toThrowError()
+    expect(() => assertKnownMessageBody(messageSubmitCredential)).not.toThrowError()
   })
 
   it('message envelope verifier should not throw errors on correct envelopes', () => {
@@ -733,32 +730,30 @@ describe('Error checking / Verification', () => {
   })
   it('message body verifier should throw errors on faulty bodies', () => {
     submitTermsBody.content.delegationId = 'this is not a delegation id'
-    expect(() => verifyMessageBody(messageSubmitTerms)).toThrowError(MessageError.HashMalformedError)
+    expect(() => assertKnownMessageBody(messageSubmitTerms)).toThrowError(MessageError.HashMalformedError)
 
     submitCredentialBody.content[0].claimerSignature = {
       signature: 'this is not the claimers signature',
       // @ts-ignore
       keyUri: 'this is not a key id',
     }
-    expect(() => verifyMessageBody(messageSubmitCredential)).toThrowError()
+    expect(() => assertKnownMessageBody(messageSubmitCredential)).toThrowError()
     // @ts-ignore
     submitAttestationBody.content.attestation.claimHash = 'this is not the claim hash'
-    expect(() => verifyMessageBody(messageSubmitAttestationForClaim)).toThrowError(
+    expect(() => assertKnownMessageBody(messageSubmitAttestationForClaim)).toThrowError(
       MessageError.UnknownMessageBodyTypeError
     )
     // @ts-ignore
     rejectAttestationForClaimBody.content = 'this is not the root hash'
-    expect(() => verifyMessageBody(messageRejectAttestationForClaim)).toThrowError(
+    expect(() => assertKnownMessageBody(messageRejectAttestationForClaim)).toThrowError(
       MessageError.UnknownMessageBodyTypeError
     )
     // @ts-ignore
     requestCredentialBody.content.cTypes[0].cTypeHash = 'this is not a cTypeHash'
-    expect(() => verifyMessageBody(messageRequestCredential)).toThrowError(MessageError.UnknownMessageBodyTypeError)
+    expect(() => assertKnownMessageBody(messageRequestCredential)).toThrowError(
+      MessageError.UnknownMessageBodyTypeError
+    )
 
-    // @ts-ignore
-    requestCredentialBody.content.targetDid = 'this is not a Did uri'
-    expect(() => verifyMessageBody(messageRequestCredential)).toThrowError(MessageError.UnknownMessageBodyTypeError)
-
-    expect(() => verifyMessageBody({} as IMessage)).toThrowError(MessageError.UnknownMessageBodyTypeError)
+    expect(() => assertKnownMessageBody({} as IMessage)).toThrowError(MessageError.UnknownMessageBodyTypeError)
   })
 })

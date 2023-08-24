@@ -5,7 +5,14 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-export * from './utils'
-export * from './Crypto'
+/**
+ * KILT participants can communicate via a 1:1 messaging system.
+ *
+ * All messages are **encrypted** with the encryption keys of the involved identities.
+ * Messages are encrypted using authenticated encryption: the two parties authenticate to each other, but the message authentication provides repudiation possibilities.
+ */
+
+export { fromBody } from './utils'
+export { encrypt, decrypt } from './MessageEnvelope.'
 export { assertKnownMessage } from './CredentialApiMessageType'
 export * from './Error'

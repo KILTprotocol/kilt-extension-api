@@ -20,7 +20,12 @@ import { UUID } from '@kiltprotocol/utils'
  * @param receiver The DID of the receiver.
  * @returns The message created.
  */
-export function fromBody(body: MessageBody, sender: IMessage['sender'], receiver: IMessage['receiver']): IMessage {
+
+export function fromBody<Body extends MessageBody>(
+  body: Body,
+  sender: IMessage['sender'],
+  receiver: IMessage['receiver']
+): IMessage<Body> {
   return {
     body,
     createdAt: Date.now(),

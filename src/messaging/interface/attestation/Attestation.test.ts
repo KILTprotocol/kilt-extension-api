@@ -23,7 +23,7 @@ import {
   makeSigningKeyTool,
 } from '../../../tests'
 import { receiveSessionRequest, requestSession, verifySession } from '../session'
-import { IRequestAttestation, IRequestPayment, ISession, ISessionRequest, ISubmitTerms, ITerms } from 'src/types'
+import { IRequestAttestation, IRequestPayment, ISession, ISessionRequest, ISubmitTerms, ITerms } from '../../../types'
 import {
   confirmPayment,
   receiveAttestation,
@@ -40,7 +40,7 @@ import {
   isSubmitAttestation,
   isSubmitTerms,
 } from '../../../utils'
-import { decrypt } from '../../Crypto'
+import { decrypt } from '../../MessageEnvelope.'
 import { verifyAttesterSignedQuote, verifyQuoteAgreement } from '../../../quote'
 
 describe('Verifier', () => {
