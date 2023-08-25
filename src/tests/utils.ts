@@ -89,7 +89,7 @@ export async function assertionSigner({
   if (!assertionMethod) throw new Error('no assertionMethod')
   return async ({ data }) => ({
     signature: assertion.sign(data),
-    keyType: signingKeyPairType,
+    keyType: 'ed25519',
     keyUri: `${didDocument.uri}${assertionMethod[0].id}`,
   })
 }
