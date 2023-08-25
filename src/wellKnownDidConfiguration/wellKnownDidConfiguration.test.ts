@@ -40,6 +40,9 @@ describe('Well Known Did Configuration integration test', () => {
   beforeAll(async () => {
     const address = await startContainer()
     await connect(address)
+  }, 20_000)
+
+  beforeAll(async () => {
     mnemonic = mnemonicGenerate()
     account = new Keyring({ type: 'ed25519' }).addFromMnemonic(mnemonic) as KiltKeyringPair
     await fundAccount(account.address, new BN('1000000000000000000'))
