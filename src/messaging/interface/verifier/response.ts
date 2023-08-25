@@ -19,7 +19,7 @@ export async function submitCredential(
   assertKnownMessage(decryptedMessage)
 
   if (!isIRequestCredential(decryptedMessage)) {
-    throw new Error('Wrong message')
+    throw new Error('Wrong message. Expected request credential message')
   }
 
   const { challenge, cTypes, owner } = decryptedMessage.body.content

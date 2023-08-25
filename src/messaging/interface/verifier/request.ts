@@ -62,11 +62,15 @@ export async function verifySubmitedCredentialMessage(
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
 
   if (decryptedMessage.inReplyTo !== requestMessage.messageId) {
-    throw new Error('Wrong Reply to')
+    throw new Error('Wrong Reply. Decrypted message points to wrong previous message')
   }
 
-  if (!isSubmitCredential(decryptedMessage) || !isIRequestCredential(requestMessage)) {
-    throw new Error('Wrong message received.')
+  if (!isIRequestCredential(requestMessage)) {
+    throw new Error('Wrong message. Expected request credential message')
+  }
+
+  if (!isSubmitCredential(decryptedMessage)) {
+    throw new Error('Wrong message. Expected submit credential message')
   }
 
   await validateMessageBody(decryptedMessage, requestMessage, challenge)

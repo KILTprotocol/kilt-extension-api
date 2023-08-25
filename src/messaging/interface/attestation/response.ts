@@ -13,7 +13,7 @@ import {
 } from '../../../types'
 import { decrypt, encrypt } from '../../MessageEnvelope.'
 import { assertKnownMessage } from '../../CredentialApiMessageType'
-import { isIRequestPayment, isSubmitAttestation, isSubmitTerms } from '../../../utils'
+import { isIRequestPayment, isRequestAttestation, isSubmitAttestation, isSubmitTerms } from '../../../utils'
 import { fromBody } from '../../utils'
 import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote'
 
@@ -28,9 +28,9 @@ export async function requestAttestation(
   } = {}
 ) {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
-  assertKnownMessage(decryptedMessage)
+
   if (!isSubmitTerms(decryptedMessage)) {
-    throw new Error('Wrong message')
+    throw new Error('Wrong message. Expected submit terms message')
   }
 
   Credential.verifyWellFormed(credential)
@@ -79,13 +79,13 @@ export async function confirmPayment(
   } = {}
 ) {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
-  assertKnownMessage(decryptedMessage)
+
   if (!isIRequestPayment(decryptedMessage)) {
-    throw new Error('Wrong message')
+    throw new Error('Wrong message. Expected request payment message')
   }
 
-  if (message.messageId !== decryptedMessage.inReplyTo) {
-    throw new Error('wrong response')
+  if (decryptedMessage.inReplyTo !== message.messageId) {
+    throw new Error('wrong reply. Decrypted message points to wrong previous message')
   }
 
   const body: IConfirmPayment = {
@@ -116,18 +116,24 @@ export async function receiveAttestation(
 ): Promise<IMessage<ISubmitAttestation>> {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
   if (!isSubmitAttestation(decryptedMessage)) {
-    throw new Error('Wrong message')
+    throw new Error('Wrong message. Expected submit attestation message')
   }
 
-  if (message.messageId !== decryptedMessage.inReplyTo) {
-    throw new Error('wrong response')
+  if (!isRequestAttestation(message)) {
+    throw new Error('Wrong Message. Expected request attestation message')
   }
+
+  if (decryptedMessage.inReplyTo !== message.messageId) {
+    throw new Error('wrong reply. Decrypted message points to wrong previous message')
+  }
+
+  const { credential } = message.body.content
 
   const { attestation } = decryptedMessage.body.content
 
-  Attestation.verifyDataStructure(attestation)
+  Attestation.verifyAgainstCredential(attestation, credential)
 
-  //TODO check against blockchain.
+  Credential.verifyAttested(credential)
 
   return decryptedMessage
 }

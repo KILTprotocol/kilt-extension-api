@@ -1,7 +1,8 @@
 import { DidResolveKey, IAttestation } from '@kiltprotocol/types'
-import { Attestation, Did } from '@kiltprotocol/sdk-js'
+import { Attestation, Did, ConfigService } from '@kiltprotocol/sdk-js'
 
 import {
+  IConfirmPaymentContent,
   IEncryptedMessage,
   IMessageWorkflow,
   IRequestPayment,
@@ -53,7 +54,7 @@ export async function requestPayment(
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
   assertKnownMessage(decryptedMessage)
   if (!isRequestAttestation(decryptedMessage)) {
-    throw new Error('Wrong message')
+    throw new Error('Wrong message. Expected request attestation message')
   }
 
   const { inReplyTo } = decryptedMessage
@@ -85,23 +86,47 @@ export async function validateConfirmedPayment(
   { decryptCallback }: ISession
 ) {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
-  if (!decryptedMessage) {
-    throw new Error('Wrong message')
-  }
 
   if (!isIConfirmPayment(decryptedMessage)) {
-    throw new Error('Wrong message')
+    throw new Error('Wrong message. Expected confirm payment message')
   }
 
   const { inReplyTo, body } = decryptedMessage
   const { messageId } = message
 
-  //TODO check if blockHash is on blockchain and txHash is there 2.
-  const { blockHash, claimHash, txHash } = body.content
+  validateTx(body.content)
 
   if (messageId !== inReplyTo) {
     throw new Error('Message Ids do not match')
   }
+}
+
+async function validateTx({ blockHash, txHash }: IConfirmPaymentContent) {
+  const api = ConfigService.get('api')
+  const signedBlock = await api.rpc.chain.getBlock(blockHash)
+
+  const apiAt = await api.at(signedBlock.block.header.hash)
+  const allRecords = await apiAt.query.system.events()
+  allRecords[0].phase
+
+  const txIndex = signedBlock.block.extrinsics.findIndex(({ hash }) => {
+    hash.toHex() === txHash
+  })
+
+  if (txIndex === -1) {
+    throw new Error('Tx does not exists')
+  }
+
+  allRecords
+    .filter(({ phase }) => phase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(txIndex))
+    .forEach(({ event }) => {
+      if (api.events.system.ExtrinsicSuccess.is(event)) {
+        //TODO check if tx was transfer and that the ammount was the right.
+        const [dispatchInfo] = event.data
+        return
+      }
+      throw new Error('Tx was not successful')
+    })
 }
 
 export async function submitAttestation(
@@ -116,9 +141,9 @@ export async function submitAttestation(
   } = {}
 ): Promise<IMessageWorkflow> {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
-  assertKnownMessage(decryptedMessage)
+
   if (!isRequestAttestation(decryptedMessage)) {
-    throw new Error('Wrong message')
+    throw new Error('Wrong message. Expected request attestation message')
   }
 
   const { inReplyTo } = decryptedMessage

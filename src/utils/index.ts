@@ -6,4 +6,3 @@
  */
 
 export * from './TypeGuards'
-export * from './Crypto'

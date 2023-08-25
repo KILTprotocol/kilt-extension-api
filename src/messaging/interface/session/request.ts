@@ -36,7 +36,7 @@ export async function verifySession(
 ): Promise<ISession> {
   const encryptionKey = await resolveKey(receiverEncryptionKeyUri, 'keyAgreement')
   if (!encryptionKey) {
-    throw new Error('an encryption key is required')
+    throw new Error('An encryption key is required')
   }
 
   const decryptedBytes = await decryptCallback({
@@ -45,10 +45,6 @@ export async function verifySession(
     peerPublicKey: encryptionKey.publicKey,
     keyUri: encryptionKeyUri,
   })
-
-  if (!decryptedBytes) {
-    throw new Error('Could not decode/decrypt the challenge from the extension')
-  }
 
   const decryptedChallenge = u8aToString(decryptedBytes.data)
 
