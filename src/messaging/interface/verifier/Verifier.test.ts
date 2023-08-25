@@ -247,7 +247,7 @@ describe('Verifier', () => {
       resolveKey,
     })
 
-    //TODO ask how I can do that.
+    //TODO other test setup
     // expect(
     //   async () => await verifySubmitedCredentialMessage(responeMessage, aliceSession, requestMessage, { resolveKey })
     // ).not.toThrowError()

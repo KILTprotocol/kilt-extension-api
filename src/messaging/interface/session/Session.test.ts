@@ -30,7 +30,6 @@ describe('Session', () => {
   let sessionRequest: ISessionRequest
   let sessionResponse: { session: ISession; sessionResponse: ISessionResponse }
 
-  //TODO duplication. maybe move util test package
   async function resolveKey(keyUri: DidResourceUri, keyRelationship = 'authentication'): Promise<ResolvedDidKey> {
     const { did } = Did.parse(keyUri)
     const document = [

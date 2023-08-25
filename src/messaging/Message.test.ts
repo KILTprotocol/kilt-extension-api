@@ -75,7 +75,6 @@ describe('Messaging', () => {
   let bobSign: KeyToolSignCallback
   const bobEncKey = makeEncryptionKeyTool('Bob//enc')
 
-  //TODO code duplication. Maybe move to test util package
   async function resolveKey(keyUri: DidResourceUri, keyRelationship = 'authentication'): Promise<ResolvedDidKey> {
     const { did } = Did.parse(keyUri)
     const document = [
