@@ -161,38 +161,41 @@ describe('Attestation', () => {
 
   it('submits terms successfully', async () => {
     const { message, encryptedMessage } = await submitTerms(submitTermsContent, aliceSession)
-    expect(isSubmitTerms(message)).toBeTruthy()
+
+    expect(isSubmitTerms(message)).toBe(true)
 
     // Bob should be able to decrypt the message
     await expect(decrypt(encryptedMessage, bobDecryptCallback)).resolves.not.toThrowError()
 
     const messageBody = message.body as ISubmitTerms
     expect(messageBody.content.quote).toBeDefined()
-    await expect(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      verifyAttesterSignedQuote(messageBody.content.quote!)
-    ).resolves.not.toThrowError()
-  })
 
-  it('request credential', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    await expect(verifyAttesterSignedQuote(messageBody.content.quote!)).resolves.not.toThrowError()
+  })
+  it('requests credential', async () => {
     const credential = Credential.fromClaim(claim)
 
     const { encryptedMessage: requestMessageEncrypted, message: requestMessage } = await submitTerms(
       submitTermsContent,
       aliceSession
     )
-    const { encryptedMessage, message } = await requestAttestation(requestMessageEncrypted, credential, bobSession)
-    expect(message.inReplyTo).toBe(requestMessage.messageId)
-    expect(isRequestAttestation(message)).toBeTruthy()
-    const messageBody = message.body as IRequestAttestation
-    //   eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    expect(verifyQuoteAgreement(messageBody.content.quote!))
 
-    //Alice should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrow()
+    const { encryptedMessage, message } = await requestAttestation(requestMessageEncrypted, credential, bobSession)
+
+    expect(message.inReplyTo).toBe(requestMessage.messageId)
+    expect(isRequestAttestation(message)).toBe(true)
+
+    const messageBody = message.body as IRequestAttestation
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    await expect(verifyQuoteAgreement(messageBody.content.quote!)).resolves.not.toThrowError()
+
+    // Alice should be able to decrypt the message
+    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrowError()
   })
 
-  it('request credential without quote', async () => {
+  it('requests credential without quote', async () => {
     const credential = Credential.fromClaim(claim)
 
     submitTermsContent.quote = undefined
@@ -200,18 +203,20 @@ describe('Attestation', () => {
       submitTermsContent,
       aliceSession
     )
-    const { encryptedMessage, message } = await requestAttestation(requestMessageEncrypted, credential, bobSession)
-    expect(message.inReplyTo).toBe(requestMessage.messageId)
-    expect(isRequestAttestation(message)).toBeTruthy()
-    const messageBody = message.body as IRequestAttestation
-    //eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    expect(messageBody.content.quote!).toBeUndefined()
 
-    //Alice should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrow()
+    const { encryptedMessage, message } = await requestAttestation(requestMessageEncrypted, credential, bobSession)
+
+    expect(message.inReplyTo).toBe(requestMessage.messageId)
+    expect(isRequestAttestation(message)).toBe(true)
+
+    const messageBody = message.body as IRequestAttestation
+    expect(messageBody.content.quote).toBeUndefined()
+
+    // Alice should be able to decrypt the message
+    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrowError()
   })
 
-  it('request payment', async () => {
+  it('requests payment', async () => {
     const credential = Credential.fromClaim(claim)
     const requestTerms = await submitTerms(submitTermsContent, aliceSession)
     const { encryptedMessage: encryptedRequestAttestationMessage, message: requestMessage } = await requestAttestation(
@@ -227,18 +232,18 @@ describe('Attestation', () => {
     )
 
     expect(message.inReplyTo).toBe(requestMessage.messageId)
-    expect(isIRequestPayment(message)).toBeTruthy()
+    expect(isIRequestPayment(message)).toBe(true)
 
     const messageBody = message.body as IRequestPayment
     const messageBodyRequest = requestMessage.body as IRequestAttestation
 
     expect(messageBody.content.claimHash).toBe(messageBodyRequest.content.credential.rootHash)
 
-    //Bob should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, bobDecryptCallback)).resolves.not.toThrow()
+    // Bob should be able to decrypt the message
+    await expect(decrypt(encryptedMessage, bobDecryptCallback)).resolves.not.toThrowError()
   })
 
-  it('confirm payment', async () => {
+  it('confirms payment', async () => {
     const credential = Credential.fromClaim(claim)
     const requestTerms = await submitTerms(submitTermsContent, aliceSession)
     const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession)
@@ -262,13 +267,13 @@ describe('Attestation', () => {
     )
 
     expect(message.inReplyTo).toBe(requestPaymentMessages.message.messageId)
-    expect(isIConfirmPayment(message)).toBeTruthy()
+    expect(isIConfirmPayment(message)).toBe(true)
 
-    //Alice should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrow()
+    // Alice should be able to decrypt the message
+    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrowError()
   })
 
-  it('submit attestation', async () => {
+  it('submits attestation', async () => {
     const credential = Credential.fromClaim(claim)
 
     const attestation: IAttestation = {
@@ -291,13 +296,13 @@ describe('Attestation', () => {
     )
 
     expect(message.inReplyTo).toBe(requestAttestationMessages.message.messageId)
-    expect(isSubmitAttestation(message)).toBeTruthy()
+    expect(isSubmitAttestation(message)).toBe(true)
 
-    //Bob should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, bobDecryptCallback)).resolves.not.toThrow()
+    // Bob should be able to decrypt the message
+    await expect(decrypt(encryptedMessage, bobDecryptCallback)).resolves.not.toThrowError()
   })
 
-  it('receive attestation', async () => {
+  it('receives attestation', async () => {
     const credential = Credential.fromClaim(claim)
 
     const attestation: IAttestation = {
@@ -312,7 +317,7 @@ describe('Attestation', () => {
 
     const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession)
 
-    // anchor attestation to blockchain
+    // Anchor attestation to the blockchain
     await createCtype(aliceFullDid.uri, aliceAccount, aliceMnemonic, testCType)
     await createAttestation(
       aliceAccount,
@@ -322,7 +327,7 @@ describe('Attestation', () => {
       claim.cTypeHash
     )
 
-    //send anchored attestation
+    // Send anchored attestation
     const submitAttestationMessage = await submitAttestation(
       attestation,
       requestAttestationMessages.encryptedMessage,

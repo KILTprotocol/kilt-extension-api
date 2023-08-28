@@ -49,7 +49,7 @@ export async function requestCredential(
   }
 }
 
-export async function verifySubmitedCredentialMessage(
+export async function verifySubmittedCredentialMessage(
   encryptedMessage: IEncryptedMessage<ISubmitCredential>,
   { decryptCallback }: ISession,
   { message: requestMessage, challenge }: ICredentialRequest,

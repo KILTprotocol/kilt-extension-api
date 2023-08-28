@@ -33,7 +33,7 @@ import {
 } from '../../../tests'
 import { receiveSessionRequest, requestSession, verifySession } from '../session'
 import { IRequestCredential, ISession, ISessionRequest, ISubmitCredential } from '../../../types'
-import { requestCredential, submitCredential, verifySubmitedCredentialMessage } from '.'
+import { requestCredential, submitCredential, verifySubmittedCredentialMessage } from '.'
 import { isIRequestCredential, isSubmitCredential } from '../../../utils'
 import { decrypt } from '../../MessageEnvelope.'
 
@@ -45,7 +45,6 @@ describe('Verifier', () => {
   let aliceSignAssertion: KeyToolSignCallback
   let aliceDecryptCallback: DecryptCallback
   let aliceEncryptCallback: EncryptCallback
-  let aliceMnemonic: string
 
   //Bob
   let bobFullDid: DidDocument
@@ -72,10 +71,9 @@ describe('Verifier', () => {
   }, 20_000)
 
   beforeAll(async () => {
-    //setup alice
-    aliceMnemonic = mnemonicGenerate()
+    // Setup Alice
+    const aliceMnemonic = mnemonicGenerate()
     aliceAccount = new Keyring({}).addFromMnemonic(aliceMnemonic) as KiltKeyringPair
-    //give alice 10 KILT
     await fundAccount(aliceAccount.address, new BN('10000000000000000'))
     aliceFullDid = await generateDid(aliceAccount, aliceMnemonic)
     const keyPairsAlice = await keypairs(aliceAccount, aliceMnemonic)
@@ -84,10 +82,9 @@ describe('Verifier', () => {
     aliceSign = makeSignCallback(keyPairsAlice.authentication)
     aliceSignAssertion = makeSignCallback(keyPairsAlice.assertion)
 
-    //setup bob
+    // Setup Bob
     const bobMnemonic = mnemonicGenerate()
     const bobAccount = new Keyring({}).addFromMnemonic(bobMnemonic) as KiltKeyringPair
-    //give bob 10 KILT
     await fundAccount(bobAccount.address, new BN('10000000000000000'))
     bobFullDid = await generateDid(bobAccount, bobMnemonic)
     const keyPairsBob = await keypairs(bobAccount, bobMnemonic)
@@ -95,7 +92,7 @@ describe('Verifier', () => {
     bobDecryptCallback = makeDecryptCallback(keyPairsBob.keyAgreement)
     bobSign = makeSignCallback(keyPairsBob.authentication)
 
-    //session
+    // Session Setup
     sessionRequest = requestSession(aliceFullDid, 'MyApp')
     const { session, sessionResponse } = await receiveSessionRequest(
       bobFullDid,
@@ -105,7 +102,6 @@ describe('Verifier', () => {
       bobSign(bobFullDid)
     )
     bobSession = session
-
     aliceSession = await verifySession(
       sessionRequest,
       sessionResponse,
@@ -114,18 +110,12 @@ describe('Verifier', () => {
       aliceSign(aliceFullDid)
     )
 
-    testCType = CType.fromProperties('testCtype', {
-      name: { type: 'string' },
-    })
-
+    // CType and Credential Setup
+    testCType = CType.fromProperties('testCtype', { name: { type: 'string' } })
     await createCtype(aliceFullDid.uri, aliceAccount, aliceMnemonic, testCType)
 
-    claimContents = {
-      name: 'Bob',
-    }
-
+    claimContents = { name: 'Bob' }
     const claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, bobFullDid.uri)
-
     cTypeHash = claim.cTypeHash
     credential = Credential.fromClaim(claim)
 
@@ -136,120 +126,111 @@ describe('Verifier', () => {
       credential.rootHash,
       cTypeHash
     )
-  }, 40_000)
+  }, 40000)
 
-  it('should successfully request a valid credential', async () => {
-    const cTypes = [{ cTypeHash: cTypeHash }]
+  describe('Credential Request and Submission', () => {
+    it('should successfully request a valid credential', async () => {
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const requestedCredential = await requestCredential(aliceSession, cTypes)
+      expect(requestedCredential.encryptedMessage).toBeDefined()
+      expect(requestedCredential.message).toBeDefined()
+      expect(requestedCredential.challenge).toBeDefined()
+    })
 
-    const requestedCredential = await requestCredential(aliceSession, cTypes)
-    expect(requestedCredential.encryptedMessage).toBeDefined()
-    expect(requestedCredential.message).toBeDefined()
-    expect(requestedCredential.challenge).toBeDefined()
-  })
+    it('should include session information in the requested credential', async () => {
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const requestedCredential = await requestCredential(aliceSession, cTypes)
 
-  it('should include session information in the requested credential', async () => {
-    const cTypes = [{ cTypeHash: cTypeHash }]
+      const { senderEncryptionKeyUri, receiverEncryptionKeyUri } = aliceSession
+      const senderDid = Did.parse(senderEncryptionKeyUri).did
+      const receiverDid = Did.parse(receiverEncryptionKeyUri).did
 
-    const requestedCredential = await requestCredential(aliceSession, cTypes)
+      expect(requestedCredential.message.sender).toBe(senderDid)
+      expect(requestedCredential.message.receiver).toBe(receiverDid)
+    })
 
-    const { senderEncryptionKeyUri, receiverEncryptionKeyUri } = aliceSession
+    it('should include challenge in the requested credential', async () => {
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const requestedCredential = await requestCredential(aliceSession, cTypes)
+      expect(requestedCredential.challenge).toHaveLength(50)
+    })
 
-    expect(requestedCredential.message.sender).toBe(Did.parse(senderEncryptionKeyUri).did)
-    expect(requestedCredential.message.receiver).toBe(Did.parse(receiverEncryptionKeyUri).did)
-  })
+    it('should request a credential with owner information', async () => {
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const owner = aliceFullDid.uri
+      const requestedCredential = await requestCredential(aliceSession, cTypes, owner)
 
-  it('should include challenge in the requested credential', async () => {
-    const cTypes = [{ cTypeHash: cTypeHash }]
-    const requestedCredential = await requestCredential(aliceSession, cTypes)
-    expect(requestedCredential.challenge).toHaveLength(50)
-  })
+      expect(isIRequestCredential(requestedCredential.message)).toBeTruthy()
+      expect((requestedCredential.message.body as IRequestCredential).content.owner).toBe(owner)
+    })
 
-  it('should request a credential with owner information', async () => {
-    const cTypes = [{ cTypeHash: cTypeHash }]
-    const owner = aliceFullDid.uri
+    it('should throw an error if session is missing receiverEncryptionKeyUri', async () => {
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const invalidSession = { ...aliceSession, receiverEncryptionKeyUri: undefined }
 
-    const requestedCredential = await requestCredential(aliceSession, cTypes, owner)
+      //@ts-ignore
+      await expect(requestCredential(invalidSession, cTypes)).rejects.toThrowError()
+    })
 
-    expect(isIRequestCredential(requestedCredential.message)).toBeTruthy()
+    it('Bob should be able to decrypt the message', async () => {
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
+      expect(async () => await decrypt(encryptedMessage, bobDecryptCallback)).not.toThrowError()
+    })
 
-    expect((requestedCredential.message.body as IRequestCredential).content.owner).toBe(owner)
-  })
+    it('submit credential', async () => {
+      const cTypes = [{ cTypeHash }]
+      const { encryptedMessage, message } = await requestCredential(aliceSession, cTypes)
 
-  it('should throw an error if session is missing receiverEncryptionKeyUri', async () => {
-    const cTypes = [{ cTypeHash: cTypeHash }]
-    const invalidSession = { ...aliceSession, receiverEncryptionKeyUri: undefined }
+      const response = await submitCredential([credential], encryptedMessage, bobSession)
 
-    //@ts-ignore
-    await expect(requestCredential(invalidSession, cTypes)).rejects.toThrowError()
-  })
+      const decryptedMessage = await decrypt(response, aliceDecryptCallback)
 
-  it('Bob should be able to decrypt the message', async () => {
-    const cTypes = [{ cTypeHash: cTypeHash }]
+      expect(decryptedMessage.inReplyTo).toBe(message.messageId)
+      expect(isSubmitCredential(decryptedMessage)).toBeTruthy()
+      const body = decryptedMessage.body as ISubmitCredential
+      expect(body.content[0].claim.cTypeHash).toBe(cTypeHash)
+    })
 
-    const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
+    it('submit credential with wrong ctype hash', async () => {
+      const claim = credential.claim
+      const invalidClaim = { ...claim, cTypeHash: Crypto.hashStr('0x123456789') }
+      const invalidCredential = Credential.fromClaim(invalidClaim)
 
-    expect(async () => await decrypt(encryptedMessage, bobDecryptCallback)).not.toThrowError()
-  })
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
 
-  it('submit credential', async () => {
-    const cTypes = [{ cTypeHash }]
+      await expect(submitCredential([invalidCredential], encryptedMessage, bobSession)).rejects.toThrowError()
+    })
 
-    const { encryptedMessage, message } = await requestCredential(aliceSession, cTypes)
+    it('submit credential with wrong owner', async () => {
+      const claim = credential.claim
+      const invalidClaim = { ...claim, cTypeHash: Crypto.hashStr('0x123456789') }
+      const invalidCredential = Credential.fromClaim(invalidClaim)
 
-    const response = await submitCredential([credential], encryptedMessage, bobSession)
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const { encryptedMessage } = await requestCredential(aliceSession, cTypes, bobFullDid.uri)
 
-    // Alice should be able to decrypt the message
-    const decryptedMessage = await decrypt(response, aliceDecryptCallback)
+      await expect(submitCredential([invalidCredential], encryptedMessage, bobSession)).rejects.toThrowError()
+    })
 
-    expect(decryptedMessage.inReplyTo).toBe(message.messageId)
-    expect(isSubmitCredential(decryptedMessage)).toBeTruthy()
-    const body = decryptedMessage.body as ISubmitCredential
-    expect(body.content[0].claim.cTypeHash).toBe(cTypeHash)
-  })
+    it('Alice should be able to decrypt the message', async () => {
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
 
-  it('submit credential with wrong ctype hash', async () => {
-    const claim = credential.claim
-    const invalidClaim = { ...claim, cTypeHash: Crypto.hashStr('0x123456789') }
-    const invalidCredential = Credential.fromClaim(invalidClaim)
+      const credentialMessage = await submitCredential([credential], encryptedMessage, bobSession)
 
-    const cTypes = [{ cTypeHash: cTypeHash }]
+      expect(async () => await decrypt(credentialMessage, aliceDecryptCallback)).not.toThrowError()
+    })
 
-    const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
+    it('verify submitted Credential', async () => {
+      const cTypes = [{ cTypeHash: cTypeHash }]
+      const requestMessage = await requestCredential(aliceSession, cTypes)
+      const responseMessage = await submitCredential([credential], requestMessage.encryptedMessage, bobSession)
 
-    await expect(submitCredential([invalidCredential], encryptedMessage, bobSession)).rejects.toThrowError()
-  })
-
-  it('submit credential with wrong owner', async () => {
-    const claim = credential.claim
-    const invalidClaim = { ...claim, cTypeHash: Crypto.hashStr('0x123456789') }
-    const invalidCredential = Credential.fromClaim(invalidClaim)
-
-    const cTypes = [{ cTypeHash: cTypeHash }]
-
-    const { encryptedMessage } = await requestCredential(aliceSession, cTypes, bobFullDid.uri)
-
-    await expect(submitCredential([invalidCredential], encryptedMessage, bobSession)).rejects.toThrowError()
-  })
-
-  it('Alice should be able to decrypt the message', async () => {
-    const cTypes = [{ cTypeHash: cTypeHash }]
-
-    const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
-
-    const credentialMessage = await submitCredential([credential], encryptedMessage, bobSession)
-
-    expect(async () => await decrypt(credentialMessage, aliceDecryptCallback)).not.toThrowError()
-  })
-
-  it('verify submited Credential', async () => {
-    const cTypes = [{ cTypeHash: cTypeHash }]
-
-    const requestMessage = await requestCredential(aliceSession, cTypes)
-
-    const responeMessage = await submitCredential([credential], requestMessage.encryptedMessage, bobSession)
-
-    expect(
-      async () => await verifySubmitedCredentialMessage(responeMessage, aliceSession, requestMessage)
-    ).not.toThrowError()
+      await expect(
+        verifySubmittedCredentialMessage(responseMessage, aliceSession, requestMessage)
+      ).resolves.not.toThrowError()
+    })
   })
 })
