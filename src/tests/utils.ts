@@ -17,6 +17,7 @@ import {
   ConfigService,
   KiltEncryptionKeypair,
   Utils,
+  KeyringPair,
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
 import {
@@ -37,6 +38,28 @@ export const faucet = async () => {
   const faucetSeed = 'receive clutch item involve chaos clutch furnace arrest claw isolate okay together'
 
   return keyring.createFromUri(faucetSeed, { type: 'ed25519' })
+}
+
+export async function createAttestation(
+  account: KeyringPair,
+  did: DidUri,
+  signCallback: SignCallback,
+  claimHash: string,
+  ctypeHash: string
+) {
+  const api = ConfigService.get('api')
+  const createAttesstationTx = api.tx.attestation.add(claimHash, ctypeHash, null)
+
+  const authorizedAttestationCreationTx = await Did.authorizeTx(
+    did,
+    createAttesstationTx,
+    signCallback,
+    account.address as `4${string}`
+  )
+
+  await Blockchain.signAndSubmitTx(authorizedAttestationCreationTx, account, {
+    resolveOn: Blockchain.IS_FINALIZED,
+  })
 }
 
 export async function fundAccount(address: KiltKeyringPair['address'], amount: BN): Promise<void> {
@@ -121,7 +144,12 @@ export async function assertionSigner({
   })
 }
 
-export async function createCtype(didUri: DidUri, account: KiltKeyringPair, mnemonic: string) {
+export async function createCtype(
+  didUri: DidUri,
+  account: KiltKeyringPair,
+  mnemonic: string,
+  ctype = ctypeDomainLinkage
+) {
   const api = ConfigService.get('api')
 
   const { assertion } = await keypairs(account, mnemonic)
@@ -131,7 +159,7 @@ export async function createCtype(didUri: DidUri, account: KiltKeyringPair, mnem
   if (!document) throw new Error('no document')
   const { assertionMethod } = document
   if (!assertionMethod) throw new Error('no assertion key')
-  const encodedCType = CType.toChain(ctypeDomainLinkage)
+  const encodedCType = CType.toChain(ctype)
   const ctypeTx = api.tx.ctype.add(encodedCType)
 
   const authorizedCtypeCreationTx = await Did.authorizeTx(

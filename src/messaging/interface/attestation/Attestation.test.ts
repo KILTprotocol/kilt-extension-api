@@ -2,25 +2,33 @@
 import {
   CType,
   Claim,
-  Did,
   DidDocument,
-  DidKey,
-  DidResourceUri,
   ICType,
   IClaim,
-  ResolvedDidKey,
-  init,
   Credential,
   Quote,
   IConfirmPaymentContent,
   IAttestation,
+  connect,
+  KiltKeyringPair,
+  DecryptCallback,
+  EncryptCallback,
 } from '@kiltprotocol/sdk-js'
+import { BN } from '@polkadot/util'
+import { mnemonicGenerate } from '@polkadot/util-crypto'
+import Keyring from '@polkadot/keyring'
 
 import {
   KeyToolSignCallback,
-  createLocalDemoFullDidFromLightDid,
-  makeEncryptionKeyTool,
-  makeSigningKeyTool,
+  createAttestation,
+  createCtype,
+  fundAccount,
+  generateDid,
+  keypairs,
+  makeDecryptCallback,
+  makeEncryptCallback,
+  makeSignCallback,
+  startContainer,
 } from '../../../tests'
 import { receiveSessionRequest, requestSession, verifySession } from '../session'
 import { IRequestAttestation, IRequestPayment, ISession, ISessionRequest, ISubmitTerms, ITerms } from '../../../types'
@@ -44,18 +52,19 @@ import { verifyAttesterSignedQuote, verifyQuoteAgreement } from '../../../quote'
 
 describe('Verifier', () => {
   //Alice
-  let aliceLightDid: DidDocument
-  let aliceLightDidWithDetails: DidDocument
+  let aliceAccount: KiltKeyringPair
   let aliceFullDid: DidDocument
   let aliceSign: KeyToolSignCallback
-  const aliceEncKey = makeEncryptionKeyTool('Alice//enc')
+  let aliceSignAssertion: KeyToolSignCallback
+  let aliceDecryptCallback: DecryptCallback
+  let aliceEncryptCallback: EncryptCallback
+  let aliceMnemonic: string
 
   //Bob
-  let bobLightDid: DidDocument
-  let bobLightDidWithDetails: DidDocument
   let bobFullDid: DidDocument
   let bobSign: KeyToolSignCallback
-  const bobEncKey = makeEncryptionKeyTool('Bob//enc')
+  let bobDecryptCallback: DecryptCallback
+  let bobEncryptCallback: EncryptCallback
 
   //session
   let sessionRequest: ISessionRequest
@@ -68,72 +77,55 @@ describe('Verifier', () => {
   let testCType: ICType
   let submitTermsContent: ITerms
 
-  async function resolveKey(keyUri: DidResourceUri, keyRelationship = 'authentication'): Promise<ResolvedDidKey> {
-    const { did } = Did.parse(keyUri)
-    const document = [
-      aliceLightDidWithDetails,
-      aliceLightDid,
-      aliceFullDid,
-      bobLightDidWithDetails,
-      bobLightDid,
-      bobFullDid,
-    ].find(({ uri }) => uri === did)
-    if (!document) throw new Error('Cannot resolve mocked DID')
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return Did.keyToResolvedKey(document[keyRelationship as keyof DidDocument]![0] as DidKey, did)
-  }
+  beforeAll(async () => {
+    const address = await startContainer()
+    await connect(address)
+  }, 20_000)
 
   beforeAll(async () => {
-    await init()
-    const aliceAuthKey = makeSigningKeyTool('ed25519')
-    aliceSign = aliceAuthKey.getSignCallback
-    aliceLightDid = Did.createLightDidDocument({
-      authentication: aliceAuthKey.authentication,
-      keyAgreement: aliceEncKey.keyAgreement,
-    })
-    aliceLightDidWithDetails = Did.createLightDidDocument({
-      authentication: aliceAuthKey.authentication,
-      keyAgreement: aliceEncKey.keyAgreement,
-      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
-    })
-    aliceFullDid = await createLocalDemoFullDidFromLightDid(aliceLightDid)
+    //setup alice
+    aliceMnemonic = mnemonicGenerate()
+    aliceAccount = new Keyring({}).addFromMnemonic(aliceMnemonic) as KiltKeyringPair
+    //give alice 10 KILT
+    await fundAccount(aliceAccount.address, new BN('10000000000000000'))
+    aliceFullDid = await generateDid(aliceAccount, aliceMnemonic)
+    const keyPairsAlice = await keypairs(aliceAccount, aliceMnemonic)
+    aliceEncryptCallback = makeEncryptCallback(keyPairsAlice.keyAgreement)(aliceFullDid)
+    aliceDecryptCallback = makeDecryptCallback(keyPairsAlice.keyAgreement)
+    aliceSign = makeSignCallback(keyPairsAlice.authentication)
+    aliceSignAssertion = makeSignCallback(keyPairsAlice.assertion)
 
-    const bobAuthKey = makeSigningKeyTool('ed25519')
-    bobSign = bobAuthKey.getSignCallback
-    bobLightDid = Did.createLightDidDocument({
-      authentication: bobAuthKey.authentication,
-      keyAgreement: bobEncKey.keyAgreement,
-    })
-    bobLightDidWithDetails = Did.createLightDidDocument({
-      authentication: bobAuthKey.authentication,
-      keyAgreement: bobEncKey.keyAgreement,
-      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
-    })
-    bobFullDid = await createLocalDemoFullDidFromLightDid(bobLightDid)
+    //setup bob
+    const bobMnemonic = mnemonicGenerate()
+    const bobAccount = new Keyring({}).addFromMnemonic(bobMnemonic) as KiltKeyringPair
+    //give bob 10 KILT
+    await fundAccount(bobAccount.address, new BN('10000000000000000'))
+    bobFullDid = await generateDid(bobAccount, bobMnemonic)
+    const keyPairsBob = await keypairs(bobAccount, bobMnemonic)
+    bobEncryptCallback = makeEncryptCallback(keyPairsBob.keyAgreement)(bobFullDid)
+    bobDecryptCallback = makeDecryptCallback(keyPairsBob.keyAgreement)
+    bobSign = makeSignCallback(keyPairsBob.authentication)
 
     sessionRequest = requestSession(aliceFullDid, 'MyApp')
+
     const { session, sessionResponse } = await receiveSessionRequest(
       bobFullDid,
       sessionRequest,
-      bobEncKey.encrypt(bobFullDid),
-      bobEncKey.decrypt,
-      bobSign(bobFullDid),
-      {
-        resolveKey,
-      }
+      bobEncryptCallback,
+      bobDecryptCallback,
+      bobSign(bobFullDid)
     )
     bobSession = session
 
     aliceSession = await verifySession(
       sessionRequest,
       sessionResponse,
-      aliceEncKey.decrypt,
-      aliceEncKey.encrypt(aliceFullDid),
-      aliceSign(aliceFullDid),
-      { resolveKey }
+      aliceDecryptCallback,
+      aliceEncryptCallback,
+      aliceSign(aliceFullDid)
     )
 
-    testCType = CType.fromProperties('ClaimCtype', {
+    testCType = CType.fromProperties('testCtype', {
       name: { type: 'string' },
     })
 
@@ -165,21 +157,20 @@ describe('Verifier', () => {
       quote: quoteAttesterSigned,
       cTypes: undefined,
     }
-  })
+  }, 20_000)
 
   it('submits terms successfully', async () => {
-    const { message, encryptedMessage } = await submitTerms(submitTermsContent, aliceSession, { resolveKey })
-
+    const { message, encryptedMessage } = await submitTerms(submitTermsContent, aliceSession)
     expect(isSubmitTerms(message)).toBeTruthy()
 
     // Bob should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, bobEncKey.decrypt, { resolveKey })).resolves.not.toThrow()
+    await expect(decrypt(encryptedMessage, bobDecryptCallback)).resolves.not.toThrowError()
 
     const messageBody = message.body as ISubmitTerms
     expect(messageBody.content.quote).toBeDefined()
     await expect(
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      verifyAttesterSignedQuote(messageBody.content.quote!, { didResolveKey: resolveKey })
+      verifyAttesterSignedQuote(messageBody.content.quote!)
     ).resolves.not.toThrowError()
   })
 
@@ -188,20 +179,17 @@ describe('Verifier', () => {
 
     const { encryptedMessage: requestMessageEncrypted, message: requestMessage } = await submitTerms(
       submitTermsContent,
-      aliceSession,
-      { resolveKey }
+      aliceSession
     )
-    const { encryptedMessage, message } = await requestAttestation(requestMessageEncrypted, credential, bobSession, {
-      resolveKey,
-    })
+    const { encryptedMessage, message } = await requestAttestation(requestMessageEncrypted, credential, bobSession)
     expect(message.inReplyTo).toBe(requestMessage.messageId)
     expect(isRequestAttestation(message)).toBeTruthy()
     const messageBody = message.body as IRequestAttestation
     //   eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    expect(verifyQuoteAgreement(messageBody.content.quote!, { didResolveKey: resolveKey }))
+    expect(verifyQuoteAgreement(messageBody.content.quote!))
 
     //Alice should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, aliceEncKey.decrypt, { resolveKey })).resolves.not.toThrow()
+    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrow()
   })
 
   it('request credential without quote', async () => {
@@ -210,12 +198,9 @@ describe('Verifier', () => {
     submitTermsContent.quote = undefined
     const { encryptedMessage: requestMessageEncrypted, message: requestMessage } = await submitTerms(
       submitTermsContent,
-      aliceSession,
-      { resolveKey }
+      aliceSession
     )
-    const { encryptedMessage, message } = await requestAttestation(requestMessageEncrypted, credential, bobSession, {
-      resolveKey,
-    })
+    const { encryptedMessage, message } = await requestAttestation(requestMessageEncrypted, credential, bobSession)
     expect(message.inReplyTo).toBe(requestMessage.messageId)
     expect(isRequestAttestation(message)).toBeTruthy()
     const messageBody = message.body as IRequestAttestation
@@ -223,30 +208,22 @@ describe('Verifier', () => {
     expect(messageBody.content.quote!).toBeUndefined()
 
     //Alice should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, aliceEncKey.decrypt, { resolveKey })).resolves.not.toThrow()
+    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrow()
   })
 
   it('request payment', async () => {
     const credential = Credential.fromClaim(claim)
-    const requestTerms = await submitTerms(submitTermsContent, aliceSession, {
-      resolveKey,
-    })
+    const requestTerms = await submitTerms(submitTermsContent, aliceSession)
     const { encryptedMessage: encryptedRequestAttestationMessage, message: requestMessage } = await requestAttestation(
       requestTerms.encryptedMessage,
       credential,
-      bobSession,
-      {
-        resolveKey,
-      }
+      bobSession
     )
 
     const { encryptedMessage, message } = await requestPayment(
       encryptedRequestAttestationMessage,
       requestTerms,
-      aliceSession,
-      {
-        resolveKey,
-      }
+      aliceSession
     )
 
     expect(message.inReplyTo).toBe(requestMessage.messageId)
@@ -258,25 +235,18 @@ describe('Verifier', () => {
     expect(messageBody.content.claimHash).toBe(messageBodyRequest.content.credential.rootHash)
 
     //Bob should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, bobEncKey.decrypt, { resolveKey })).resolves.not.toThrow()
+    await expect(decrypt(encryptedMessage, bobDecryptCallback)).resolves.not.toThrow()
   })
 
   it('confirm payment', async () => {
     const credential = Credential.fromClaim(claim)
-    const requestTerms = await submitTerms(submitTermsContent, aliceSession, {
-      resolveKey,
-    })
-    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession, {
-      resolveKey,
-    })
+    const requestTerms = await submitTerms(submitTermsContent, aliceSession)
+    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession)
 
     const requestPaymentMessages = await requestPayment(
       requestAttestationMessages.encryptedMessage,
       requestTerms,
-      aliceSession,
-      {
-        resolveKey,
-      }
+      aliceSession
     )
     const paymentConfirmation: IConfirmPaymentContent = {
       blockHash: '123456',
@@ -288,15 +258,14 @@ describe('Verifier', () => {
       requestPaymentMessages.encryptedMessage,
       paymentConfirmation,
       requestAttestationMessages,
-      bobSession,
-      { resolveKey }
+      bobSession
     )
 
     expect(message.inReplyTo).toBe(requestPaymentMessages.message.messageId)
     expect(isIConfirmPayment(message)).toBeTruthy()
 
     //Alice should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, aliceEncKey.decrypt, { resolveKey })).resolves.not.toThrow()
+    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrow()
   })
 
   it('submit attestation', async () => {
@@ -310,29 +279,22 @@ describe('Verifier', () => {
       revoked: false,
     }
 
-    const requestTerms = await submitTerms(submitTermsContent, aliceSession, {
-      resolveKey,
-    })
+    const requestTerms = await submitTerms(submitTermsContent, aliceSession)
 
-    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession, {
-      resolveKey,
-    })
+    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession)
 
     const { encryptedMessage, message } = await submitAttestation(
       attestation,
       requestAttestationMessages.encryptedMessage,
       requestTerms,
-      aliceSession,
-      {
-        resolveKey,
-      }
+      aliceSession
     )
 
     expect(message.inReplyTo).toBe(requestAttestationMessages.message.messageId)
     expect(isSubmitAttestation(message)).toBeTruthy()
 
     //Bob should be able to decrypt the message
-    await expect(decrypt(encryptedMessage, bobEncKey.decrypt, { resolveKey })).resolves.not.toThrow()
+    await expect(decrypt(encryptedMessage, bobDecryptCallback)).resolves.not.toThrow()
   })
 
   it('receive attestation', async () => {
@@ -346,29 +308,31 @@ describe('Verifier', () => {
       revoked: false,
     }
 
-    const requestTerms = await submitTerms(submitTermsContent, aliceSession, {
-      resolveKey,
-    })
+    const requestTerms = await submitTerms(submitTermsContent, aliceSession)
 
-    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession, {
-      resolveKey,
-    })
+    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession)
+
+    // anchor attestation to blockchain
+    await createCtype(aliceFullDid.uri, aliceAccount, aliceMnemonic, testCType)
+    await createAttestation(
+      aliceAccount,
+      aliceFullDid.uri,
+      aliceSignAssertion(aliceFullDid),
+      credential.rootHash,
+      claim.cTypeHash
+    )
+
+    //send anchored attestation
 
     const submitAttestationMessage = await submitAttestation(
       attestation,
       requestAttestationMessages.encryptedMessage,
       requestTerms,
-      aliceSession,
-      {
-        resolveKey,
-      }
+      aliceSession
     )
 
-    // TODO other test setup.
-    // await expect(
-    //   receiveAttestation(submitAttestationMessage.encryptedMessage, requestAttestationMessages, bobSession, {
-    //     resolveKey,
-    //   })
-    // ).resolves.not.toThrowError()
+    await expect(
+      receiveAttestation(submitAttestationMessage.encryptedMessage, requestAttestationMessages, bobSession)
+    ).resolves.not.toThrowError()
   })
 })

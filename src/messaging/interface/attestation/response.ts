@@ -133,7 +133,7 @@ export async function receiveAttestation(
 
   Attestation.verifyAgainstCredential(attestation, credential)
 
-  Credential.verifyAttested(credential)
+  await Credential.verifyAttested(credential)
 
   return decryptedMessage
 }
