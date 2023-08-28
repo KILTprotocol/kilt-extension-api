@@ -1,12 +1,35 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { Did, DidDocument, DidKey, DidResourceUri, ResolvedDidKey, init, Credential } from '@kiltprotocol/sdk-js'
+import {
+  Did,
+  DidDocument,
+  Credential,
+  KiltKeyringPair,
+  DecryptCallback,
+  EncryptCallback,
+  connect,
+  ICType,
+  CType,
+  CTypeHash,
+  IClaim,
+  Claim,
+  ICredential,
+} from '@kiltprotocol/sdk-js'
+import { BN } from '@polkadot/util'
 import { Crypto } from '@kiltprotocol/utils'
+import { mnemonicGenerate } from '@polkadot/util-crypto'
+import Keyring from '@polkadot/keyring'
 
 import {
   KeyToolSignCallback,
-  createLocalDemoFullDidFromLightDid,
-  makeEncryptionKeyTool,
-  makeSigningKeyTool,
+  createAttestation,
+  createCtype,
+  fundAccount,
+  generateDid,
+  keypairs,
+  makeDecryptCallback,
+  makeEncryptCallback,
+  makeSignCallback,
+  startContainer,
 } from '../../../tests'
 import { receiveSessionRequest, requestSession, verifySession } from '../session'
 import { IRequestCredential, ISession, ISessionRequest, ISubmitCredential } from '../../../types'
@@ -16,104 +39,118 @@ import { decrypt } from '../../MessageEnvelope.'
 
 describe('Verifier', () => {
   //Alice
-  let aliceLightDid: DidDocument
-  let aliceLightDidWithDetails: DidDocument
+  let aliceAccount: KiltKeyringPair
   let aliceFullDid: DidDocument
   let aliceSign: KeyToolSignCallback
-  const aliceEncKey = makeEncryptionKeyTool('Alice//enc')
+  let aliceSignAssertion: KeyToolSignCallback
+  let aliceDecryptCallback: DecryptCallback
+  let aliceEncryptCallback: EncryptCallback
+  let aliceMnemonic: string
 
   //Bob
-  let bobLightDid: DidDocument
-  let bobLightDidWithDetails: DidDocument
   let bobFullDid: DidDocument
   let bobSign: KeyToolSignCallback
-  const bobEncKey = makeEncryptionKeyTool('Bob//enc')
+  let bobDecryptCallback: DecryptCallback
+  let bobEncryptCallback: EncryptCallback
 
   //session
   let sessionRequest: ISessionRequest
   let aliceSession: ISession
   let bobSession: ISession
 
-  async function resolveKey(keyUri: DidResourceUri, keyRelationship = 'authentication'): Promise<ResolvedDidKey> {
-    const { did } = Did.parse(keyUri)
-    const document = [
-      aliceLightDidWithDetails,
-      aliceLightDid,
-      aliceFullDid,
-      bobLightDidWithDetails,
-      bobLightDid,
-      bobFullDid,
-    ].find(({ uri }) => uri === did)
-    if (!document) throw new Error('Cannot resolve mocked DID')
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return Did.keyToResolvedKey(document[keyRelationship as keyof DidDocument]![0] as DidKey, did)
-  }
+  //Ctypes
+  let testCType: ICType
+  let cTypeHash: CTypeHash
+  let claimContents: IClaim['contents']
+
+  //Credential
+  let credential: ICredential
 
   beforeAll(async () => {
-    await init()
-    const aliceAuthKey = makeSigningKeyTool('ed25519')
-    aliceSign = aliceAuthKey.getSignCallback
-    aliceLightDid = Did.createLightDidDocument({
-      authentication: aliceAuthKey.authentication,
-      keyAgreement: aliceEncKey.keyAgreement,
-    })
-    aliceLightDidWithDetails = Did.createLightDidDocument({
-      authentication: aliceAuthKey.authentication,
-      keyAgreement: aliceEncKey.keyAgreement,
-      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
-    })
-    aliceFullDid = await createLocalDemoFullDidFromLightDid(aliceLightDid)
+    const address = await startContainer()
+    await connect(address)
+  }, 20_000)
 
-    const bobAuthKey = makeSigningKeyTool('ed25519')
-    bobSign = bobAuthKey.getSignCallback
-    bobLightDid = Did.createLightDidDocument({
-      authentication: bobAuthKey.authentication,
-      keyAgreement: bobEncKey.keyAgreement,
-    })
-    bobLightDidWithDetails = Did.createLightDidDocument({
-      authentication: bobAuthKey.authentication,
-      keyAgreement: bobEncKey.keyAgreement,
-      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
-    })
-    bobFullDid = await createLocalDemoFullDidFromLightDid(bobLightDid)
+  beforeAll(async () => {
+    //setup alice
+    aliceMnemonic = mnemonicGenerate()
+    aliceAccount = new Keyring({}).addFromMnemonic(aliceMnemonic) as KiltKeyringPair
+    //give alice 10 KILT
+    await fundAccount(aliceAccount.address, new BN('10000000000000000'))
+    aliceFullDid = await generateDid(aliceAccount, aliceMnemonic)
+    const keyPairsAlice = await keypairs(aliceAccount, aliceMnemonic)
+    aliceEncryptCallback = makeEncryptCallback(keyPairsAlice.keyAgreement)(aliceFullDid)
+    aliceDecryptCallback = makeDecryptCallback(keyPairsAlice.keyAgreement)
+    aliceSign = makeSignCallback(keyPairsAlice.authentication)
+    aliceSignAssertion = makeSignCallback(keyPairsAlice.assertion)
 
+    //setup bob
+    const bobMnemonic = mnemonicGenerate()
+    const bobAccount = new Keyring({}).addFromMnemonic(bobMnemonic) as KiltKeyringPair
+    //give bob 10 KILT
+    await fundAccount(bobAccount.address, new BN('10000000000000000'))
+    bobFullDid = await generateDid(bobAccount, bobMnemonic)
+    const keyPairsBob = await keypairs(bobAccount, bobMnemonic)
+    bobEncryptCallback = makeEncryptCallback(keyPairsBob.keyAgreement)(bobFullDid)
+    bobDecryptCallback = makeDecryptCallback(keyPairsBob.keyAgreement)
+    bobSign = makeSignCallback(keyPairsBob.authentication)
+
+    //session
     sessionRequest = requestSession(aliceFullDid, 'MyApp')
     const { session, sessionResponse } = await receiveSessionRequest(
       bobFullDid,
       sessionRequest,
-      bobEncKey.encrypt(bobFullDid),
-      bobEncKey.decrypt,
-      bobSign(bobFullDid),
-      {
-        resolveKey,
-      }
+      bobEncryptCallback,
+      bobDecryptCallback,
+      bobSign(bobFullDid)
     )
     bobSession = session
 
     aliceSession = await verifySession(
       sessionRequest,
       sessionResponse,
-      aliceEncKey.decrypt,
-      aliceEncKey.encrypt(aliceFullDid),
-      aliceSign(aliceFullDid),
-      { resolveKey }
+      aliceDecryptCallback,
+      aliceEncryptCallback,
+      aliceSign(aliceFullDid)
     )
-  })
+
+    testCType = CType.fromProperties('testCtype', {
+      name: { type: 'string' },
+    })
+
+    await createCtype(aliceFullDid.uri, aliceAccount, aliceMnemonic, testCType)
+
+    claimContents = {
+      name: 'Bob',
+    }
+
+    const claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, bobFullDid.uri)
+
+    cTypeHash = claim.cTypeHash
+    credential = Credential.fromClaim(claim)
+
+    await createAttestation(
+      aliceAccount,
+      aliceFullDid.uri,
+      aliceSignAssertion(aliceFullDid),
+      credential.rootHash,
+      cTypeHash
+    )
+  }, 40_000)
 
   it('should successfully request a valid credential', async () => {
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x12345678') }]
+    const cTypes = [{ cTypeHash: cTypeHash }]
 
-    const requestedCredential = await requestCredential(aliceSession, cTypes, undefined, { resolveKey })
-
+    const requestedCredential = await requestCredential(aliceSession, cTypes)
     expect(requestedCredential.encryptedMessage).toBeDefined()
     expect(requestedCredential.message).toBeDefined()
     expect(requestedCredential.challenge).toBeDefined()
   })
 
   it('should include session information in the requested credential', async () => {
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x12345678') }]
+    const cTypes = [{ cTypeHash: cTypeHash }]
 
-    const requestedCredential = await requestCredential(aliceSession, cTypes, undefined, { resolveKey })
+    const requestedCredential = await requestCredential(aliceSession, cTypes)
 
     const { senderEncryptionKeyUri, receiverEncryptionKeyUri } = aliceSession
 
@@ -122,16 +159,16 @@ describe('Verifier', () => {
   })
 
   it('should include challenge in the requested credential', async () => {
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x12345678') }]
-    const requestedCredential = await requestCredential(aliceSession, cTypes, undefined, { resolveKey })
+    const cTypes = [{ cTypeHash: cTypeHash }]
+    const requestedCredential = await requestCredential(aliceSession, cTypes)
     expect(requestedCredential.challenge).toHaveLength(50)
   })
 
   it('should request a credential with owner information', async () => {
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x12345678') }]
+    const cTypes = [{ cTypeHash: cTypeHash }]
     const owner = aliceFullDid.uri
 
-    const requestedCredential = await requestCredential(aliceSession, cTypes, owner, { resolveKey })
+    const requestedCredential = await requestCredential(aliceSession, cTypes, owner)
 
     expect(isIRequestCredential(requestedCredential.message)).toBeTruthy()
 
@@ -139,37 +176,30 @@ describe('Verifier', () => {
   })
 
   it('should throw an error if session is missing receiverEncryptionKeyUri', async () => {
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x12345678') }]
+    const cTypes = [{ cTypeHash: cTypeHash }]
     const invalidSession = { ...aliceSession, receiverEncryptionKeyUri: undefined }
 
     //@ts-ignore
-    await expect(requestCredential(invalidSession, cTypes, undefined, { resolveKey })).rejects.toThrowError()
+    await expect(requestCredential(invalidSession, cTypes)).rejects.toThrowError()
   })
 
   it('Bob should be able to decrypt the message', async () => {
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x12345678') }]
+    const cTypes = [{ cTypeHash: cTypeHash }]
 
-    const { encryptedMessage } = await requestCredential(aliceSession, cTypes, undefined, { resolveKey })
+    const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
 
-    expect(async () => await decrypt(encryptedMessage, bobEncKey.decrypt, { resolveKey })).not.toThrowError()
+    expect(async () => await decrypt(encryptedMessage, bobDecryptCallback)).not.toThrowError()
   })
 
   it('submit credential', async () => {
-    const cTypeHash = Crypto.hashStr('0x12345678')
-    const credential = Credential.fromClaim({
-      cTypeHash,
-      owner: aliceFullDid.uri,
-      contents: {},
-    })
-
     const cTypes = [{ cTypeHash }]
 
-    const { encryptedMessage, message } = await requestCredential(aliceSession, cTypes, undefined, { resolveKey })
+    const { encryptedMessage, message } = await requestCredential(aliceSession, cTypes)
 
-    const response = await submitCredential([credential], encryptedMessage, bobSession, { resolveKey })
+    const response = await submitCredential([credential], encryptedMessage, bobSession)
 
     // Alice should be able to decrypt the message
-    const decryptedMessage = await decrypt(response, aliceEncKey.decrypt, { resolveKey })
+    const decryptedMessage = await decrypt(response, aliceDecryptCallback)
 
     expect(decryptedMessage.inReplyTo).toBe(message.messageId)
     expect(isSubmitCredential(decryptedMessage)).toBeTruthy()
@@ -177,79 +207,49 @@ describe('Verifier', () => {
     expect(body.content[0].claim.cTypeHash).toBe(cTypeHash)
   })
 
-  it('Bob should be able to decrypt the message', async () => {
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x12345678') }]
-
-    const { encryptedMessage } = await requestCredential(aliceSession, cTypes, undefined, { resolveKey })
-
-    expect(async () => await decrypt(encryptedMessage, bobEncKey.decrypt, { resolveKey })).not.toThrowError()
-  })
-
   it('submit credential with wrong ctype hash', async () => {
-    const credential = Credential.fromClaim({
-      cTypeHash: Crypto.hashStr('0x12345678'),
-      owner: aliceFullDid.uri,
-      contents: {},
-    })
+    const claim = credential.claim
+    const invalidClaim = { ...claim, cTypeHash: Crypto.hashStr('0x123456789') }
+    const invalidCredential = Credential.fromClaim(invalidClaim)
 
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x123456789') }]
+    const cTypes = [{ cTypeHash: cTypeHash }]
 
-    const { encryptedMessage } = await requestCredential(aliceSession, cTypes, undefined, { resolveKey })
+    const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
 
-    await expect(submitCredential([credential], encryptedMessage, bobSession, { resolveKey })).rejects.toThrowError()
+    await expect(submitCredential([invalidCredential], encryptedMessage, bobSession)).rejects.toThrowError()
   })
 
   it('submit credential with wrong owner', async () => {
-    const credential = Credential.fromClaim({
-      cTypeHash: Crypto.hashStr('0x12345678'),
-      owner: bobFullDid.uri,
-      contents: {},
-    })
+    const claim = credential.claim
+    const invalidClaim = { ...claim, cTypeHash: Crypto.hashStr('0x123456789') }
+    const invalidCredential = Credential.fromClaim(invalidClaim)
 
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x12345678') }]
+    const cTypes = [{ cTypeHash: cTypeHash }]
 
-    const { encryptedMessage } = await requestCredential(aliceSession, cTypes, aliceFullDid.uri, { resolveKey })
+    const { encryptedMessage } = await requestCredential(aliceSession, cTypes, bobFullDid.uri)
 
-    await expect(submitCredential([credential], encryptedMessage, bobSession, { resolveKey })).rejects.toThrowError()
+    await expect(submitCredential([invalidCredential], encryptedMessage, bobSession)).rejects.toThrowError()
   })
 
   it('Alice should be able to decrypt the message', async () => {
-    const credential = Credential.fromClaim({
-      cTypeHash: Crypto.hashStr('0x12345678'),
-      owner: bobFullDid.uri,
-      contents: {},
-    })
+    const cTypes = [{ cTypeHash: cTypeHash }]
 
-    const cTypes = [{ cTypeHash: Crypto.hashStr('0x12345678') }]
+    const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
 
-    const { encryptedMessage } = await requestCredential(aliceSession, cTypes, undefined, { resolveKey })
+    const credentialMessage = await submitCredential([credential], encryptedMessage, bobSession)
 
-    const credentialMessage = await submitCredential([credential], encryptedMessage, bobSession, { resolveKey })
-
-    expect(async () => await decrypt(credentialMessage, aliceEncKey.decrypt, { resolveKey })).not.toThrowError()
+    expect(async () => await decrypt(credentialMessage, aliceDecryptCallback)).not.toThrowError()
   })
 
   it('verify submited Credential', async () => {
-    const cTypeHash = Crypto.hashStr('0x12345678')
-    const credential = Credential.fromClaim({
-      cTypeHash,
-      owner: aliceFullDid.uri,
-      contents: {},
-    })
+    const cTypes = [{ cTypeHash: cTypeHash }]
 
-    const cTypes = [{ cTypeHash }]
+    const requestMessage = await requestCredential(aliceSession, cTypes)
 
-    const requestMessage = await requestCredential(aliceSession, cTypes, undefined, {
-      resolveKey,
-    })
+    const responeMessage = await submitCredential([credential], requestMessage.encryptedMessage, bobSession)
 
-    const responeMessage = await submitCredential([credential], requestMessage.encryptedMessage, bobSession, {
-      resolveKey,
-    })
-
-    //TODO other test setup
-    // expect(
-    //   async () => await verifySubmitedCredentialMessage(responeMessage, aliceSession, requestMessage, { resolveKey })
-    // ).not.toThrowError()
+    expect(
+      async () => await verifySubmitedCredentialMessage(responeMessage, aliceSession, requestMessage)
+    ).not.toThrowError()
   })
 })

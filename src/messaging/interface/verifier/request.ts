@@ -104,6 +104,6 @@ async function validateMessageBody(
     const { $id, $schema, title, properties, type } = ctypeDetails
     const ctype = { $id, $schema, title, properties, type }
 
-    Credential.verifyPresentation(credentialPresentation, { ctype, challenge })
+    await Credential.verifyPresentation(credentialPresentation, { ctype, challenge })
   })
 }

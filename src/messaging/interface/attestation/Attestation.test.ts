@@ -50,7 +50,7 @@ import {
 import { decrypt } from '../../MessageEnvelope.'
 import { verifyAttesterSignedQuote, verifyQuoteAgreement } from '../../../quote'
 
-describe('Verifier', () => {
+describe('Attestation', () => {
   //Alice
   let aliceAccount: KiltKeyringPair
   let aliceFullDid: DidDocument
@@ -106,8 +106,8 @@ describe('Verifier', () => {
     bobDecryptCallback = makeDecryptCallback(keyPairsBob.keyAgreement)
     bobSign = makeSignCallback(keyPairsBob.authentication)
 
+    //sessions
     sessionRequest = requestSession(aliceFullDid, 'MyApp')
-
     const { session, sessionResponse } = await receiveSessionRequest(
       bobFullDid,
       sessionRequest,
@@ -204,7 +204,7 @@ describe('Verifier', () => {
     expect(message.inReplyTo).toBe(requestMessage.messageId)
     expect(isRequestAttestation(message)).toBeTruthy()
     const messageBody = message.body as IRequestAttestation
-    //   eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    //eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(messageBody.content.quote!).toBeUndefined()
 
     //Alice should be able to decrypt the message
