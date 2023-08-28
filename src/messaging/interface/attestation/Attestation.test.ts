@@ -323,7 +323,6 @@ describe('Verifier', () => {
     )
 
     //send anchored attestation
-
     const submitAttestationMessage = await submitAttestation(
       attestation,
       requestAttestationMessages.encryptedMessage,
