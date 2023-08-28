@@ -11,7 +11,7 @@ import {
   ISubmitTerms,
   ITerms,
 } from '../../../types'
-import { isIConfirmPayment, isRequestAttestation } from '../../../utils'
+import { isIConfirmPayment, isIRequestPayment, isRequestAttestation } from '../../../utils'
 import { fromBody } from '../../utils'
 import { decrypt, encrypt } from '../../MessageEnvelope.'
 import { assertKnownMessage } from '../../CredentialApiMessageType'
@@ -91,14 +91,22 @@ export async function validateConfirmedPayment(
     throw new Error('Wrong message. Expected confirm payment message')
   }
 
+  if (!isIRequestPayment(message)) {
+    throw new Error('Wrong message. Expected request payment message')
+  }
+
   const { inReplyTo, body } = decryptedMessage
   const { messageId } = message
-
-  validateTx(body.content)
 
   if (messageId !== inReplyTo) {
     throw new Error('Message Ids do not match')
   }
+
+  if (message.body.content.claimHash !== body.content.claimHash) {
+    throw new Error('Claim hashes do not match')
+  }
+
+  await validateTx(body.content)
 }
 
 async function validateTx({ blockHash, txHash }: IConfirmPaymentContent) {
@@ -123,6 +131,9 @@ async function validateTx({ blockHash, txHash }: IConfirmPaymentContent) {
       if (api.events.system.ExtrinsicSuccess.is(event)) {
         //TODO check if tx was transfer and that the ammount was the right.
         const [dispatchInfo] = event.data
+
+        console.log('ich bin hier')
+        console.log(event.data)
         return
       }
       throw new Error('Tx was not successful')

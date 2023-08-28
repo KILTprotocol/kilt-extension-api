@@ -112,6 +112,7 @@ export async function didConfigResourceFromCredential(
     throw new Error('Input must be an IPresentation')
   }
   const claimContents = credential.claim.contents
+
   CType.verifyClaimAgainstSchema(claimContents, ctypeDomainLinkage)
 
   const { origin } = claimContents

@@ -39,6 +39,7 @@ import {
   requestPayment,
   submitAttestation,
   submitTerms,
+  validateConfirmedPayment,
 } from '.'
 import {
   isIConfirmPayment,
@@ -244,6 +245,36 @@ describe('Attestation', () => {
   })
 
   it('confirms payment', async () => {
+    const credential = Credential.fromClaim(claim)
+    const requestTerms = await submitTerms(submitTermsContent, aliceSession)
+    const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession)
+
+    const requestPaymentMessages = await requestPayment(
+      requestAttestationMessages.encryptedMessage,
+      requestTerms,
+      aliceSession
+    )
+    const paymentConfirmation: IConfirmPaymentContent = {
+      blockHash: '123456',
+      claimHash: '123456',
+      txHash: '123456',
+    }
+
+    const { encryptedMessage, message } = await confirmPayment(
+      requestPaymentMessages.encryptedMessage,
+      paymentConfirmation,
+      requestAttestationMessages,
+      bobSession
+    )
+
+    expect(message.inReplyTo).toBe(requestPaymentMessages.message.messageId)
+    expect(isIConfirmPayment(message)).toBe(true)
+
+    // Alice should be able to decrypt the message
+    await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrowError()
+  })
+
+  it('validate payment message', async () => {
     const credential = Credential.fromClaim(claim)
     const requestTerms = await submitTerms(submitTermsContent, aliceSession)
     const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession)

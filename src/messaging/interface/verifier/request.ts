@@ -99,11 +99,6 @@ async function validateMessageBody(
       throw new Error('Users do not match')
     }
 
-    const ctypeDetails: CType.ICTypeDetails = await CType.fetchFromChain(`kilt:ctype:${requestedCtype[0].cTypeHash}`)
-
-    const { $id, $schema, title, properties, type } = ctypeDetails
-    const ctype = { $id, $schema, title, properties, type }
-
-    await Credential.verifyPresentation(credentialPresentation, { ctype, challenge })
+    await Credential.verifyPresentation(credentialPresentation, { challenge })
   })
 }
