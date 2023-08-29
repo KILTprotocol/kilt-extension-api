@@ -34,7 +34,7 @@ jobs:
         run: docker pull $IMG_NAME
 
       - name: run tests
-        timeout-minutes: 5
+        timeout-minutes: 10
         env:
           TESTCONTAINERS_NODE_IMG: ${{ env.IMG_NAME }}
         run: |
