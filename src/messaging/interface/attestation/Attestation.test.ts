@@ -13,9 +13,12 @@ import {
   KiltKeyringPair,
   DecryptCallback,
   EncryptCallback,
+  ConfigService,
+  ChainHelpers,
+  Blockchain,
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
-import { mnemonicGenerate } from '@polkadot/util-crypto'
+import { decodeAddress, encodeAddress, mnemonicGenerate } from '@polkadot/util-crypto'
 import Keyring from '@polkadot/keyring'
 
 import {
@@ -62,6 +65,7 @@ describe('Attestation', () => {
   let aliceMnemonic: string
 
   //Bob
+  let bobAccount: KiltKeyringPair
   let bobFullDid: DidDocument
   let bobSign: KeyToolSignCallback
   let bobDecryptCallback: DecryptCallback
@@ -77,6 +81,9 @@ describe('Attestation', () => {
   let claimContents: IClaim['contents']
   let testCType: ICType
   let submitTermsContent: ITerms
+
+  //Misc
+  const COST = 100_000
 
   beforeAll(async () => {
     const address = await startContainer()
@@ -98,7 +105,7 @@ describe('Attestation', () => {
 
     //setup bob
     const bobMnemonic = mnemonicGenerate()
-    const bobAccount = new Keyring({}).addFromMnemonic(bobMnemonic) as KiltKeyringPair
+    bobAccount = new Keyring({}).addFromMnemonic(bobMnemonic) as KiltKeyringPair
     //give bob 10 KILT
     await fundAccount(bobAccount.address, new BN('10000000000000000'))
     bobFullDid = await generateDid(bobAccount, bobMnemonic)
@@ -274,34 +281,43 @@ describe('Attestation', () => {
     await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrowError()
   })
 
-  it('validate payment message', async () => {
+  it('validate confirmed payment message', async () => {
     const credential = Credential.fromClaim(claim)
     const requestTerms = await submitTerms(submitTermsContent, aliceSession)
     const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession)
-
     const requestPaymentMessages = await requestPayment(
       requestAttestationMessages.encryptedMessage,
       requestTerms,
       aliceSession
     )
+
+    const api = ConfigService.get('api')
+
+    const txTransfer = api.tx.balances.transfer(aliceAccount.address, COST)
+
+    const finalizedTx = await ChainHelpers.Blockchain.signAndSubmitTx(txTransfer, bobAccount, {
+      resolveOn: Blockchain.IS_FINALIZED,
+    })
+
     const paymentConfirmation: IConfirmPaymentContent = {
-      blockHash: '123456',
-      claimHash: '123456',
-      txHash: '123456',
+      blockHash: finalizedTx.status.asFinalized.toString(),
+      claimHash: credential.rootHash,
+      txHash: finalizedTx.txHash.toString(),
     }
 
-    const { encryptedMessage, message } = await confirmPayment(
+    const { encryptedMessage } = await confirmPayment(
       requestPaymentMessages.encryptedMessage,
       paymentConfirmation,
       requestAttestationMessages,
       bobSession
     )
 
-    expect(message.inReplyTo).toBe(requestPaymentMessages.message.messageId)
-    expect(isIConfirmPayment(message)).toBe(true)
-
     // Alice should be able to decrypt the message
     await expect(decrypt(encryptedMessage, aliceDecryptCallback)).resolves.not.toThrowError()
+
+    await expect(
+      validateConfirmedPayment(encryptedMessage, requestPaymentMessages, aliceSession, aliceAccount.address, COST)
+    ).resolves.not.toThrowError()
   })
 
   it('submits attestation', async () => {

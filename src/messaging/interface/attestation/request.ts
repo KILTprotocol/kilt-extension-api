@@ -1,4 +1,4 @@
-import { DidResolveKey, IAttestation } from '@kiltprotocol/types'
+import { DidResolveKey, IAttestation, KiltKeyringPair } from '@kiltprotocol/types'
 import { Attestation, Did, ConfigService } from '@kiltprotocol/sdk-js'
 
 import {
@@ -16,6 +16,8 @@ import { fromBody } from '../../utils'
 import { decrypt, encrypt } from '../../MessageEnvelope.'
 import { assertKnownMessage } from '../../CredentialApiMessageType'
 import { verifyQuoteAgreement } from '../../../quote'
+import { isNumber } from '@polkadot/util'
+import { encodeAddress } from '@polkadot/keyring'
 
 export async function submitTerms(
   content: ITerms,
@@ -83,7 +85,9 @@ export async function requestPayment(
 export async function validateConfirmedPayment(
   encryptedMessage: IEncryptedMessage,
   { message }: IMessageWorkflow,
-  { decryptCallback }: ISession
+  { decryptCallback }: ISession,
+  recipient: KiltKeyringPair['address'],
+  amount: number
 ) {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
 
@@ -106,10 +110,14 @@ export async function validateConfirmedPayment(
     throw new Error('Claim hashes do not match')
   }
 
-  await validateTx(body.content)
+  await validateTx(body.content, recipient, amount)
 }
 
-async function validateTx({ blockHash, txHash }: IConfirmPaymentContent) {
+async function validateTx(
+  { blockHash, txHash }: IConfirmPaymentContent,
+  recipient: KiltKeyringPair['address'],
+  amount: number
+) {
   const api = ConfigService.get('api')
   const signedBlock = await api.rpc.chain.getBlock(blockHash)
 
@@ -117,27 +125,37 @@ async function validateTx({ blockHash, txHash }: IConfirmPaymentContent) {
   const allRecords = await apiAt.query.system.events()
   allRecords[0].phase
 
-  const txIndex = signedBlock.block.extrinsics.findIndex(({ hash }) => {
-    hash.toHex() === txHash
-  })
+  const txIndex = signedBlock.block.extrinsics.findIndex(({ hash }) => hash.toHex() === txHash)
 
   if (txIndex === -1) {
     throw new Error('Tx does not exists')
   }
 
+  // check first if we have transferred the right amount of balance to the right account
   allRecords
     .filter(({ phase }) => phase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(txIndex))
-    .forEach(({ event }) => {
-      if (api.events.system.ExtrinsicSuccess.is(event)) {
-        //TODO check if tx was transfer and that the ammount was the right.
-        const [dispatchInfo] = event.data
+    .filter(({ event }) => api.events.balances.Transfer.is(event))
+    .map(({ event }) => {
+      const transferredAmount = event.data.at(2)?.toPrimitive()
+      const destination = encodeAddress(event.data.at(1)?.toPrimitive() as string)
 
-        console.log('ich bin hier')
-        console.log(event.data)
-        return
+      if (destination !== recipient) {
+        throw new Error('Wrong recipient in tx')
       }
-      throw new Error('Tx was not successful')
+
+      if (!isNumber(transferredAmount) || transferredAmount < amount) {
+        throw new Error('Wrong amount in tx')
+      }
     })
+
+  // check now if tx was successfull
+  const countSuccessfulTx = allRecords
+    .filter(({ phase }) => phase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(txIndex))
+    .filter(({ event }) => api.events.system.ExtrinsicSuccess.is(event)).length
+
+  if (countSuccessfulTx === 0) {
+    throw new Error('Tx was not successful')
+  }
 }
 
 export async function submitAttestation(
