@@ -18,7 +18,7 @@ import {
   Blockchain,
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
-import { decodeAddress, encodeAddress, mnemonicGenerate } from '@polkadot/util-crypto'
+import { mnemonicGenerate } from '@polkadot/util-crypto'
 import Keyring from '@polkadot/keyring'
 
 import {
