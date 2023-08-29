@@ -3,7 +3,7 @@ import { IAttestation, ICredentialPresentation, IRequestCredentialContent } from
 
 import type {
   IMessage,
-  IMessageBodyBase,
+  MessageBody,
   IRejectAttestation,
   IRequestAttestation,
   IRequestCredential,
@@ -12,7 +12,7 @@ import type {
   ISubmitTerms,
 } from '../types'
 
-export function isIMessage<Body extends IMessageBodyBase>(message: any): message is IMessage<Body> {
+export function isIMessage<Body extends MessageBody>(message: any): message is IMessage<Body> {
   if (
     typeof message !== 'object' ||
     !('body' in message) ||

@@ -15,7 +15,7 @@ import type { IQuoteAgreement, IQuoteAttesterSigned } from './Quote'
  * All possible message types which are defined in the KILT Credential API (Spec version 3.2)
  * https://github.com/KILTprotocol/spec-ext-credential-api
  */
-export type MessageBody =
+export type CredentialApiMessageBody =
   | IError
   | IReject
   | ISubmitTerms
@@ -40,7 +40,7 @@ export type MessageBodyType =
   | 'submit-credential'
   | 'reject-terms'
 
-export interface IMessageBodyBase<Type extends string = string, Content = unknown> {
+export interface MessageBody<Type extends string = string, Content = unknown> {
   content: Content
   type: Type
 }
@@ -55,7 +55,7 @@ export interface IMessageBodyBase<Type extends string = string, Content = unknow
  * - `inReplyTo` - The id of the parent-message.
  * - `references` - The references or the in-reply-to of the parent-message followed by the message-id of the parent-message.
  */
-export interface IMessage<Body extends IMessageBodyBase = { type: string; content: unknown }> {
+export interface IMessage<Body extends MessageBody = { type: string; content: unknown }> {
   body: Body
   createdAt: number
   sender: DidUri
@@ -70,18 +70,18 @@ export interface IMessage<Body extends IMessageBodyBase = { type: string; conten
  * Error messages signal unintentional programming errors which happened during
  * the processing of the incoming messages or when constructing a response message.
  */
-export type IError = IMessageBodyBase<'error', { name?: string; message?: string }>
+export type IError = MessageBody<'error', { name?: string; message?: string }>
 
 /**
  * Rejection messages signal the intentional cancelling of an individual step in the flow.
  */
-export type IReject = IMessageBodyBase<'reject', { name?: string; message?: string }>
+export type IReject = MessageBody<'reject', { name?: string; message?: string }>
 
 /**
  * An attester utilizes the message to propose a claim. The purpose of the extension is to enable
  * the user to authorize and endorse the claims prepared by the attester.
  */
-export type ISubmitTerms = IMessageBodyBase<'submit-terms', ITerms>
+export type ISubmitTerms = MessageBody<'submit-terms', ITerms>
 
 /**
  * The content of the [IRequestAttestation] message.
@@ -96,7 +96,7 @@ export interface IRequestAttestationContent {
  * The extension only sends the request with active consent of the user. This is the first step
  * where the user’s DID is revealed to the dApp.
  */
-export type IRequestAttestation = IMessageBodyBase<'request-attestation', IRequestAttestationContent>
+export type IRequestAttestation = MessageBody<'request-attestation', IRequestAttestationContent>
 
 /**
  * The content of the [IRequestPayment] message.
@@ -109,7 +109,7 @@ export interface IRequestPaymentContent {
 /**
  * An attester can send this message if it wants the user to transfer payment in KILT Coins by themselves without interrupting the flow.
  */
-export type IRequestPayment = IMessageBodyBase<'request-payment', IRequestPaymentContent>
+export type IRequestPayment = MessageBody<'request-payment', IRequestPaymentContent>
 
 /**
  * The content of the [ISubmitAttestation] message.
@@ -121,12 +121,12 @@ export interface ISubmitAttestationContent {
 /**
  * The attester sends the valid credential to the extension.
  */
-export type ISubmitAttestation = IMessageBodyBase<'submit-attestation', ISubmitAttestationContent>
+export type ISubmitAttestation = MessageBody<'submit-attestation', ISubmitAttestationContent>
 
 /**
  * If the attester does not approve the attestation request, the extension receives the [IRejectAttestation] message.
  */
-export type IRejectAttestation = IMessageBodyBase<'reject-attestation', ICredential['rootHash']>
+export type IRejectAttestation = MessageBody<'reject-attestation', ICredential['rootHash']>
 
 /**
  * The content of the [ISubmitTerms] message.
@@ -144,7 +144,7 @@ export interface ITerms {
 }
 
 /** Message to submit credentials from the extension or dapp.*/
-export type ISubmitCredential = IMessageBodyBase<'submit-credential', ICredentialPresentation[]>
+export type ISubmitCredential = MessageBody<'submit-credential', ICredentialPresentation[]>
 
 /**
  * The content of the [IRequestCredential] message.
@@ -158,7 +158,7 @@ export interface IRequestCredentialContent {
   challenge?: string
 }
 
-export type IRequestCredential = IMessageBodyBase<'request-credential', IRequestCredentialContent>
+export type IRequestCredential = MessageBody<'request-credential', IRequestCredentialContent>
 
 /**
  * The content of the [IConfirmPayment] message.
@@ -176,12 +176,12 @@ export interface IConfirmPaymentContent {
  * After the user has authorized the payment and it has been transferred,
  * the extension confirms the transfer to the attester by sending the [IConfirmPayment] message.
  */
-export type IConfirmPayment = IMessageBodyBase<'confirm-payment', IConfirmPaymentContent>
+export type IConfirmPayment = MessageBody<'confirm-payment', IConfirmPaymentContent>
 
 /**
  * Everything which is part of the encrypted and protected part of the [[IMessage]].
  */
-export type IEncryptedMessageContents<Body extends IMessageBodyBase = { type: string; content: unknown }> = Omit<
+export type IEncryptedMessageContents<Body extends MessageBody = { type: string; content: unknown }> = Omit<
   IMessage<Body>,
   'receivedAt'
 >
@@ -194,7 +194,7 @@ export type IEncryptedMessageContents<Body extends IMessageBodyBase = { type: st
  * - `receiverKeyUri` - The URI of the receiver's encryption key.
  * - `senderKeyUri` - The URI of the sender's encryption key.
  */
-export type IEncryptedMessage<Body extends IMessageBodyBase = { type: string; content: unknown }> = Pick<
+export type IEncryptedMessage<Body extends MessageBody = { type: string; content: unknown }> = Pick<
   IMessage<Body>,
   'receivedAt'
 > & {

@@ -20,7 +20,7 @@ import {
 } from '../utils'
 import { verifyMessageEnvelope } from './MessageEnvelope'
 import * as MessageError from './Error'
-import type { IMessage, MessageBody } from '../types'
+import type { IMessage, CredentialApiMessageBody } from '../types'
 
 /**
  * Checks if the message body is well-formed.
@@ -104,9 +104,9 @@ export function ensureOwnerIsSender(message: IMessage): void {
  *
  * @param decryptedMessage The decrypted message to check.
  */
-export function assertKnownMessage(decryptedMessage: IMessage): MessageBody {
+export function assertKnownMessage(decryptedMessage: IMessage): CredentialApiMessageBody {
   assertKnownMessageBody(decryptedMessage)
   verifyMessageEnvelope(decryptedMessage)
   ensureOwnerIsSender(decryptedMessage)
-  return decryptedMessage.body as MessageBody
+  return decryptedMessage.body as CredentialApiMessageBody
 }
