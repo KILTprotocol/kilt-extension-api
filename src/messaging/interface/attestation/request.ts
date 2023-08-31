@@ -19,6 +19,18 @@ import { verifyQuoteAgreement } from '../../../quote'
 import { isNumber } from '@polkadot/util'
 import { encodeAddress } from '@polkadot/keyring'
 
+/**
+ * Submits terms of a message workflow using encryption.
+ *
+ * @param content - The content of the terms to be submitted.
+ * @param session - An object containing session information.
+ * @param session.receiverEncryptionKeyUri - The URI of the receiver's encryption key.
+ * @param session.senderEncryptionKeyUri - The URI of the sender's encryption key.
+ * @param session.encryptCallback - A callback function used for encryption.
+ * @param options - Additional options for the function.
+ * @param options.resolveKey - A function for resolving keys. (Optional) Only used for testing
+ * @returns A promise that resolves to an object containing the encrypted message and the original message.
+ */
 export async function submitTerms(
   content: ITerms,
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession,
@@ -43,6 +55,21 @@ export async function submitTerms(
   }
 }
 
+/**
+ * Requests payment and generates a response message using encryption.
+ * @param encryptedMessage - The encrypted message received as part of the message workflow.
+ * @param message - The previous message from the requester in the claim workflow
+ * @param session - An object containing session information.
+ * @param session.receiverEncryptionKeyUri - The URI of the receiver's encryption key.
+ * @param session.senderEncryptionKeyUri - The URI of the sender's encryption key.
+ * @param session.encryptCallback - A callback function used for encryption.
+ * @param session.decryptCallback - A callback function used for decryption.
+ * @param options - Additional options for the function.
+ * @param options.resolveKey - A function for resolving keys. (Optional) Only used for testing.
+ * @throws Error if the decrypted message is not a request attestation message.
+ * @throws Error if the message IDs do not match.
+ * @returns A promise that resolves to an object containing the encrypted response message and the response message itself.
+ */
 export async function requestPayment(
   encryptedMessage: IEncryptedMessage,
   { message }: IMessageWorkflow,
@@ -82,6 +109,22 @@ export async function requestPayment(
   }
 }
 
+/**
+ * Validates a confirmed payment based on the encrypted message, original message, and payment details.
+ * @param encryptedMessage - The encrypted message received as part of the message workflow.
+ * @param message - The previous message from the message workflow.
+ * @param session - An object containing session information.
+ * @param session.decryptCallback - A callback function used for decryption.
+ * @param recipient - The recipient's address for the payment. normaly the reuquester.
+ * @param amount - The payment amount.
+ * @throws Error if the decrypted message is not a confirm payment message.
+ * @throws Error if the original message is not a request payment message.
+ * @throws Error if the message IDs do not match.
+ * @throws Error if claim hashes do not match.
+ * @throws Error if the transaction does not exist.
+ * @throws Error if recipient or amount in the transaction are incorrect.
+ * @throws Error if the transaction was not successful.
+ */
 export async function validateConfirmedPayment(
   encryptedMessage: IEncryptedMessage,
   { message }: IMessageWorkflow,
@@ -113,6 +156,15 @@ export async function validateConfirmedPayment(
   await validateTx(body.content, recipient, amount)
 }
 
+/**
+ * Validates a transaction by checking its details and success status.
+ * @param content - The content of the confirmed payment message.
+ * @param recipient - The recipient's address for the payment.
+ * @param amount - The payment amount.
+ * @throws Error if the transaction does not exist.
+ * @throws Error if recipient or amount in the transaction are incorrect.
+ * @throws Error if the transaction was not successful.
+ */
 async function validateTx(
   { blockHash, txHash }: IConfirmPaymentContent,
   recipient: KiltKeyringPair['address'],
@@ -158,6 +210,24 @@ async function validateTx(
   }
 }
 
+/**
+ * Submits an attestation as a response using encryption.
+ * @param attestation - The attestation to be submitted.
+ * @param encryptedMessage - The encrypted message received as part of the message workflow.
+ * @param message - The previous message from the message workflow.
+ * @param session - An object containing session information.
+ * @param session.receiverEncryptionKeyUri - The URI of the receiver's encryption key.
+ * @param session.senderEncryptionKeyUri - The URI of the sender's encryption key.
+ * @param session.encryptCallback - A callback function used for encryption.
+ * @param session.decryptCallback - A callback function used for decryption.
+ * @param options - Additional options for the function.
+ * @param options.resolveKey - A function for resolving keys. (Optional) Should only be used for testing
+ * @throws Error if the decrypted message is not a request attestation message.
+ * @throws Error if the message IDs do not match.
+ * @throws Error if the attestation is in the wrong format.
+ * @throws Error if the attestation verification against the credential fails.
+ * @returns A promise that resolves to an object containing the encrypted response message and the response message itself.
+ */
 export async function submitAttestation(
   attestation: IAttestation,
   encryptedMessage: IEncryptedMessage,

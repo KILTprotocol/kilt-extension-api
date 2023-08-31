@@ -11,6 +11,19 @@ import { Did } from '@kiltprotocol/sdk-js'
 
 import { ISessionRequest, ISession, ISessionResponse } from '../../../types'
 
+/**
+ * Prepares and returns a session response along with the prepared session.
+ * @param didDocument - The DID document of the responder associated with the session.
+ * @param sessionRequest - The session request details.
+ * @param encryptCallback - A callback function used for encryption.
+ * @param decryptCallback - A callback function used for decryption.
+ * @param signCallback - A callback function used for signing.
+ * @param options - Additional options for the function.
+ * @param options.resolveKey - A function for resolving keys. (Optional) Used for testing only
+ * @throws Error if keyAgreement is missing in the DID document.
+ * @throws Error if receiverEncryptionKeyUri is not a valid DID URI.
+ * @returns An object containing the prepared session and session response.
+ */
 export async function receiveSessionRequest(
   didDocument: DidDocument,
   { challenge, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionRequest,

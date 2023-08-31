@@ -7,6 +7,13 @@ import { ISessionRequest, ISession, ISessionResponse } from '../../../types'
 import { KeyError } from '../../Error'
 import { u8aToString } from '@polkadot/util'
 
+/**
+ * Requests a session with a given DID document and name.
+ * @param didDocument - The DID document of the requester associated with the session.
+ * @param name - The name of the session.
+ * @throws KeyError if keyAgreement does not exist in the DID document.
+ * @returns An object containing the session request details.
+ */
 export function requestSession(didDocument: DidDocument, name: string): ISessionRequest {
   if (typeof didDocument.keyAgreement === undefined || !didDocument.keyAgreement) {
     throw new KeyError('KeyAgreement does not exists')
@@ -22,6 +29,19 @@ export function requestSession(didDocument: DidDocument, name: string): ISession
   }
 }
 
+/**
+ * Verifies a session response, decrypts the challenge, and prepares the session.
+ * @param sessionRequest - The original session request details.
+ * @param sessionResponse - The session response details.
+ * @param decryptCallback - A callback function used for decryption.
+ * @param encryptCallback - A callback function used for encryption.
+ * @param signCallback - A callback function used for signing.
+ * @param options - Additional options for the function.
+ * @param options.resolveKey - A function for resolving keys. (Optional) Used for testing only
+ * @throws Error if encryption key is missing.
+ * @throws Error if decrypted challenge doesn't match the original challenge.
+ * @returns An object containing the prepared session information.
+ */
 export async function verifySession(
   { encryptionKeyUri, challenge }: ISessionRequest,
   { encryptedChallenge, nonce, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionResponse,

@@ -5,6 +5,22 @@ import { ISession, IEncryptedMessage, ISubmitCredential } from '../../../types'
 import { decrypt, encrypt, assertKnownMessage, fromBody } from '../../index'
 import { isIRequestCredential } from '../../../utils'
 
+/**
+ * Submits credentials as a response to a request credential message.
+ * @param credentials - An array of credentials to be submitted.
+ * @param encryptedMessage - The encrypted message received as part of the message workflow.
+ * @param session - An object containing session information.
+ * @param session.decryptCallback - A callback function used for decryption.
+ * @param session.senderEncryptionKeyUri - The URI of the sender's encryption key.
+ * @param session.receiverEncryptionKeyUri - The URI of the receiver's encryption key.
+ * @param session.encryptCallback - A callback function used for encryption.
+ * @param session.signCallback - A callback function used for signing.
+ * @param options - Additional options for the function.
+ * @param options.resolveKey - A function for resolving keys. (Optional) Used for tests only.
+ * @throws Error if the decrypted message is not a request credential message.
+ * @throws Error if credentials do not match.
+ * @returns A promise that resolves to an encrypted message containing the submitted credentials.
+ */
 export async function submitCredential(
   credentials: ICredential[],
   encryptedMessage: IEncryptedMessage,
