@@ -13,7 +13,6 @@ import {
   IClaim,
   Claim,
   ICredential,
-  ConfigService,
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
 import { Crypto } from '@kiltprotocol/utils'
