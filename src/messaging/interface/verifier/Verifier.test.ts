@@ -13,6 +13,7 @@ import {
   IClaim,
   Claim,
   ICredential,
+  ConfigService,
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
 import { Crypto } from '@kiltprotocol/utils'
@@ -232,5 +233,10 @@ describe('Verifier', () => {
         verifySubmittedCredentialMessage(responseMessage, aliceSession, requestMessage)
       ).resolves.not.toThrowError()
     })
+  })
+
+  afterAll(async () => {
+    const api = ConfigService.get('api')
+    await api.disconnect()
   })
 })
