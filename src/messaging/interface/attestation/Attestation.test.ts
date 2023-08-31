@@ -386,9 +386,4 @@ describe('Attestation', () => {
       receiveAttestation(submitAttestationMessage.encryptedMessage, requestAttestationMessages, bobSession)
     ).resolves.not.toThrowError()
   })
-
-  afterAll(async () => {
-    const api = ConfigService.get('api')
-    await api.disconnect()
-  })
 })

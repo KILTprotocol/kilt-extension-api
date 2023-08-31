@@ -234,9 +234,4 @@ describe('Verifier', () => {
       ).resolves.not.toThrowError()
     })
   })
-
-  afterAll(async () => {
-    const api = ConfigService.get('api')
-    await api.disconnect()
-  })
 })
