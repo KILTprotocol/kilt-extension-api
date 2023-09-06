@@ -35,9 +35,9 @@ export async function fundAccount(address: KiltKeyringPair['address'], amount: B
 }
 
 export async function keypairs(mnemonic: string) {
-  const authentication = Utils.Crypto.makeKeypairFromUri(mnemonic, 'ed25519')
+  const authentication = Utils.Crypto.makeKeypairFromUri(mnemonic)
 
-  const assertionMethod = Utils.Crypto.makeKeypairFromUri(mnemonic, 'ed25519')
+  const assertionMethod = Utils.Crypto.makeKeypairFromUri(mnemonic)
 
   const keyAgreement = Utils.Crypto.makeEncryptionKeypairFromSeed(Utils.Crypto.mnemonicToMiniSecret(mnemonic))
 
