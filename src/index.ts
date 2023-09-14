@@ -1,1 +1,1 @@
-export { getExtensions, watchExtensions, initializeKiltExtensionAPI } from './getExtension'
+export { getExtensions, watchExtensions, initializeKiltExtensionAPI } from './getExtension/index.js'
