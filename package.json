@@ -1,5 +1,5 @@
 {
-  "name": "kilt-extension-api",
+  "name": "@kiltprotocol/kilt-extension-api",
   "version": "0.1.0",
   "main": "./dist/cjs/index.js",
   "types": "./dist/cjs/index.d.ts",
