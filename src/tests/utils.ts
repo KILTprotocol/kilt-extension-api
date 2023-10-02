@@ -9,6 +9,7 @@ import {
   DidUri,
   ConfigService,
   Utils,
+  KiltEncryptionKeypair,
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
@@ -34,7 +35,9 @@ export async function fundAccount(address: KiltKeyringPair['address'], amount: B
   })
 }
 
-export async function keypairs(mnemonic: string) {
+export async function keypairs(
+  mnemonic: string
+): Promise<{ authentication: KiltKeyringPair; assertionMethod: KiltKeyringPair; keyAgreement: KiltEncryptionKeypair }> {
   const authentication = Utils.Crypto.makeKeypairFromUri(mnemonic)
 
   const assertionMethod = Utils.Crypto.makeKeypairFromUri(mnemonic)
@@ -79,18 +82,17 @@ export async function generateDid(account: KiltKeyringPair, mnemonic: string): P
 }
 
 export async function assertionSigner({
-  assertion,
+  assertionMethod,
   didDocument,
 }: {
-  assertion: KiltKeyringPair
+  assertionMethod: KiltKeyringPair
   didDocument: DidDocument
 }): Promise<SignCallback> {
-  const { assertionMethod } = didDocument
-  if (!assertionMethod) throw new Error('no assertionMethod')
+  if (!didDocument.assertionMethod) throw new Error('no assertionMethod')
   return async ({ data }) => ({
-    signature: assertion.sign(data),
+    signature: assertionMethod.sign(data),
     keyType: 'ed25519',
-    keyUri: `${didDocument.uri}${assertionMethod[0].id}`,
+    keyUri: `${didDocument.uri}${didDocument.assertionMethod![0].id}`,
   })
 }
 
@@ -110,7 +112,7 @@ export async function createCtype(didUri: DidUri, account: KiltKeyringPair, mnem
   const authorizedCtypeCreationTx = await Did.authorizeTx(
     didUri,
     ctypeTx,
-    await assertionSigner({ assertion, didDocument: document }),
+    await assertionSigner({ assertionMethod: assertion, didDocument: document }),
     account.address as `4${string}`
   )
 

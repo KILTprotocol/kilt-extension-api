@@ -63,7 +63,7 @@ describe('Well Known Did Configuration integration test', () => {
   it('generate a well known did configuration credential', async () => {
     expect(
       (credential = await createCredential(
-        await assertionSigner({ assertion: keypair.assertion, didDocument }),
+        await assertionSigner({ assertionMethod: keypair.assertionMethod, didDocument }),
         origin,
         didUri
       ))
@@ -83,7 +83,7 @@ describe('Well Known Did Configuration integration test', () => {
 
   it('fails to generate a well known did configuration credential if origin is not a URL', async () => {
     await expect(
-      createCredential(await assertionSigner({ assertion: keypair.assertion, didDocument }), 'bad origin', didUri)
+      createCredential(await assertionSigner({ assertionMethod: keypair.assertion, didDocument }), 'bad origin', didUri)
     ).rejects.toThrow()
   }, 30_000)
 
