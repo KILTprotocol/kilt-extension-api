@@ -19,8 +19,17 @@
       "import": "./dist/esm/types/index.js",
       "require": "./dist/cjs/types/index.js",
       "default": "./dist/cjs/types/index.js"
+    },
+    "./messaging": {
+      "import": "./dist/esm/messaging/index.js",
+      "require": "./dist/cjs/messaging/index.js",
+      "default": "./dist/cjs/messaging/index.js"
+    },
+    "./quote": {
+      "import": "./dist/esm/quote/index.js",
+      "require": "./dist/cjs/quote/index.js",
+      "default": "./dist/cjs/quote/index.js"
     }
-    
   },
   "files": [ "LICENSE", "README.md", "package.json", "dist"],
   "author": "KILT <info@kilt.io>",
