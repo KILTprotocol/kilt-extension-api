@@ -1,10 +1,10 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",                               
     "module": "commonjs",                             
     "declaration": true,                              
     "outDir": "./dist/cjs",                            
-    "declarationDir": "./dist/cjs",
     "esModuleInterop": true,                           
     "forceConsistentCasingInFileNames": true,          
     "strict": true,                                    
