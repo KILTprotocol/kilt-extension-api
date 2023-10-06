@@ -8,4 +8,6 @@ module.exports = {
   rootDir: 'src',
   coverageDirectory: 'coverage',
   moduleDirectories: ['node_modules'],
+  moduleFileExtensions: ['js', 'ts', 'tsx', 'json', 'node'],
+  modulePaths: ['<rootDir>'],
 }
