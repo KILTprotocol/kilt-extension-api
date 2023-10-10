@@ -5,12 +5,12 @@
   "types": "./dist/cjs/index.d.ts",
   "type": "module",
   "exports": {
-    "." : {
+    ".": {
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js",
       "default": "./dist/cjs/index.js"
     },
-    "./wellKnownDidConfiguration" : {
+    "./wellKnownDidConfiguration": {
       "import": "./dist/esm/wellKnownDidConfiguration/index.js",
       "require": "./dist/cjs/wellKnownDidConfiguration/index.js",
       "default": "./dist/cjs/wellKnownDidConfiguration/index.js"
@@ -31,14 +31,19 @@
       "default": "./dist/cjs/quote/index.js"
     }
   },
-  "files": [ "LICENSE", "README.md", "package.json", "dist"],
+  "files": [
+    "LICENSE",
+    "README.md",
+    "package.json",
+    "dist"
+  ],
   "author": "KILT <info@kilt.io>",
   "license": "BSD-4-Clause",
   "scripts": {
     "lint": "eslint --ext .ts .",
     "build": "yarn build:cjs && yarn build:esm",
     "build:cjs": "tsc -p tsconfig.cjs.json && echo '{\"type\": \"commonjs\"}' > dist/cjs/package.json",
-    "build:esm": "tsc -p tsconfig.json && echo '{\"type\": \"module\"}' > dist/esm/package.json",
+    "build:esm": "tsc -p tsconfig.esm.json && echo '{\"type\": \"module\"}' > dist/esm/package.json",
     "clean": "exec git clean -xf -e 'node_modules' '*'",
     "test": "jest test --no-cache"
   },
@@ -52,6 +57,7 @@
   },
   "devDependencies": {
     "@polkadot/util-crypto": "^12.3.2",
+    "ts-jest-resolver": "^2.0.1",
     "@types/jest": "^28.0.0",
     "@types/node": "^18.8.2",
     "@types/react": "^18.0.21",
