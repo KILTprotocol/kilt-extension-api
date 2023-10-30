@@ -178,6 +178,10 @@ async function validateTx(
   const apiAt = await api.at(signedBlockHash)
   const allRecords = await apiAt.query.system.events()
 
+  if (allRecords.isEmpty) {
+    throw new Error(`No events for block: ${signedBlockHash}`)
+  }
+
   const txIndex = signedBlock.block.extrinsics.findIndex(({ hash }) => hash.toHex() === txHash)
 
   if (txIndex === -1) {
