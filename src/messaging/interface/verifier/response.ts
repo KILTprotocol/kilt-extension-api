@@ -1,4 +1,4 @@
-import { Credential, Did } from '@kiltprotocol/sdk-js'
+import { CType, Credential, Did } from '@kiltprotocol/sdk-js'
 import { DidResolveKey, ICredential } from '@kiltprotocol/types'
 
 import { ISession, IEncryptedMessage, ISubmitCredential } from '../../../types/index.js'
@@ -42,6 +42,7 @@ export async function submitCredential(
 
   const content = await Promise.all(
     cTypes.map(async (ctype) => {
+      await CType.fetchFromChain(`kilt:ctype:${ctype.cTypeHash}`)
       const filteredCredential = credentials.filter(
         (c) => c.claim.cTypeHash === ctype.cTypeHash && (owner ? c.claim.owner === owner : true)
       )
