@@ -1,8 +1,8 @@
 import { DidUri } from '@kiltprotocol/types'
 import { VerifiableCredential, constants } from '@kiltprotocol/vc-export'
 
-import { IMessageWorkflow } from './Message'
-import { DomainLinkageProof } from './Window'
+import { IMessageWorkflow } from './index.js'
+import { DomainLinkageProof } from './Window.js'
 
 export type ICredentialRequest = IMessageWorkflow & {
   challenge: string

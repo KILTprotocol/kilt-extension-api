@@ -10,11 +10,11 @@ import {
   IRequestAttestation,
   ISession,
   ISubmitAttestation,
-} from '../../../types'
-import { decrypt, encrypt } from '../../MessageEnvelope'
-import { isIRequestPayment, isRequestAttestation, isSubmitAttestation, isSubmitTerms } from '../../../utils'
-import { fromBody } from '../../utils'
-import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote'
+} from '../../../types/index.js'
+import { decrypt, encrypt } from '../../MessageEnvelope.js'
+import { isIRequestPayment, isRequestAttestation, isSubmitAttestation, isSubmitTerms } from '../../../utils/index.js'
+import { fromBody } from '../../utils.js'
+import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote/index.js'
 
 /**
  * Requests an attestation based on a received encrypted message and a credential.

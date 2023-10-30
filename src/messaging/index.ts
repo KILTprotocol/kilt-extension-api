@@ -12,7 +12,7 @@
  * Messages are encrypted using authenticated encryption: the two parties authenticate to each other, but the message authentication provides repudiation possibilities.
  */
 
-export { fromBody } from './utils'
-export { encrypt, decrypt } from './MessageEnvelope'
-export { assertKnownMessage } from './CredentialApiMessageType'
-export * from './Error'
+export { fromBody } from './utils.js'
+export { encrypt, decrypt } from './MessageEnvelope.js'
+export { assertKnownMessage } from './CredentialApiMessageType.js'
+export * from './Error.js'

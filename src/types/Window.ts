@@ -1,8 +1,8 @@
 import { DidResourceUri, KiltAddress } from '@kiltprotocol/types'
-import { HexString } from './Imported'
+import { HexString } from './Imported.js'
 import { CredentialDigestProof, SelfSignedProof } from '@kiltprotocol/vc-export'
 
-import { DomainLinkageCredential, PubSubSessionV1, PubSubSessionV2 } from '.'
+import { DomainLinkageCredential, PubSubSessionV1, PubSubSessionV2 } from './index.js'
 
 export type This = typeof globalThis
 

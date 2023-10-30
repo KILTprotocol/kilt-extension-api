@@ -19,10 +19,10 @@ import {
   isIRequestCredential,
   isIRequestPayment,
   isIConfirmPayment,
-} from '../utils'
-import * as MessageError from './Error'
-import type { IMessage, CredentialApiMessageBody } from '../types'
-import { verifyMessageEnvelope } from './MessageEnvelope'
+} from '../utils/index.js'
+import * as MessageError from './Error.js'
+import type { IMessage, CredentialApiMessageBody } from '../types/index.js'
+import { verifyMessageEnvelope } from './MessageEnvelope.js'
 
 /**
  * Checks if the message body is well-formed.

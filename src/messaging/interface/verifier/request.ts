@@ -9,9 +9,9 @@ import {
   IMessage,
   IRequestCredential,
   ISubmitCredential,
-} from '../../../types'
-import { isIRequestCredential, isSubmitCredential } from '../../../utils'
-import { decrypt, encrypt, fromBody } from '../../index'
+} from '../../../types/index.js'
+import { isIRequestCredential, isSubmitCredential } from '../../../utils/index.js'
+import { decrypt, encrypt, fromBody } from '../../index.js'
 
 /**
  * Requests a credential issuance with specified parameters.

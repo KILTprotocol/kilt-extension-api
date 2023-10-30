@@ -10,12 +10,12 @@ import {
   ISubmitAttestation,
   ISubmitTerms,
   ITerms,
-} from '../../../types'
-import { isIConfirmPayment, isIRequestPayment, isRequestAttestation } from '../../../utils'
-import { fromBody } from '../../utils'
+} from '../../../types/index.js'
+import { isIConfirmPayment, isIRequestPayment, isRequestAttestation } from '../../../utils/index.js'
+import { fromBody } from '../../utils.js'
 import { decrypt, encrypt } from '../../MessageEnvelope.js'
-import { assertKnownMessage } from '../../CredentialApiMessageType'
-import { verifyQuoteAgreement } from '../../../quote'
+import { assertKnownMessage } from '../../CredentialApiMessageType.js'
+import { verifyQuoteAgreement } from '../../../quote/index.js'
 import { isNumber } from '@polkadot/util'
 import { encodeAddress } from '@polkadot/keyring'
 

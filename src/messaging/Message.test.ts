@@ -558,8 +558,8 @@ describe('Error checking / Verification', () => {
 
     // Claim
     claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, identityAlice.uri)
-      // Legitimation
-      ;[legitimation] = await buildCredential(identityAlice.uri, identityBob.uri, {}, [])
+    // Legitimation
+    ;[legitimation] = await buildCredential(identityAlice.uri, identityBob.uri, {}, [])
     // Quote Data
     quoteData = {
       attesterDid: identityAlice.uri,

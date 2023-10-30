@@ -9,7 +9,7 @@ import type {
   PartialClaim,
   ICType,
 } from '@kiltprotocol/types'
-import type { IQuoteAgreement, IQuoteAttesterSigned } from './Quote'
+import type { IQuoteAgreement, IQuoteAttesterSigned } from './Quote.js'
 
 /**
  * All possible message types which are defined in the KILT Credential API (Spec version 3.2)

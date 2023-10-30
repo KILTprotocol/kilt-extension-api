@@ -1,35 +1,16 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "commonjs",
+    "module": "ESNext",
     "declaration": true,
-    "outDir": "./dist",
+    "moduleResolution": "Node16",
+    "outDir": "./dist/esm",
+    "declarationDir": "./dist/esm",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "skipLibCheck": true,
-    "baseUrl": "./",
-    "paths": {}
+    "skipLibCheck": true
   },
-  "exclude": ["node_modules", "dist"],
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["**/*test.ts", "**/tests/**/*"]
 }
-
-// { // incoming changes
-//   {
-//     "compilerOptions":
-// {
-//     "target": "ES2022",                               
-//     "module": "ESNext",                             
-//     "declaration": true,           
-//     "moduleResolution": "Node16",                   
-//     "outDir": "./dist/esm",                            
-//     "declarationDir": "./dist/esm",
-//     "esModuleInterop": true,                           
-//     "forceConsistentCasingInFileNames": true,          
-//     "strict": true,                                    
-//     "skipLibCheck": true,
-//   },
-//   "include": ["src/**/*"],
-//   "exclude": ["**/*test.ts", "**/tests/**/*"]
-// }

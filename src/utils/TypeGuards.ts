@@ -12,7 +12,7 @@ import type {
   ISubmitTerms,
   IConfirmPayment,
   IRequestPayment,
-} from '../types'
+} from '../types/index.js'
 
 export function isIMessage<Body extends MessageBody>(message: any): message is IMessage<Body> {
   if (

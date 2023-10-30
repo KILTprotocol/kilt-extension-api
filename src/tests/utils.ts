@@ -22,7 +22,7 @@ import {
 import { BN } from '@polkadot/util'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { GenericContainer, Wait } from 'testcontainers'
-import { ctypeDomainLinkage } from '../wellKnownDidConfiguration'
+import { ctypeDomainLinkage } from '../wellKnownDidConfiguration/index.js'
 
 export const faucet = async () => {
   await cryptoWaitReady()

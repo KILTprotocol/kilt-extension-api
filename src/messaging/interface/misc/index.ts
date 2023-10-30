@@ -1,8 +1,8 @@
 import { Did } from '@kiltprotocol/sdk-js'
 
-import { IEncryptedMessage, IError, IReject, ISession } from '../../../types'
-import { fromBody } from '../../utils'
-import { encrypt } from '../../MessageEnvelope.'
+import { IEncryptedMessage, IError, IReject, ISession } from '../../../types/index.js'
+import { fromBody } from '../../utils.js'
+import { encrypt } from '../../MessageEnvelope.js'
 
 /**
  * Creates an encrypted error message.

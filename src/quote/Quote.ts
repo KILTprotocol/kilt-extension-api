@@ -25,9 +25,9 @@ import type {
   DidUri,
 } from '@kiltprotocol/types'
 import { Crypto, JsonSchema } from '@kiltprotocol/utils'
-import * as QuoteError from './Error'
+import * as QuoteError from './Error.js'
 import { resolveKey, verifyDidSignature, signatureToJson, signatureFromJson } from '@kiltprotocol/did'
-import { QuoteSchema } from './QuoteSchema'
+import { QuoteSchema } from './QuoteSchema.js'
 
 /**
  * Validates the quote against the meta schema and quote data against the provided schema.

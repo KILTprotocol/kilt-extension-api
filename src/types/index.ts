@@ -17,7 +17,6 @@ export * from './Session.js'
 export * from './Credential.js'
 export * from './Window.js'
 
-
 export type This = typeof globalThis
 
 export interface IEncryptedMessageV1 {
@@ -98,7 +97,7 @@ export interface CredentialSubject {
 
 type Contexts = [
   typeof constants.DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
-  'https://identity.foundation/.well-known/did-configuration/v1'
+  'https://identity.foundation/.well-known/did-configuration/v1',
 ]
 
 export type DomainLinkageProof = {

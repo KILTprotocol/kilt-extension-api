@@ -5,5 +5,5 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-export * from './messageUtils'
-export * from './utils'
+export * from './messageUtils.js'
+export * from './utils.js'

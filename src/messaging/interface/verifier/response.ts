@@ -1,9 +1,9 @@
 import { Credential, Did } from '@kiltprotocol/sdk-js'
 import { DidResolveKey, ICredential } from '@kiltprotocol/types'
 
-import { ISession, IEncryptedMessage, ISubmitCredential } from '../../../types'
-import { decrypt, encrypt, assertKnownMessage, fromBody } from '../../index'
-import { isIRequestCredential } from '../../../utils'
+import { ISession, IEncryptedMessage, ISubmitCredential } from '../../../types/index.js'
+import { decrypt, encrypt, assertKnownMessage, fromBody } from '../../index.js'
+import { isIRequestCredential } from '../../../utils/index.js'
 
 /**
  * Submits credentials as a response to a request credential message.

@@ -1,6 +1,6 @@
 import { DecryptCallback, DidResourceUri, EncryptCallback, SignCallback } from '@kiltprotocol/types'
 
-import { IEncryptedMessage, IEncryptedMessageV1 } from '.'
+import { IEncryptedMessage, IEncryptedMessageV1 } from './index.js'
 
 export interface ISessionRequest {
   name: string

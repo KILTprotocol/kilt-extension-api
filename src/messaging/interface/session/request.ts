@@ -3,8 +3,8 @@ import { Did } from '@kiltprotocol/sdk-js'
 import { randomAsHex } from '@polkadot/util-crypto'
 import { DecryptCallback, EncryptCallback } from '@kiltprotocol/types'
 
-import { ISessionRequest, ISession, ISessionResponse } from '../../../types'
-import { KeyError } from '../../Error'
+import { ISessionRequest, ISession, ISessionResponse } from '../../../types/index.js'
+import { KeyError } from '../../Error.js'
 import { u8aToString } from '@polkadot/util'
 
 /**
