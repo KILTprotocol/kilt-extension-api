@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2020",
     "module": "ESNext",
-    "moduleResolution": "Node16",
+    "moduleResolution": "Node",
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,

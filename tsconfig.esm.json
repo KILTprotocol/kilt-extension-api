@@ -4,7 +4,6 @@
     "target": "ES2022",                               
     "module": "ESNext",                             
     "declaration": true,           
-    "moduleResolution": "Node16",                   
     "outDir": "./dist/esm",                            
     "esModuleInterop": true,                           
     "forceConsistentCasingInFileNames": true,          
