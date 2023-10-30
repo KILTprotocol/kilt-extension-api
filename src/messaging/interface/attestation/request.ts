@@ -173,7 +173,8 @@ async function validateTx(
   const api = ConfigService.get('api')
   const signedBlock = await api.rpc.chain.getBlock(blockHash)
 
-  const apiAt = await api.at(signedBlock.block.header.hash)
+  const signedBlockHash = signedBlock.block.header.hash
+  const apiAt = await api.at(signedBlockHash)
   const allRecords = await apiAt.query.system.events()
   allRecords[0].phase
 
