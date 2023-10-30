@@ -19,7 +19,6 @@ import { verifyQuoteAgreement } from '../../../quote/index.js'
 import { isNumber } from '@polkadot/util'
 import { encodeAddress } from '@polkadot/keyring'
 
-
 /**
  * Submits terms of a message workflow using encryption.
  *
@@ -207,8 +206,7 @@ async function validateTx(
   })
 
   // check now if tx was successfull
-  const countSuccessfulTx = filteredRecords
-    .filter(({ event }) => api.events.system.ExtrinsicSuccess.is(event)).length
+  const countSuccessfulTx = filteredRecords.filter(({ event }) => api.events.system.ExtrinsicSuccess.is(event)).length
 
   if (countSuccessfulTx === 0) {
     throw new Error('Tx was not successful')
