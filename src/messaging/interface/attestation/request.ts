@@ -19,6 +19,11 @@ import { verifyQuoteAgreement } from '../../../quote/index.js'
 import { isNumber } from '@polkadot/util'
 import { encodeAddress } from '@polkadot/keyring'
 
+
+async function checkAmountAndReceipientInTx() {
+
+}
+
 /**
  * Submits terms of a message workflow using encryption.
  *
@@ -184,26 +189,26 @@ async function validateTx(
     throw new Error('Tx does not exists')
   }
 
-  // check first if we have transferred the right amount of balance to the right account
-  allRecords
-    .filter(({ phase }) => phase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(txIndex))
-    .filter(({ event }) => api.events.balances.Transfer.is(event))
-    .map(({ event }) => {
-      const transferredAmount = event.data.at(2)?.toPrimitive()
-      const destination = encodeAddress(event.data.at(1)?.toPrimitive() as string)
+  // first: filter out all transfer records.
+  const filteredRecords = allRecords.filter(({ phase }) => phase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(txIndex))
+  const transferRecord = filteredRecords.filter(({ event }) => api.events.balances.Transfer.is(event))
 
-      if (destination !== recipient) {
-        throw new Error('Wrong recipient in tx')
-      }
+  // check if there is one transaction with the right amount to the right account
+  transferRecord.map(({ event }) => {
+    const transferredAmount = event.data.at(2)?.toPrimitive()
+    const destination = encodeAddress(event.data.at(1)?.toPrimitive() as string)
 
-      if (!isNumber(transferredAmount) || transferredAmount < amount) {
-        throw new Error('Wrong amount in tx')
-      }
-    })
+    if (destination !== recipient) {
+      throw new Error(`Wrong recipient in tx. Destination in tx: ${destination}, Target recipient: ${recipient}`)
+    }
+
+    if (!isNumber(transferredAmount) || transferredAmount < amount) {
+      throw new Error(`Wrong amount in tx. Expected amount: ${transferredAmount}, Requested Amount: ${amount}`)
+    }
+  })
 
   // check now if tx was successfull
-  const countSuccessfulTx = allRecords
-    .filter(({ phase }) => phase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(txIndex))
+  const countSuccessfulTx = filteredRecords
     .filter(({ event }) => api.events.system.ExtrinsicSuccess.is(event)).length
 
   if (countSuccessfulTx === 0) {
