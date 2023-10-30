@@ -20,10 +20,6 @@ import { isNumber } from '@polkadot/util'
 import { encodeAddress } from '@polkadot/keyring'
 
 
-async function checkAmountAndReceipientInTx() {
-
-}
-
 /**
  * Submits terms of a message workflow using encryption.
  *
@@ -181,7 +177,6 @@ async function validateTx(
   const signedBlockHash = signedBlock.block.header.hash
   const apiAt = await api.at(signedBlockHash)
   const allRecords = await apiAt.query.system.events()
-  allRecords[0].phase
 
   const txIndex = signedBlock.block.extrinsics.findIndex(({ hash }) => hash.toHex() === txHash)
 
