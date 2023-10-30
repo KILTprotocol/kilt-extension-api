@@ -94,7 +94,7 @@ export async function decrypt(
 
   verifyMessageEnvelope(decrypted)
   if (sender !== senderKeyDetails.controller) {
-    throw new MessageError.IdentityMismatchError('Encryption key', 'Sender')
+    throw new MessageError.IdentityMismatchError('Encryption key', `Sender: ${sender}, found: ${senderKeyDetails.controller}`)
   }
 
   return decrypted
