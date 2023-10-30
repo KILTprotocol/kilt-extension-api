@@ -132,7 +132,7 @@ export async function validateConfirmedPayment(
   { decryptCallback }: ISession,
   recipient: KiltKeyringPair['address'],
   amount: number
-) {
+): Promise<void> {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback)
 
   if (!isIConfirmPayment(decryptedMessage)) {
@@ -170,7 +170,7 @@ async function validateTx(
   { blockHash, txHash }: IConfirmPaymentContent,
   recipient: KiltKeyringPair['address'],
   amount: number
-) {
+): Promise<void> {
   const api = ConfigService.get('api')
   const signedBlock = await api.rpc.chain.getBlock(blockHash)
 
