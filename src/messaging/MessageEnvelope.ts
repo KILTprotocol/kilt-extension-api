@@ -101,7 +101,7 @@ export async function decrypt(
 }
 
 /**
- * Encrypts the [[Message]] as a string. This can be reversed with [[decrypt]].
+ * Encrypts the [[Message]] as a string.
  *
  * @param message The message to encrypt.
  * @param encryptCallback The callback to encrypt with the secret key.
