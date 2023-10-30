@@ -1,6 +1,6 @@
 import { randomAsHex } from '@polkadot/util-crypto'
 import { CTypeHash, DidResolveKey, DidUri } from '@kiltprotocol/types'
-import { Credential, Did } from '@kiltprotocol/sdk-js'
+import { CType, Credential, Did } from '@kiltprotocol/sdk-js'
 
 import {
   ISession,
@@ -43,6 +43,11 @@ export async function requestCredential(
   } = {}
 ): Promise<ICredentialRequest> {
   const challenge = randomAsHex(24)
+
+  cTypes.map(async (ctype) => {
+    await CType.fetchFromChain(`kilt:ctype:${ctype.cTypeHash}`)
+  })
+
   const body: IRequestCredential = {
     content: {
       cTypes,
