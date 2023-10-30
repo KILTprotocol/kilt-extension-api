@@ -16,7 +16,7 @@ import {
   ICredentialPresentation,
   DidResourceUri,
 } from '@kiltprotocol/sdk-js'
-import { DomainLinkageCredential, DomainLinkageProof, DidConfigResource } from '../types'
+import { DomainLinkageCredential, DomainLinkageProof, DidConfigResource } from '../types/index.js'
 import {
   SelfSignedProof,
   constants,

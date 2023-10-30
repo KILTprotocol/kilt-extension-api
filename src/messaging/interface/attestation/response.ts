@@ -11,7 +11,7 @@ import {
   ISession,
   ISubmitAttestation,
 } from '../../../types'
-import { decrypt, encrypt } from '../../MessageEnvelope.'
+import { decrypt, encrypt } from '../../MessageEnvelope'
 import { isIRequestPayment, isRequestAttestation, isSubmitAttestation, isSubmitTerms } from '../../../utils'
 import { fromBody } from '../../utils'
 import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote'

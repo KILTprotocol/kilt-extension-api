@@ -35,15 +35,8 @@ import {
   makeSigningKeyTool,
 } from '../tests'
 import { fromBody, verifyRequiredCTypeProperties } from './utils'
-
-import {
-  ensureOwnerIsSender,
-  assertKnownMessage,
-  verifyMessageEnvelope,
-  assertKnownMessageBody,
-} from './CredentialApiMessageType'
-import { decrypt, encrypt } from './MessageEnvelope.'
-
+import { decrypt, encrypt, verifyMessageEnvelope } from './MessageEnvelope'
+import { ensureOwnerIsSender, assertKnownMessage, assertKnownMessageBody } from './CredentialApiMessageType'
 import type {
   IEncryptedMessage,
   IMessage,
@@ -565,8 +558,8 @@ describe('Error checking / Verification', () => {
 
     // Claim
     claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, identityAlice.uri)
-    // Legitimation
-    ;[legitimation] = await buildCredential(identityAlice.uri, identityBob.uri, {}, [])
+      // Legitimation
+      ;[legitimation] = await buildCredential(identityAlice.uri, identityBob.uri, {}, [])
     // Quote Data
     quoteData = {
       attesterDid: identityAlice.uri,

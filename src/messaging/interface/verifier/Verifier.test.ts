@@ -35,7 +35,7 @@ import { receiveSessionRequest, requestSession, verifySession } from '../session
 import { IRequestCredential, ISession, ISessionRequest, ISubmitCredential } from '../../../types'
 import { requestCredential, submitCredential, verifySubmittedCredentialMessage } from '.'
 import { isIRequestCredential, isSubmitCredential } from '../../../utils'
-import { decrypt } from '../../MessageEnvelope.'
+import { decrypt } from '../../MessageEnvelope'
 
 describe('Verifier', () => {
   //Alice
@@ -76,18 +76,18 @@ describe('Verifier', () => {
     aliceAccount = new Keyring({}).addFromMnemonic(aliceMnemonic) as KiltKeyringPair
     await fundAccount(aliceAccount.address, new BN('10000000000000000'))
     aliceFullDid = await generateDid(aliceAccount, aliceMnemonic)
-    const keyPairsAlice = await keypairs(aliceAccount, aliceMnemonic)
+    const keyPairsAlice = await keypairs(aliceMnemonic)
     aliceEncryptCallback = makeEncryptCallback(keyPairsAlice.keyAgreement)(aliceFullDid)
     aliceDecryptCallback = makeDecryptCallback(keyPairsAlice.keyAgreement)
     aliceSign = makeSignCallback(keyPairsAlice.authentication)
-    aliceSignAssertion = makeSignCallback(keyPairsAlice.assertion)
+    aliceSignAssertion = makeSignCallback(keyPairsAlice.assertionMethod)
 
     // Setup Bob
     const bobMnemonic = mnemonicGenerate()
     const bobAccount = new Keyring({}).addFromMnemonic(bobMnemonic) as KiltKeyringPair
     await fundAccount(bobAccount.address, new BN('10000000000000000'))
     bobFullDid = await generateDid(bobAccount, bobMnemonic)
-    const keyPairsBob = await keypairs(bobAccount, bobMnemonic)
+    const keyPairsBob = await keypairs(bobMnemonic)
     bobEncryptCallback = makeEncryptCallback(keyPairsBob.keyAgreement)(bobFullDid)
     bobDecryptCallback = makeDecryptCallback(keyPairsBob.keyAgreement)
     bobSign = makeSignCallback(keyPairsBob.authentication)

@@ -1,28 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-/**
- * Copyright (c) 2018-2023, BOTLabs GmbH.
- *
- * This source code is licensed under the BSD 4-Clause "Original" license
- * found in the LICENSE file in the root directory of this source tree.
- */
-
 import { IAttestation, ICredentialPresentation, IRequestCredentialContent } from '@kiltprotocol/types'
 
 import type {
-  IConfirmPayment,
   IMessage,
-  IMessageBodyBase,
+  MessageBody,
   IRejectAttestation,
   IRequestAttestation,
   IRequestCredential,
-  IRequestPayment,
   ISubmitAttestation,
   ISubmitCredential,
   ISubmitTerms,
+  IConfirmPayment,
+  IRequestPayment,
 } from '../types'
 
-export function isIMessage<Body extends IMessageBodyBase>(message: any): message is IMessage<Body> {
+export function isIMessage<Body extends MessageBody>(message: any): message is IMessage<Body> {
   if (
     typeof message !== 'object' ||
     !('body' in message) ||

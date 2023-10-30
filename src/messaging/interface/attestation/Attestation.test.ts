@@ -51,7 +51,7 @@ import {
   isSubmitAttestation,
   isSubmitTerms,
 } from '../../../utils'
-import { decrypt } from '../../MessageEnvelope.'
+import { decrypt } from '../../MessageEnvelope'
 import { verifyAttesterSignedQuote, verifyQuoteAgreement } from '../../../quote'
 
 describe('Attestation', () => {
@@ -97,11 +97,11 @@ describe('Attestation', () => {
     //give alice 10 KILT
     await fundAccount(aliceAccount.address, new BN('10000000000000000'))
     aliceFullDid = await generateDid(aliceAccount, aliceMnemonic)
-    const keyPairsAlice = await keypairs(aliceAccount, aliceMnemonic)
+    const keyPairsAlice = await keypairs(aliceMnemonic)
     aliceEncryptCallback = makeEncryptCallback(keyPairsAlice.keyAgreement)(aliceFullDid)
     aliceDecryptCallback = makeDecryptCallback(keyPairsAlice.keyAgreement)
     aliceSign = makeSignCallback(keyPairsAlice.authentication)
-    aliceSignAssertion = makeSignCallback(keyPairsAlice.assertion)
+    aliceSignAssertion = makeSignCallback(keyPairsAlice.assertionMethod)
 
     //setup bob
     const bobMnemonic = mnemonicGenerate()
@@ -109,7 +109,7 @@ describe('Attestation', () => {
     //give bob 10 KILT
     await fundAccount(bobAccount.address, new BN('10000000000000000'))
     bobFullDid = await generateDid(bobAccount, bobMnemonic)
-    const keyPairsBob = await keypairs(bobAccount, bobMnemonic)
+    const keyPairsBob = await keypairs(bobMnemonic)
     bobEncryptCallback = makeEncryptCallback(keyPairsBob.keyAgreement)(bobFullDid)
     bobDecryptCallback = makeDecryptCallback(keyPairsBob.keyAgreement)
     bobSign = makeSignCallback(keyPairsBob.authentication)

@@ -13,7 +13,7 @@ import {
 } from '../../../types'
 import { isIConfirmPayment, isIRequestPayment, isRequestAttestation } from '../../../utils'
 import { fromBody } from '../../utils'
-import { decrypt, encrypt } from '../../MessageEnvelope.'
+import { decrypt, encrypt } from '../../MessageEnvelope.js'
 import { assertKnownMessage } from '../../CredentialApiMessageType'
 import { verifyQuoteAgreement } from '../../../quote'
 import { isNumber } from '@polkadot/util'
