@@ -24,6 +24,7 @@
     "@kiltprotocol/types": "^0.33.1",
     "@kiltprotocol/vc-export": "^0.33.1",
     "@polkadot/keyring": "^12.3.2",
+    "prettier": "^3.0.1",
     "@polkadot/util": "^12.3.2",
     "yargs": "^17.7.2"
   },
