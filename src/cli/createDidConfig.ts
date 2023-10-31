@@ -9,8 +9,8 @@ import { u8aEq } from '@polkadot/util'
 import { readFile, writeFile } from 'fs/promises'
 import yargs from 'yargs/yargs'
 
-import { didConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration'
-import { DidConfigResource } from '../types'
+import { didConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration/index.js'
+import { DidConfigResource } from '../types/index.js'
 
 type KeyType = 'sr25519' | 'ed25519' | 'ecdsa'
 
@@ -30,7 +30,7 @@ const createCredentialOpts = {
     description: 'Mnemonic or seed for the assertionMethod key to be used for issuing a new credential.',
     demandOption: true,
   },
-  keyType: { alias: 't', choices: ['sr25519', 'ed25519', 'ecdsa'] as const, default: 'sr25519' },
+  keyType: { alias: 't', choices: ['sr25519', 'ed25519', 'ecdsa'] as const, default: 'ed25519' },
   wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
 } as const
 

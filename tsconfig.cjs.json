@@ -1,11 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2022",                               
-    "module": "ESNext",                             
-    "declaration": true,           
-    "moduleResolution": "Node16",                   
-    "outDir": "./dist/esm",                            
-    "declarationDir": "./dist/esm",
+    "module": "commonjs",                             
+    "declaration": true,                              
+    "outDir": "./dist/cjs",                            
+    "declarationDir": "./dist/cjs",
     "esModuleInterop": true,                           
     "forceConsistentCasingInFileNames": true,          
     "strict": true,                                    
@@ -14,3 +13,8 @@
   "include": ["src/**/*"],
   "exclude": ["**/*test.ts", "**/tests/**/*"]
 }
+
+  
+    
+    
+    

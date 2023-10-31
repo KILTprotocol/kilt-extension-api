@@ -6,7 +6,7 @@ import {
   IClaim,
   DidResourceUri,
   connect,
-  ConfigService,
+  disconnect,
   CType,
 } from '@kiltprotocol/sdk-js'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
@@ -46,7 +46,7 @@ describe('Well Known Did Configuration integration test', () => {
     mnemonic = mnemonicGenerate()
     account = new Keyring({ type: 'ed25519' }).addFromMnemonic(mnemonic) as KiltKeyringPair
     await fundAccount(account.address, new BN('1000000000000000000'))
-    keypair = await keypairs(account, mnemonic)
+    keypair = await keypairs(mnemonic)
 
     didDocument = await generateDid(account, mnemonic)
 
@@ -63,7 +63,7 @@ describe('Well Known Did Configuration integration test', () => {
   it('generate a well known did configuration credential', async () => {
     expect(
       (credential = await createCredential(
-        await assertionSigner({ assertion: keypair.assertion, didDocument }),
+        await assertionSigner({ assertionMethod: keypair.assertionMethod, didDocument }),
         origin,
         didUri
       ))
@@ -83,7 +83,7 @@ describe('Well Known Did Configuration integration test', () => {
 
   it('fails to generate a well known did configuration credential if origin is not a URL', async () => {
     await expect(
-      createCredential(await assertionSigner({ assertion: keypair.assertion, didDocument }), 'bad origin', didUri)
+      createCredential(await assertionSigner({ assertionMethod: keypair.assertion, didDocument }), 'bad origin', didUri)
     ).rejects.toThrow()
   }, 30_000)
 
@@ -122,7 +122,5 @@ describe('Well Known Did Configuration integration test', () => {
 })
 
 afterAll(async () => {
-  const api = ConfigService.get('api')
-
-  await api.disconnect()
+  await disconnect()
 })

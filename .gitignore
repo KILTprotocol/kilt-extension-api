@@ -1,6 +1,11 @@
 /node_modules
 yarn.lock
 yarn-error.log
+<<<<<<< HEAD
+/.vscode
+=======
+/dist
+>>>>>>> b5f83ee (building)
 
 *.js
 *.d.ts
