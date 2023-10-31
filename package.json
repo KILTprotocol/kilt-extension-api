@@ -1,29 +1,59 @@
 {
-  "name": "kilt-extension-api",
+  "name": "@kiltprotocol/kilt-extension-api",
   "version": "0.1.0",
   "main": "./index.js",
   "types": "./index.d.ts",
   "type": "commonjs",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./index.js",
       "default": "./index.js"
     },
     "./wellKnownDidConfiguration": {
-      "types": "./wellKnownDidConfiguration/index.d.ts",
+      "import": "./esm/wellKnownDidConfiguration/index.js",
+      "require": "./wellKnownDidConfiguration/index.js",
       "default": "./wellKnownDidConfiguration/index.js"
     },
     "./types": {
-      "types": "./types/index.d.ts"
+      "import": "./esm/types/index.js",
+      "require": "./types/index.js",
+      "default": "./types/index.js"
+    },
+    "./messaging": {
+      "import": "./esm/messaging/index.js",
+      "require": "./messaging/index.js",
+      "default": "./messaging/index.js"
+    },
+    "./quote": {
+      "import": "./esm/quote/index.js",
+      "require": "./quote/index.js",
+      "default": "./quote/index.js"
     }
   },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "package.json",
+    "esm",
+    "messaging",
+    "wellKnownDidConfiguration",
+    "quote",
+    "index.js",
+    "index.d.ts",
+    "getExtension",
+    "cli",
+    "utils"
+  ],
   "author": "KILT <info@kilt.io>",
   "license": "BSD-4-Clause",
   "scripts": {
     "lint": "eslint --ext .ts .",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "yarn build:cjs && yarn build:esm",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json && echo '{\"type\": \"module\"}' > esm/package.json",
     "clean": "exec git clean -xf -e 'node_modules' '*'",
-    "test": "jest test"
+    "test": "jest test --no-cache"
   },
   "dependencies": {
     "@kiltprotocol/sdk-js": "^0.33.1",
@@ -47,6 +77,7 @@
     "react": "^18.2.0",
     "testcontainers": "^9.5.0",
     "ts-jest": "^28.0.8",
+    "ts-jest-resolver": "^2.0.1",
     "ts-node": "^10.9.1",
     "typescript": "^4.7.4"
   },

@@ -1,7 +1,8 @@
 /node_modules
 yarn.lock
-yarn-error.log
-/.vscode
+yarn-error.log 
+/esm/**
+
 
 *.js
 *.d.ts

@@ -17,10 +17,10 @@ import {
   isRejectAttestation,
   isSubmitCredential,
   isIRequestCredential,
-} from '../utils'
-import { verifyMessageEnvelope } from './MessageEnvelope'
-import * as MessageError from './Error'
-import type { IMessage, CredentialApiMessageBody } from '../types'
+} from '../utils/index.js'
+import { verifyMessageEnvelope } from './MessageEnvelope.js'
+import * as MessageError from './Error.js'
+import type { IMessage, CredentialApiMessageBody } from '../types/index.js'
 
 /**
  * Checks if the message body is well-formed.

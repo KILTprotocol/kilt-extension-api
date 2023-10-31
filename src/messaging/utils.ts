@@ -6,8 +6,8 @@
  */
 
 import { ICType } from '@kiltprotocol/types'
-import { IMessage, MessageBody } from '../types'
-import * as MessageError from './Error'
+import { IMessage, MessageBody } from '../types/index.js'
+import * as MessageError from './Error.js'
 import { CType } from '@kiltprotocol/sdk-js'
 import { UUID } from '@kiltprotocol/utils'
 

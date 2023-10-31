@@ -1,4 +1,4 @@
-import { ApiWindow, InjectedWindowProvider, PubSubSessionV1, PubSubSessionV2 } from '../types'
+import { ApiWindow, InjectedWindowProvider, PubSubSessionV1, PubSubSessionV2 } from '../types/index.js'
 
 // cross-environment reference to global object (aka 'window' in browser environments)
 const apiWindow = globalThis as Window & ApiWindow

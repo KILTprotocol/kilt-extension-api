@@ -1,1 +1,1 @@
-export * from './TypeGuards'
+export * from './TypeGuards.js'

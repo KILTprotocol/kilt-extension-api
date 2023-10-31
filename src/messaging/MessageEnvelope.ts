@@ -7,10 +7,10 @@
 
 import { DecryptCallback, DidResolveKey, DidResourceUri, EncryptCallback } from '@kiltprotocol/types'
 import * as Did from '@kiltprotocol/did'
-import * as MessageError from './Error'
+import * as MessageError from './Error.js'
 import { hexToU8a, stringToU8a, u8aToHex, u8aToString } from '@polkadot/util'
 
-import type { IEncryptedMessage, IEncryptedMessageContents, IMessage } from '../types'
+import type { IEncryptedMessage, IEncryptedMessageContents, IMessage } from '../types/index.js'
 
 /**
  * Checks if the message object is well-formed.
