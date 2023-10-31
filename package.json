@@ -6,27 +6,27 @@
   "type": "commonjs",
   "exports": {
     ".": {
-      "import": "./dist/esm/index.js",
+      "import": "./esm/index.js",
       "require": "./index.js",
       "default": "./index.js"
     },
     "./wellKnownDidConfiguration": {
-      "import": "./dist/esm/wellKnownDidConfiguration/index.js",
+      "import": "./esm/wellKnownDidConfiguration/index.js",
       "require": "./wellKnownDidConfiguration/index.js",
       "default": "./wellKnownDidConfiguration/index.js"
     },
     "./types": {
-      "import": "./dist/esm/types/index.js",
+      "import": "./esm/types/index.js",
       "require": "./types/index.js",
       "default": "./types/index.js"
     },
     "./messaging": {
-      "import": "./dist/esm/messaging/index.js",
+      "import": "./esm/messaging/index.js",
       "require": "./messaging/index.js",
       "default": "./messaging/index.js"
     },
     "./quote": {
-      "import": "./dist/esm/quote/index.js",
+      "import": "./esm/quote/index.js",
       "require": "./quote/index.js",
       "default": "./quote/index.js"
     }
@@ -51,7 +51,7 @@
     "lint": "eslint --ext .ts .",
     "build": "yarn build:cjs && yarn build:esm",
     "build:cjs": "tsc -p tsconfig.cjs.json",
-    "build:esm": "tsc -p tsconfig.esm.json && echo '{\"type\": \"module\"}' > dist/esm/package.json",
+    "build:esm": "tsc -p tsconfig.esm.json && echo '{\"type\": \"module\"}' > esm/package.json",
     "clean": "exec git clean -xf -e 'node_modules' '*'",
     "test": "jest test --no-cache"
   },
