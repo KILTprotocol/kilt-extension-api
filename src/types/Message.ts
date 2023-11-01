@@ -155,6 +155,7 @@ export interface IRequestCredentialContent {
     trustedAttesters?: DidUri[]
     requiredProperties?: string[]
   }>
+  owner?: DidUri
   challenge?: string
 }
 

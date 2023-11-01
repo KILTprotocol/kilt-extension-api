@@ -15,6 +15,7 @@ export declare class UnknownMessageBodyTypeError extends MessageError {}
 export declare class DecodingMessageError extends MessageError {}
 export declare class CTypeUnknownPropertiesError extends MessageError {}
 export declare class InvalidDidFormatError extends MessageError {}
+export declare class KeyError extends MessageError {}
 export declare class DidError extends MessageError {
   constructor(context?: string, type?: string)
 }

@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 
+/**
+ * Copyright (c) 2018-2023, BOTLabs GmbH.
+ *
+ * This source code is licensed under the BSD 4-Clause "Original" license
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
 import { Credential, Did, connect, disconnect } from '@kiltprotocol/sdk-js'
 import { DidResourceUri, DidUri, ICredentialPresentation, SignCallback } from '@kiltprotocol/types'
 
@@ -10,7 +17,7 @@ import { readFile, writeFile } from 'fs/promises'
 import yargs from 'yargs/yargs'
 
 import { didConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration/index.js'
-import { DidConfigResource } from '../types/index.js'
+import type { DidConfigResource } from '../types/index.js'
 
 type KeyType = 'sr25519' | 'ed25519' | 'ecdsa'
 

@@ -94,14 +94,17 @@ export async function decrypt(
 
   verifyMessageEnvelope(decrypted)
   if (sender !== senderKeyDetails.controller) {
-    throw new MessageError.IdentityMismatchError('Encryption key', 'Sender')
+    throw new MessageError.IdentityMismatchError(
+      'Encryption key',
+      `Sender: ${sender}, found: ${senderKeyDetails.controller}`
+    )
   }
 
   return decrypted
 }
 
 /**
- * Encrypts the [[Message]] as a string. This can be reversed with [[decrypt]].
+ * Encrypts the [[Message]] as a string.
  *
  * @param message The message to encrypt.
  * @param encryptCallback The callback to encrypt with the secret key.

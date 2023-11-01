@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) 2018-2023, BOTLabs GmbH.
+ *
+ * This source code is licensed under the BSD 4-Clause "Original" license
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
 import {
   Did,
   CType,
@@ -9,7 +16,7 @@ import {
   ICredentialPresentation,
   DidResourceUri,
 } from '@kiltprotocol/sdk-js'
-import { DomainLinkageCredential, DomainLinkageProof, DidConfigResource } from '../types/index.js'
+import type { DomainLinkageCredential, DomainLinkageProof, DidConfigResource } from '../types/index.js'
 import {
   SelfSignedProof,
   constants,
@@ -105,6 +112,7 @@ export async function didConfigResourceFromCredential(
     throw new Error('Input must be an IPresentation')
   }
   const claimContents = credential.claim.contents
+
   CType.verifyClaimAgainstSchema(claimContents, ctypeDomainLinkage)
 
   const { origin } = claimContents

@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) 2018-2023, BOTLabs GmbH.
+ *
+ * This source code is licensed under the BSD 4-Clause "Original" license
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
 import {
   Did,
   SignCallback,
@@ -9,12 +16,13 @@ import {
   DidUri,
   ConfigService,
   Utils,
+  KeyringPair,
   KiltEncryptionKeypair,
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { GenericContainer, Wait } from 'testcontainers'
-import { ctypeDomainLinkage } from '../wellKnownDidConfiguration'
+import { ctypeDomainLinkage } from '../wellKnownDidConfiguration/index.js'
 
 export const faucet = async () => {
   await cryptoWaitReady()
@@ -23,6 +31,28 @@ export const faucet = async () => {
   const faucetSeed = 'receive clutch item involve chaos clutch furnace arrest claw isolate okay together'
 
   return keyring.createFromUri(faucetSeed, { type: 'ed25519' })
+}
+
+export async function createAttestation(
+  account: KeyringPair,
+  did: DidUri,
+  signCallback: SignCallback,
+  claimHash: string,
+  ctypeHash: string
+) {
+  const api = ConfigService.get('api')
+  const createAttesstationTx = api.tx.attestation.add(claimHash, ctypeHash, null)
+
+  const authorizedAttestationCreationTx = await Did.authorizeTx(
+    did,
+    createAttesstationTx,
+    signCallback,
+    account.address as `4${string}`
+  )
+
+  await Blockchain.signAndSubmitTx(authorizedAttestationCreationTx, account, {
+    resolveOn: Blockchain.IS_FINALIZED,
+  })
 }
 
 export async function fundAccount(address: KiltKeyringPair['address'], amount: BN): Promise<void> {
@@ -96,7 +126,12 @@ export async function assertionSigner({
   })
 }
 
-export async function createCtype(didUri: DidUri, account: KiltKeyringPair, mnemonic: string) {
+export async function createCtype(
+  didUri: DidUri,
+  account: KiltKeyringPair,
+  mnemonic: string,
+  ctype = ctypeDomainLinkage
+) {
   const api = ConfigService.get('api')
 
   const { assertionMethod: assertion } = await keypairs(mnemonic)
@@ -106,7 +141,7 @@ export async function createCtype(didUri: DidUri, account: KiltKeyringPair, mnem
   if (!document) throw new Error('no document')
   const { assertionMethod } = document
   if (!assertionMethod) throw new Error('no assertion key')
-  const encodedCType = CType.toChain(ctypeDomainLinkage)
+  const encodedCType = CType.toChain(ctype)
   const ctypeTx = api.tx.ctype.add(encodedCType)
 
   const authorizedCtypeCreationTx = await Did.authorizeTx(

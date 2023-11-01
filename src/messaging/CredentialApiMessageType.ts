@@ -17,10 +17,12 @@ import {
   isRejectAttestation,
   isSubmitCredential,
   isIRequestCredential,
+  isIRequestPayment,
+  isIConfirmPayment,
 } from '../utils/index.js'
-import { verifyMessageEnvelope } from './MessageEnvelope.js'
 import * as MessageError from './Error.js'
 import type { IMessage, CredentialApiMessageBody } from '../types/index.js'
+import { verifyMessageEnvelope } from './MessageEnvelope.js'
 
 /**
  * Checks if the message body is well-formed.
@@ -67,6 +69,8 @@ export function assertKnownMessageBody(message: IMessage): void {
         throw new MessageError.SignatureMalformedError()
       }
     })
+  } else if (isIRequestPayment(message) || isIConfirmPayment(message)) {
+    return
   } else {
     throw new MessageError.UnknownMessageBodyTypeError()
   }

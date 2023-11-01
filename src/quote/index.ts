@@ -7,3 +7,4 @@
 
 export * from './Quote.js'
 export { QuoteSchema } from './QuoteSchema.js'
+export * from './Error.js'

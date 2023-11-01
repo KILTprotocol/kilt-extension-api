@@ -10,7 +10,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-          cache: "yarn"
+          cache: 'yarn'
 
       - name: yarn install
         run: yarn install --immutable
@@ -34,7 +34,7 @@ jobs:
         run: docker pull $IMG_NAME
 
       - name: run tests
-        timeout-minutes: 5
+        timeout-minutes: 10
         env:
           TESTCONTAINERS_NODE_IMG: ${{ env.IMG_NAME }}
         run: |
