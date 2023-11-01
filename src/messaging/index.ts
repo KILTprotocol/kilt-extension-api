@@ -15,4 +15,5 @@
 export { fromBody } from './utils.js'
 export { encrypt, decrypt } from './MessageEnvelope.js'
 export { assertKnownMessage } from './CredentialApiMessageType.js'
+export * from './interface/index.js'
 export * from './Error.js'
