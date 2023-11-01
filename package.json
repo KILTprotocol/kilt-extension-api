@@ -53,7 +53,7 @@
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:esm": "tsc -p tsconfig.esm.json && echo '{\"type\": \"module\"}' > esm/package.json",
     "clean": "exec git clean -xf -e 'node_modules' '*'",
-    "test": "jest test --no-cache"
+    "test": "jest test --no-cache --forceExit"
   },
   "dependencies": {
     "@kiltprotocol/sdk-js": "^0.34.0",
