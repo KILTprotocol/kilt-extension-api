@@ -84,6 +84,5 @@
   },
   "bin": {
     "createDidConfig": "./cli/createDidConfig.js"
-  },
-  "repository": {}
+  }
 }
