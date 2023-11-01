@@ -1,9 +1,9 @@
 {
   "name": "@kiltprotocol/kilt-extension-api",
   "version": "0.1.0",
-  "main": "./dist/cjs/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "type": "commonjs",
   "exports": {
     ".": {
       "import": "./esm/index.js",
@@ -61,11 +61,9 @@
     "@kiltprotocol/vc-export": "^0.34.0",
     "@polkadot/keyring": "^12.3.2",
     "@polkadot/util": "^12.3.2",
-    "prettier": "^3.0.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "ts-jest-resolver": "^2.0.1",
     "@polkadot/util-crypto": "^12.3.2",
     "@types/jest": "^28.0.0",
     "@types/node": "^18.8.2",
@@ -79,6 +77,7 @@
     "react": "^18.2.0",
     "testcontainers": "^9.5.0",
     "ts-jest": "^28.0.8",
+    "ts-jest-resolver": "^2.0.1",
     "ts-node": "^10.9.1",
     "typescript": "^4.7.4"
   },
