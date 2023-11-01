@@ -1,23 +1,59 @@
 {
-  "name": "kilt-extension-api",
+  "name": "@kiltprotocol/kilt-extension-api",
   "version": "0.1.0",
   "main": "./dist/cjs/index.js",
   "types": "./dist/cjs/index.d.ts",
   "type": "module",
   "exports": {
-    "import": "./dist/esm/index.js",
-    "require": "./dist/cjs/index.js",
-    "default": "./dist/cjs/index.js"
+    ".": {
+      "import": "./esm/index.js",
+      "require": "./index.js",
+      "default": "./index.js"
+    },
+    "./wellKnownDidConfiguration": {
+      "import": "./esm/wellKnownDidConfiguration/index.js",
+      "require": "./wellKnownDidConfiguration/index.js",
+      "default": "./wellKnownDidConfiguration/index.js"
+    },
+    "./types": {
+      "import": "./esm/types/index.js",
+      "require": "./types/index.js",
+      "default": "./types/index.js"
+    },
+    "./messaging": {
+      "import": "./esm/messaging/index.js",
+      "require": "./messaging/index.js",
+      "default": "./messaging/index.js"
+    },
+    "./quote": {
+      "import": "./esm/quote/index.js",
+      "require": "./quote/index.js",
+      "default": "./quote/index.js"
+    }
   },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "package.json",
+    "esm",
+    "messaging",
+    "wellKnownDidConfiguration",
+    "quote",
+    "index.js",
+    "index.d.ts",
+    "getExtension",
+    "cli",
+    "utils"
+  ],
   "author": "KILT <info@kilt.io>",
   "license": "BSD-4-Clause",
   "scripts": {
     "lint": "eslint --ext .ts .",
     "build": "yarn build:cjs && yarn build:esm",
     "build:cjs": "tsc -p tsconfig.cjs.json",
-    "build:esm": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json && echo '{\"type\": \"module\"}' > esm/package.json",
     "clean": "exec git clean -xf -e 'node_modules' '*'",
-    "test": "jest test --detectOpenHandles --forceExit"
+    "test": "jest test --no-cache"
   },
   "dependencies": {
     "@kiltprotocol/sdk-js": "^0.34.0",

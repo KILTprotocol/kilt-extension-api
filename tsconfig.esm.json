@@ -2,14 +2,14 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",                               
-    "module": "CommonJS",                             
-    "declaration": true,                              
-    "outDir": ".",                            
-    "esModuleInterop": true,                           
+    "module": "ESNext",                             
+    "declaration": true,           
+    "outDir": "./esm",                            
+    "esModuleInterop": true,                
     "forceConsistentCasingInFileNames": true,          
     "strict": true,                                    
     "skipLibCheck": true,
   },
   "include": ["src/**/*"],
   "exclude": ["**/*test.ts", "**/tests/**/*"]
-}  
+}

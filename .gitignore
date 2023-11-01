@@ -2,6 +2,8 @@
 yarn.lock
 yarn-error.log
 /.vscode
-/dist
+/esm/**
+
+
 *.js
 *.d.ts
