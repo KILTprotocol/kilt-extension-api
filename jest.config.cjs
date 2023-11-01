@@ -8,7 +8,7 @@ module.exports = {
   collectCoverageFrom: ['**/*/src/**/*.ts'],
   rootDir: 'src',
   coverageDirectory: 'coverage',
-  moduleDirectories: ['dist', 'node_modules'],
+  moduleDirectories: ['esm', 'node_modules'],
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.cjs.json',
