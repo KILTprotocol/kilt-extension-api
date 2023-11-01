@@ -1,7 +1,7 @@
 import { DidResolveKey, IAttestation, KiltKeyringPair } from '@kiltprotocol/types'
 import { Attestation, Did, ConfigService } from '@kiltprotocol/sdk-js'
 
-import {
+import type {
   IConfirmPaymentContent,
   IEncryptedMessage,
   IMessageWorkflow,

@@ -17,7 +17,7 @@ import { readFile, writeFile } from 'fs/promises'
 import yargs from 'yargs/yargs'
 
 import { didConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration/index.js'
-import { DidConfigResource } from '../types/index.js'
+import type { DidConfigResource } from '../types/index.js'
 
 type KeyType = 'sr25519' | 'ed25519' | 'ecdsa'
 

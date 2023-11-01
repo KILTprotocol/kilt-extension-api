@@ -1,7 +1,7 @@
 import { CType, Credential, Did } from '@kiltprotocol/sdk-js'
 import { DidResolveKey, ICredential } from '@kiltprotocol/types'
 
-import { ISession, IEncryptedMessage, ISubmitCredential } from '../../../types/index.js'
+import type { ISession, IEncryptedMessage, ISubmitCredential } from '../../../types/index.js'
 import { decrypt, encrypt, assertKnownMessage, fromBody } from '../../index.js'
 import { isIRequestCredential } from '../../../utils/index.js'
 

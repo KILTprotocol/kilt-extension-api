@@ -2,7 +2,7 @@ import { randomAsHex } from '@polkadot/util-crypto'
 import { CTypeHash, DidResolveKey, DidUri } from '@kiltprotocol/types'
 import { CType, Credential, Did } from '@kiltprotocol/sdk-js'
 
-import {
+import type {
   ISession,
   ICredentialRequest,
   IEncryptedMessage,
