@@ -29,7 +29,7 @@ const createCredentialOpts = {
     type: 'string',
     demandOption: true,
     description:
-      'DID of the issuer (and subject) of the Domain Linkage Credential. If omitted, this is attempted to be inferred from the assertionMethod.',
+      'DID of the issuer (and subject) of the Domain Linkage Credential. If omitted, attempts to infer from the assertionMethod.',
   },
   seed: {
     type: 'string',
