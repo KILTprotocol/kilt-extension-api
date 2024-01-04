@@ -6,4 +6,4 @@
  */
 
 export { getExtensions, watchExtensions, initializeKiltExtensionAPI } from './getExtension/index.js'
-export { InjectedWindowProvider, IEncryptedMessageV1, PubSubSessionV1, PubSubSessionV2, ApiWindow} from './types'
+export { InjectedWindowProvider, IEncryptedMessageV1, PubSubSessionV1, PubSubSessionV2, ApiWindow } from './types'
