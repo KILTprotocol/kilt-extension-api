@@ -5,28 +5,31 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DidUri } from '@kiltprotocol/types'
-import { VerifiableCredential, constants } from '@kiltprotocol/vc-export'
+import { Did } from '@kiltprotocol/types'
+import { Types, W3C_CREDENTIAL_CONTEXT_URL } from '@kiltprotocol/credentials'
 
-import { IMessageWorkflow } from './index.js'
-import { DomainLinkageProof } from './Window.js'
-
-export type ICredentialRequest = IMessageWorkflow & {
-  challenge: string
-}
+import { CredentialDigestProof, SelfSignedProof } from './LegacyProofs.js'
 
 export interface CredentialSubject {
-  id: DidUri
+  id: Did
   origin: string
 }
 
-type Contexts = [
-  typeof constants.DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
-  'https://identity.foundation/.well-known/did-configuration/v1',
-]
+type Contexts = [typeof W3C_CREDENTIAL_CONTEXT_URL, 'https://identity.foundation/.well-known/did-configuration/v1']
+
+export type DomainLinkageProof = {
+  type: Array<SelfSignedProof['type'] | CredentialDigestProof['type']>
+  rootHash: string
+} & Pick<SelfSignedProof, 'signature' | 'verificationMethod' | 'proofPurpose' | 'created'> &
+  Pick<CredentialDigestProof, 'claimHashes' | 'nonces'>
+
+export interface DidConfigResource {
+  '@context': string
+  linked_dids: [DomainLinkageCredential]
+}
 
 export interface DomainLinkageCredential
-  extends Omit<VerifiableCredential, '@context' | 'legitimationIds' | 'credentialSubject' | 'proof' | 'id'> {
+  extends Omit<Types.VerifiableCredential, '@context' | 'credentialSubject' | 'proof' | 'id'> {
   '@context': Contexts
   credentialSubject: CredentialSubject
   proof: DomainLinkageProof

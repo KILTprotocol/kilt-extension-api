@@ -5,7 +5,8 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { Attestation, Claim, Credential, CType, Quote } from '@kiltprotocol/core'
+import { Attestation, Claim, Credential } from '@kiltprotocol/legacy-credentials'
+import { CType } from '@kiltprotocol/credentials'
 import { DataUtils } from '@kiltprotocol/utils'
 import * as Did from '@kiltprotocol/did'
 import { isHex } from '@polkadot/util'
@@ -23,6 +24,8 @@ import {
 import * as MessageError from './Error.js'
 import type { IMessage, CredentialApiMessageBody } from '../types/index.js'
 import { verifyMessageEnvelope } from './MessageEnvelope.js'
+import { validateQuoteSchema } from '../quote/Quote.js'
+import { QuoteSchema } from '../quote/QuoteSchema.js'
 
 /**
  * Checks if the message body is well-formed.
@@ -38,7 +41,7 @@ export function assertKnownMessageBody(message: IMessage): void {
       DataUtils.verifyIsHex(body.content.delegationId)
     }
     if (body.content.quote) {
-      Quote.validateQuoteSchema(Quote.QuoteSchema, body.content.quote)
+      validateQuoteSchema(QuoteSchema, body.content.quote)
     }
     if (body.content.cTypes) {
       body.content.cTypes.forEach((val) => CType.verifyDataStructure(val))
@@ -46,7 +49,7 @@ export function assertKnownMessageBody(message: IMessage): void {
   } else if (isRequestAttestation(message)) {
     Credential.verifyDataStructure(message.body.content.credential)
     if (message.body.content.quote) {
-      Quote.validateQuoteSchema(Quote.QuoteSchema, message.body.content.quote)
+      validateQuoteSchema(QuoteSchema, message.body.content.quote)
     }
   } else if (isSubmitAttestation(message)) {
     Attestation.verifyDataStructure(message.body.content.attestation)
@@ -57,7 +60,7 @@ export function assertKnownMessageBody(message: IMessage): void {
   } else if (isIRequestCredential(message)) {
     message.body.content.cTypes.forEach(({ cTypeHash, trustedAttesters, requiredProperties }) => {
       DataUtils.verifyIsHex(cTypeHash)
-      trustedAttesters?.forEach((did) => Did.validateUri(did, 'Did'))
+      trustedAttesters?.forEach((did) => Did.validateDid(did, 'Did'))
       requiredProperties?.forEach((requiredProps) => {
         if (typeof requiredProps !== 'string') throw new TypeError('Required properties is expected to be a string')
       })

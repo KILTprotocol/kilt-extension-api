@@ -5,16 +5,9 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import {
-  DidResourceUri,
-  DidDocument,
-  EncryptCallback,
-  DecryptCallback,
-  SignCallback,
-  DidResolveKey,
-} from '@kiltprotocol/types'
+import { DidUrl, DidDocument, EncryptCallback, DecryptCallback, VerificationMethod } from '@kiltprotocol/types'
 import { stringToU8a } from '@polkadot/util'
-import { Did } from '@kiltprotocol/sdk-js'
+import * as Did from '@kiltprotocol/did'
 
 import type { ISessionRequest, ISession, ISessionResponse } from '../../../types/index.js'
 
@@ -36,27 +29,30 @@ export async function receiveSessionRequest(
   { challenge, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionRequest,
   encryptCallback: EncryptCallback,
   decryptCallback: DecryptCallback,
-  signCallback: SignCallback,
+  authenticationSigner: ISession['authenticationSigner'],
   {
-    resolveKey = Did.resolveKey,
+    resolveKey = Did.dereference,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ): Promise<{ session: ISession; sessionResponse: ISessionResponse }> {
   if (!didDocument.keyAgreement) {
     throw new Error('keyAgreement is necessary')
   }
-  const responseEncryptionKey = `${didDocument.uri}${didDocument.keyAgreement?.[0].id}` as DidResourceUri
+  const responseEncryptionKey: DidUrl = `${didDocument.id}${didDocument.keyAgreement?.[0]}`
 
-  Did.validateUri(receiverEncryptionKeyUri)
-  const receiverKey = await resolveKey(receiverEncryptionKeyUri, 'keyAgreement')
+  Did.validateDid(receiverEncryptionKeyUri)
+  const { contentStream: receiverKey } = await resolveKey(receiverEncryptionKeyUri, { accept: 'application/did+json' })
+  if ((receiverKey as any).type !== 'Multikey') {
+    throw new Error('receiver key is expected to resolve to a Multikey verification method')
+  }
 
   const serializedChallenge = stringToU8a(challenge)
 
   const encrypted = await encryptCallback({
-    did: didDocument.uri,
+    did: didDocument.id,
     data: serializedChallenge,
-    peerPublicKey: receiverKey.publicKey,
+    peerPublicKey: Did.multibaseKeyToDidKey((receiverKey as VerificationMethod)?.publicKeyMultibase).publicKey,
   })
 
   const { data: encryptedChallenge, nonce } = encrypted
@@ -72,7 +68,7 @@ export async function receiveSessionRequest(
       senderEncryptionKeyUri: responseEncryptionKey,
       encryptCallback,
       decryptCallback,
-      signCallback,
+      authenticationSigner,
     },
   }
 }

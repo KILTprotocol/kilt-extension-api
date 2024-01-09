@@ -5,8 +5,8 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DidDocument, DidResolveKey, DidResourceUri, SignCallback } from '@kiltprotocol/types'
-import { Did } from '@kiltprotocol/sdk-js'
+import type { DidDocument, DidUrl, VerificationMethod } from '@kiltprotocol/types'
+import * as Did from '@kiltprotocol/did'
 import { randomAsHex } from '@polkadot/util-crypto'
 import { DecryptCallback, EncryptCallback } from '@kiltprotocol/types'
 
@@ -26,7 +26,7 @@ export function requestSession(didDocument: DidDocument, name: string): ISession
     throw new KeyError('KeyAgreement does not exists')
   }
 
-  const encryptionKeyUri = `${didDocument.uri}${didDocument.keyAgreement?.[0].id}` as DidResourceUri
+  const encryptionKeyUri = `${didDocument.id}${didDocument.keyAgreement?.[0]}` as DidUrl
 
   const challenge = randomAsHex(24)
   return {
@@ -54,23 +54,25 @@ export async function verifySession(
   { encryptedChallenge, nonce, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionResponse,
   decryptCallback: DecryptCallback,
   encryptCallback: EncryptCallback,
-  signCallback: SignCallback,
+  authenticationSigner: ISession['authenticationSigner'],
   {
-    resolveKey = Did.resolveKey,
+    resolveKey = Did.dereference,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ): Promise<ISession> {
-  const encryptionKey = await resolveKey(receiverEncryptionKeyUri, 'keyAgreement')
-  if (!encryptionKey) {
+  const { contentStream: encryptionKey } = await resolveKey(receiverEncryptionKeyUri, {
+    accept: 'application/did+json',
+  })
+  if ((encryptionKey as VerificationMethod)?.type !== 'Multikey') {
     throw new Error('An encryption key is required')
   }
 
   const decryptedBytes = await decryptCallback({
     data: encryptedChallenge,
     nonce,
-    peerPublicKey: encryptionKey.publicKey,
-    keyUri: encryptionKeyUri,
+    peerPublicKey: Did.multibaseKeyToDidKey((encryptionKey as VerificationMethod).publicKeyMultibase).publicKey,
+    verificationMethod: encryptionKeyUri as any,
   })
 
   const decryptedChallenge = u8aToString(decryptedBytes.data)
@@ -82,7 +84,7 @@ export async function verifySession(
   return {
     encryptCallback,
     decryptCallback,
-    signCallback,
+    authenticationSigner,
     receiverEncryptionKeyUri,
     senderEncryptionKeyUri: encryptionKeyUri,
   }

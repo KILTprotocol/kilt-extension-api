@@ -6,8 +6,10 @@
  */
 
 import { randomAsHex } from '@polkadot/util-crypto'
-import { CTypeHash, DidResolveKey, DidUri } from '@kiltprotocol/types'
-import { CType, Credential, Did } from '@kiltprotocol/sdk-js'
+import { CTypeHash, Did } from '@kiltprotocol/types'
+import { Credential } from '@kiltprotocol/legacy-credentials'
+import { CType } from '@kiltprotocol/credentials'
+import { dereference, parse } from '@kiltprotocol/did'
 
 import type {
   ISession,
@@ -39,14 +41,14 @@ export async function requestCredential(
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession,
   cTypes: Array<{
     cTypeHash: CTypeHash
-    trustedAttesters?: DidUri[]
+    trustedAttesters?: Did[]
     requiredProperties?: string[]
   }>,
-  owner?: DidUri,
+  owner?: Did,
   {
-    resolveKey = Did.resolveKey,
+    resolveKey,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof dereference
   } = {}
 ): Promise<ICredentialRequest> {
   const challenge = randomAsHex(24)
@@ -64,8 +66,8 @@ export async function requestCredential(
     type: 'request-credential',
   }
 
-  const { did: sender } = Did.parse(senderEncryptionKeyUri)
-  const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
+  const { did: sender } = parse(senderEncryptionKeyUri)
+  const { did: receiver } = parse(receiverEncryptionKeyUri)
 
   const message = fromBody(body, sender, receiver) as IMessage<IRequestCredential>
 
@@ -96,9 +98,9 @@ export async function verifySubmittedCredentialMessage(
   { decryptCallback }: ISession,
   { message: requestMessage, challenge }: ICredentialRequest,
   {
-    resolveKey = Did.resolveKey,
+    resolveKey,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof dereference
   } = {}
 ): Promise<IMessage<ISubmitCredential>> {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })

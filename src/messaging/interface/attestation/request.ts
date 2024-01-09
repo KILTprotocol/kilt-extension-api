@@ -5,8 +5,10 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DidResolveKey, IAttestation, KiltKeyringPair } from '@kiltprotocol/types'
-import { Attestation, Did, ConfigService } from '@kiltprotocol/sdk-js'
+import { IAttestation, KiltKeyringPair } from '@kiltprotocol/types'
+import { ConfigService } from '@kiltprotocol/sdk-js'
+import * as Did from '@kiltprotocol/did'
+import { Attestation, Credential } from '@kiltprotocol/legacy-credentials'
 
 import type {
   IConfirmPaymentContent,
@@ -42,9 +44,9 @@ export async function submitTerms(
   content: ITerms,
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession,
   {
-    resolveKey = Did.resolveKey,
+    resolveKey,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ): Promise<IMessageWorkflow> {
   const body: ISubmitTerms = {
@@ -82,9 +84,9 @@ export async function requestPayment(
   { message }: IMessageWorkflow,
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback, decryptCallback }: ISession,
   {
-    resolveKey = Did.resolveKey,
+    resolveKey,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ) {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
@@ -244,9 +246,9 @@ export async function submitAttestation(
   { message }: IMessageWorkflow,
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback, decryptCallback }: ISession,
   {
-    resolveKey = Did.resolveKey,
+    resolveKey,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ): Promise<IMessageWorkflow> {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
@@ -268,7 +270,7 @@ export async function submitAttestation(
     throw new Error('Attestation is wrong format')
   }
 
-  Attestation.verifyAgainstCredential(attestation, credential)
+  Credential.verifyAgainstAttestation(attestation, credential)
 
   if (quote) {
     verifyQuoteAgreement(quote)

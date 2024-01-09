@@ -5,12 +5,14 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DidResolveKey, ICredential, IEncryptedMessage } from '@kiltprotocol/types'
-import { Attestation, Credential, Did } from '@kiltprotocol/sdk-js'
+import type { ICredential } from '@kiltprotocol/types'
+import { Credential } from '@kiltprotocol/legacy-credentials'
+import * as Did from '@kiltprotocol/did'
 
 import {
   IConfirmPayment,
   IConfirmPaymentContent,
+  IEncryptedMessage,
   IMessage,
   IMessageWorkflow,
   IQuoteAgreement,
@@ -32,7 +34,7 @@ import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote/
  * @param session.senderEncryptionKeyUri - The URI of the sender's encryption key.
  * @param session.receiverEncryptionKeyUri - The URI of the receiver's encryption key.
  * @param session.encryptCallback - A callback function used for encryption.
- * @param session.signCallback - A callback function used for signing.
+ * @param session.authenticationSigner - A signer interface for signing with your DID's authentication method.
  * @param options - Additional options for the function.
  * @param options.resolveKey - A function for resolving keys. (Optional) Only used for tests
  * @throws Error if the decrypted message is not a submit terms message.
@@ -43,11 +45,17 @@ import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote/
 export async function requestAttestation(
   encryptedMessage: IEncryptedMessage,
   credential: ICredential,
-  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback, signCallback }: ISession,
   {
-    resolveKey = Did.resolveKey,
+    decryptCallback,
+    senderEncryptionKeyUri,
+    receiverEncryptionKeyUri,
+    encryptCallback,
+    authenticationSigner,
+  }: ISession,
+  {
+    resolveKey,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ) {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
@@ -72,7 +80,8 @@ export async function requestAttestation(
 
   if (attesterQuote) {
     verifyAttesterSignedQuote(attesterQuote, { didResolveKey: resolveKey })
-    quote = await createQuoteAgreement(attesterQuote, rootHash, signCallback, sender, {
+
+    quote = await createQuoteAgreement(attesterQuote, rootHash, authenticationSigner, sender, {
       didResolveKey: resolveKey,
     })
   }
@@ -112,9 +121,9 @@ export async function confirmPayment(
   { message }: IMessageWorkflow,
   { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback }: ISession,
   {
-    resolveKey = Did.resolveKey,
+    resolveKey,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ) {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
@@ -163,9 +172,9 @@ export async function receiveAttestation(
   { message }: IMessageWorkflow,
   { decryptCallback }: ISession,
   {
-    resolveKey = Did.resolveKey,
+    resolveKey,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ): Promise<IMessage<ISubmitAttestation>> {
   const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
@@ -185,7 +194,7 @@ export async function receiveAttestation(
 
   const { attestation } = decryptedMessage.body.content
 
-  Attestation.verifyAgainstCredential(attestation, credential)
+  Credential.verifyAgainstAttestation(attestation, credential)
 
   await Credential.verifyAttested(credential)
 

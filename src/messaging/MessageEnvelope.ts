@@ -5,7 +5,7 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DecryptCallback, DidResolveKey, DidResourceUri, EncryptCallback } from '@kiltprotocol/types'
+import { DecryptCallback, DidUrl, EncryptCallback, VerificationMethod } from '@kiltprotocol/types'
 import * as Did from '@kiltprotocol/did'
 import * as MessageError from './Error.js'
 import { hexToU8a, stringToU8a, u8aToHex, u8aToString } from '@polkadot/util'
@@ -28,11 +28,27 @@ export function verifyMessageEnvelope(message: IMessage): void {
   if (receivedAt !== undefined && typeof receivedAt !== 'number') {
     throw new TypeError('Received at is expected to be a number')
   }
-  Did.validateUri(sender, 'Did')
-  Did.validateUri(receiver, 'Did')
+  Did.validateDid(sender, 'Did')
+  Did.validateDid(receiver, 'Did')
   if (inReplyTo && typeof inReplyTo !== 'string') {
     throw new TypeError('In reply to is expected to be a string')
   }
+}
+
+async function getPublicKeyForKeyAgreement(
+  dereference: typeof Did.dereference,
+  keyUrl: DidUrl
+): Promise<{ publicKey: Uint8Array; controller: string }> {
+  const { contentStream } = await dereference(keyUrl, { accept: 'application/did+json' })
+  if ((contentStream as VerificationMethod)?.type !== 'Multikey') {
+    throw new Error(`did url ${keyUrl} does not resolve to a Multikey verification key as expected`)
+  }
+  const verificationMethod = contentStream as VerificationMethod
+  const { keyType, publicKey } = Did.multibaseKeyToDidKey(verificationMethod.publicKeyMultibase)
+  if (keyType !== 'x25519') {
+    throw new Error(`key type ${keyType} is not suitable for x25519 key agreement`)
+  }
+  return { publicKey, controller: verificationMethod.controller }
 }
 
 /**
@@ -41,21 +57,21 @@ export function verifyMessageEnvelope(message: IMessage): void {
  * @param encrypted The encrypted message.
  * @param decryptCallback The callback to decrypt with the secret key.
  * @param decryptionOptions Options to perform the decryption operation.
- * @param decryptionOptions.resolveKey The DID key resolver to use.
+ * @param decryptionOptions.resolveKey The method to dereference the DID's key agreement key.
  * @returns The original [[Message]].
  */
 export async function decrypt(
   encrypted: IEncryptedMessage,
   decryptCallback: DecryptCallback,
   {
-    resolveKey = Did.resolveKey,
+    resolveKey = Did.dereference,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ): Promise<IMessage> {
   const { senderKeyUri, receiverKeyUri, ciphertext, nonce, receivedAt } = encrypted
 
-  const senderKeyDetails = await resolveKey(senderKeyUri, 'keyAgreement')
+  const { publicKey: peerPublicKey, controller } = await getPublicKeyForKeyAgreement(resolveKey, senderKeyUri)
 
   const { fragment } = Did.parse(receiverKeyUri)
   if (!fragment) {
@@ -66,10 +82,10 @@ export async function decrypt(
   try {
     data = (
       await decryptCallback({
-        peerPublicKey: senderKeyDetails.publicKey,
+        peerPublicKey,
         data: hexToU8a(ciphertext),
         nonce: hexToU8a(nonce),
-        keyUri: receiverKeyUri,
+        verificationMethod: { id: fragment } as VerificationMethod,
       })
     ).data
   } catch (cause) {
@@ -93,11 +109,8 @@ export async function decrypt(
   }
 
   verifyMessageEnvelope(decrypted)
-  if (sender !== senderKeyDetails.controller) {
-    throw new MessageError.IdentityMismatchError(
-      'Encryption key',
-      `Sender: ${sender}, found: ${senderKeyDetails.controller}`
-    )
+  if (sender !== controller) {
+    throw new MessageError.IdentityMismatchError('Encryption key', `Sender: ${sender}, found: ${controller}`)
   }
 
   return decrypted
@@ -117,16 +130,16 @@ export async function decrypt(
 export async function encrypt(
   message: IMessage,
   encryptCallback: EncryptCallback,
-  receiverKeyUri: DidResourceUri,
+  receiverKeyUri: DidUrl,
   {
-    resolveKey = Did.resolveKey,
+    resolveKey = Did.dereference,
   }: {
-    resolveKey?: DidResolveKey
+    resolveKey?: typeof Did.dereference
   } = {}
 ): Promise<IEncryptedMessage> {
   verifyMessageEnvelope(message)
-  const receiverKey = await resolveKey(receiverKeyUri, 'keyAgreement')
-  if (message.receiver !== receiverKey.controller) {
+  const { publicKey: peerPublicKey, controller } = await getPublicKeyForKeyAgreement(resolveKey, receiverKeyUri)
+  if (message.receiver !== controller) {
     throw new MessageError.IdentityMismatchError('receiver public key', 'receiver')
   }
 
@@ -145,7 +158,7 @@ export async function encrypt(
   const encrypted = await encryptCallback({
     did: message.sender,
     data: serialized,
-    peerPublicKey: receiverKey.publicKey,
+    peerPublicKey,
   })
 
   const ciphertext = u8aToHex(encrypted.data)
@@ -155,7 +168,7 @@ export async function encrypt(
     receivedAt: message.receivedAt,
     ciphertext,
     nonce,
-    senderKeyUri: encrypted.keyUri,
-    receiverKeyUri: receiverKey.id,
+    senderKeyUri: `${controller}${encrypted.verificationMethod.id}`,
+    receiverKeyUri,
   }
 }

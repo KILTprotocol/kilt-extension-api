@@ -10,11 +10,11 @@ import type {
   ICredentialPresentation,
   IAttestation,
   CTypeHash,
-  DidResourceUri,
-  DidUri,
+  DidUrl,
   IDelegationNode,
   PartialClaim,
   ICType,
+  Did,
 } from '@kiltprotocol/types'
 import type { IQuoteAgreement, IQuoteAttesterSigned } from './Quote.js'
 
@@ -65,8 +65,8 @@ export interface MessageBody<Type extends string = string, Content = unknown> {
 export interface IMessage<Body extends MessageBody = { type: string; content: unknown }> {
   body: Body
   createdAt: number
-  sender: DidUri
-  receiver: DidUri
+  sender: Did
+  receiver: Did
   messageId?: string
   receivedAt?: number
   inReplyTo?: IMessage<Body>['messageId']
@@ -159,10 +159,10 @@ export type ISubmitCredential = MessageBody<'submit-credential', ICredentialPres
 export interface IRequestCredentialContent {
   cTypes: Array<{
     cTypeHash: CTypeHash
-    trustedAttesters?: DidUri[]
+    trustedAttesters?: Did[]
     requiredProperties?: string[]
   }>
-  owner?: DidUri
+  owner?: Did
   challenge?: string
 }
 
@@ -206,8 +206,17 @@ export type IEncryptedMessage<Body extends MessageBody = { type: string; content
   IMessage<Body>,
   'receivedAt'
 > & {
-  receiverKeyUri: DidResourceUri
-  senderKeyUri: DidResourceUri
+  receiverKeyUri: DidUrl
+  senderKeyUri: DidUrl
   ciphertext: string
   nonce: string
+}
+
+export interface IMessageWorkflow {
+  message: IMessage
+  encryptedMessage: IEncryptedMessage
+}
+
+export type ICredentialRequest = IMessageWorkflow & {
+  challenge: string
 }
