@@ -7,8 +7,11 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { Credential, Did, connect, disconnect } from '@kiltprotocol/sdk-js'
-import { DidResourceUri, DidUri, ICredentialPresentation, SignCallback } from '@kiltprotocol/types'
+import { DataIntegrity } from '@kiltprotocol/credentials'
+import { multibaseKeyToDidKey } from '@kiltprotocol/did'
+import { DidResolver, connect, disconnect } from '@kiltprotocol/sdk-js'
+import { Did, DidUrl } from '@kiltprotocol/types'
+import { Signers } from '@kiltprotocol/utils'
 
 import { Keyring } from '@polkadot/keyring'
 import { u8aEq } from '@polkadot/util'
@@ -16,8 +19,12 @@ import { u8aEq } from '@polkadot/util'
 import { readFile, writeFile } from 'fs/promises'
 import yargs from 'yargs/yargs'
 
-import { didConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration/index.js'
-import type { DidConfigResource } from '../types/index.js'
+import { DidConfigResource, DomainLinkageCredential } from '../types/Credential.js'
+import {
+  KILT_SELF_SIGNED_PROOF_TYPE,
+  createCredential,
+  didConfigResourceFromCredentials,
+} from '../wellKnownDidConfiguration/index.js'
 
 type KeyType = 'sr25519' | 'ed25519' | 'ecdsa'
 
@@ -41,22 +48,27 @@ const createCredentialOpts = {
   wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
 } as const
 
-async function issueCredential(did: DidUri, origin: string, seed: string, keyType: KeyType, nodeAddress: string) {
-  await connect(nodeAddress)
-  const didDocument = await Did.resolve(did)
-  const assertionMethod = didDocument?.document?.assertionMethod?.[0]
+async function issueCredential(did: string, origin: string, seed: string, keyType: KeyType, proofType: string) {
+  const { didDocument } = await DidResolver.resolve(did as Did, {})
+  const assertionMethodId = didDocument?.assertionMethod?.[0]
+  const assertionMethod = didDocument?.verificationMethod?.find(({ id }) => id === assertionMethodId)
   if (!assertionMethod) {
     throw new Error(
       `Could not resolve assertionMethod of ${did}. Make sure the DID is registered to this chain and has an assertionMethod key.`
     )
   }
+  const keyUri: DidUrl = `${didDocument!.id}${assertionMethod.id}`
+
   const keypair = new Keyring({ type: keyType }).addFromUri(seed)
-  if (assertionMethod.type !== keypair.type || !u8aEq(assertionMethod.publicKey, keypair.publicKey)) {
+  const signers = await Signers.getSignersForKeypair({ keypair, id: keyUri })
+
+  const { keyType: vmType, publicKey } = multibaseKeyToDidKey(assertionMethod.publicKeyMultibase)
+  if (vmType !== keypair.type || !u8aEq(publicKey, keypair.publicKey)) {
     throw new Error('public key and/or key type of the DIDs assertionMethod does not match the supplied signing key')
   }
-  const keyUri: DidResourceUri = `${didDocument!.document!.uri}${assertionMethod.id}`
-  const signCallback: SignCallback = async ({ data }) => ({ signature: keypair.sign(data), keyUri, keyType })
-  const credential = await createCredential(signCallback, origin, did)
+
+  const credential = await createCredential(signers, origin, didDocument!, { proofType } as any)
+
   return credential
 }
 
@@ -72,27 +84,28 @@ async function write(toWrite: unknown, outPath?: string) {
 async function run() {
   await yargs(process.argv.slice(2))
     .command(
-      'fromCredential <pathToCredential>',
-      'create a Did Configuration Resource from an existing Kilt Credential Presentation',
+      'fromCredentials [pathToCredential..]',
+      'create a Did Configuration Resource from one or more existing Domain Linkage Credentials',
       (ygs) =>
         ygs.options(commonOpts).positional('pathToCredential', {
           describe: 'Path to a json file containing the credential presentation',
           type: 'string',
           demandOption: true,
+          array: true,
         }),
       async ({ pathToCredential, outFile }) => {
-        let credential: ICredentialPresentation
-        try {
-          credential = JSON.parse(await readFile(pathToCredential, { encoding: 'utf-8' }))
-        } catch (cause) {
-          throw new Error(`Cannot parse file ${pathToCredential}`, { cause })
-        }
-        if (!Credential.isPresentation(credential)) {
-          throw new Error(`Malformed Credential Presentation loaded from ${pathToCredential}`)
-        }
+        const credentials: DomainLinkageCredential[] = await Promise.all(
+          pathToCredential.map(async (pathToCredential) => {
+            try {
+              return JSON.parse(await readFile(pathToCredential, { encoding: 'utf-8' }))
+            } catch (cause) {
+              throw new Error(`Cannot parse file ${pathToCredential}`, { cause })
+            }
+          })
+        )
         let didResource: DidConfigResource
         try {
-          didResource = await didConfigResourceFromCredential(credential)
+          didResource = didConfigResourceFromCredentials(credentials)
         } catch (cause) {
           throw new Error('Credential Presentation is not suitable for use in a Did Configuration Resource', {
             cause,
@@ -103,20 +116,36 @@ async function run() {
     )
     .command(
       'credentialOnly',
-      'issue a new Kilt Credential Presentation for use in a Did Configuration Resource',
-      { ...createCredentialOpts, ...commonOpts },
-      async ({ origin, seed, keyType, wsAddress, outFile, did }) => {
-        const credential = await issueCredential(did as DidUri, origin, seed, keyType, wsAddress)
+      'issue a new Domain Linkage Credential for use in a Did Configuration Resource',
+      {
+        ...createCredentialOpts,
+        ...commonOpts,
+        proofType: {
+          alias: 'p',
+          choices: [DataIntegrity.PROOF_TYPE, KILT_SELF_SIGNED_PROOF_TYPE] as const,
+          default: KILT_SELF_SIGNED_PROOF_TYPE,
+          describe:
+            'Which proof type to use in the credential. DataIntegrity is the more modern proof type, but might not be accepted by all extensions yet. Did Configuration Resources can contain multiple credentials, though.',
+        },
+      },
+      async ({ origin, seed, keyType, wsAddress, outFile, did, proofType }) => {
+        await connect(wsAddress)
+        const credential = await issueCredential(did, origin, seed, keyType, proofType)
         await write(credential, outFile)
       }
     )
     .command(
       '$0',
-      'create a Did Configuration Resource from a freshly issued Kilt Credential',
+      'create a Did Configuration Resource containing newly issued Domain Linkage Credentials',
       { ...createCredentialOpts, ...commonOpts },
       async ({ origin, seed, keyType, wsAddress, outFile, did }) => {
-        const credential = await issueCredential(did as DidUri, origin, seed, keyType, wsAddress)
-        const didResource = await didConfigResourceFromCredential(credential)
+        await connect(wsAddress)
+        const credentials = await Promise.all(
+          [DataIntegrity.PROOF_TYPE, KILT_SELF_SIGNED_PROOF_TYPE].map((proofType) =>
+            issueCredential(did, origin, seed, keyType, proofType)
+          )
+        )
+        const didResource = didConfigResourceFromCredentials(credentials)
         await write(didResource, outFile)
       }
     )
