@@ -5,9 +5,9 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import type { DecryptCallback, DidUrl, EncryptCallback, SignerInterface } from '@kiltprotocol/types'
+import type { DidUrl, SignerInterface } from '@kiltprotocol/types'
 import type { Signers } from '@kiltprotocol/utils'
-import type { IEncryptedMessage } from './Message'
+import type { EncryptCallback, DecryptCallback, IEncryptedMessage } from './Message.js'
 
 export interface ISessionRequest {
   name: string

@@ -15,12 +15,12 @@
  * @packageDocumentation
  */
 
-import type { ICredential, Did, SignerInterface, DidUrl } from '@kiltprotocol/types'
+import { dereference, signatureFromJson, verifyDidSignature } from '@kiltprotocol/did'
+import type { Did, DidUrl, ICredential, SignerInterface } from '@kiltprotocol/types'
 import { Crypto, JsonSchema, Signers } from '@kiltprotocol/utils'
-import * as QuoteError from './Error.js'
-import { dereference, verifyDidSignature, signatureFromJson } from '@kiltprotocol/did'
-import { QuoteSchema } from './QuoteSchema.js'
 import { IQuote, IQuoteAgreement, IQuoteAttesterSigned } from '../types/Quote.js'
+import * as QuoteError from './Error.js'
+import { QuoteSchema } from './QuoteSchema.js'
 
 /**
  * Validates the quote against the meta schema and quote data against the provided schema.
@@ -76,24 +76,26 @@ export async function createAttesterSignedQuote(
  *
  * @param quote The object which to be verified.
  * @param options Optional settings.
- * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ * @param options.dereferenceDidUrl Resolve function used in the process of verifying the attester signature.
  */
 export async function verifyAttesterSignedQuote(
   quote: IQuoteAttesterSigned,
   {
-    didResolveKey,
+    dereferenceDidUrl,
   }: {
-    didResolveKey?: typeof dereference
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<void> {
   const { attesterSignature, ...basicQuote } = quote
+  const { keyUri, signature } = signatureFromJson(attesterSignature)
   await verifyDidSignature({
-    ...signatureFromJson(attesterSignature),
+    signerUrl: keyUri,
+    signature,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
     expectedSigner: basicQuote.attesterDid,
     expectedVerificationRelationship: 'authentication',
     // @ts-expect-error this is dumb
-    dereferenceDidUrl: didResolveKey,
+    dereferenceDidUrl,
   })
 
   const messages: string[] = []
@@ -110,7 +112,7 @@ export async function verifyAttesterSignedQuote(
  * @param signer A signer interface handling signing with the Claimer's authentication key.
  * @param claimerDid The DID of the Claimer, who has to sign.
  * @param options Optional settings.
- * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ * @param options.dereferenceDidUrl Resolve function used in the process of verifying the attester signature.
  * @returns A [[Quote]] agreement signed by both the Attester and Claimer.
  */
 export async function createQuoteAgreement(
@@ -119,19 +121,21 @@ export async function createQuoteAgreement(
   signer: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>,
   claimerDid: Did,
   {
-    didResolveKey,
+    dereferenceDidUrl,
   }: {
-    didResolveKey?: typeof dereference
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<IQuoteAgreement> {
   const { attesterSignature, ...basicQuote } = attesterSignedQuote
 
+  const transformed = signatureFromJson(attesterSignature)
   await verifyDidSignature({
-    ...signatureFromJson(attesterSignature),
+    signature: transformed.signature,
+    signerUrl: transformed.keyUri,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
     expectedVerificationRelationship: 'authentication',
     // @ts-expect-error why would this complain?
-    dereferenceDidUrl: didResolveKey,
+    dereferenceDidUrl,
   })
 
   const quoteAgreement = {
@@ -154,26 +158,28 @@ export async function createQuoteAgreement(
  *
  * @param quote The object to be verified.
  * @param options Optional settings.
- * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ * @param options.dereferenceDidUrl Resolve function used in the process of verifying the attester signature.
  */
 export async function verifyQuoteAgreement(
   quote: IQuoteAgreement,
   {
-    didResolveKey,
+    dereferenceDidUrl,
   }: {
-    didResolveKey?: typeof dereference
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<void> {
   const { claimerSignature, claimerDid, rootHash, ...attesterSignedQuote } = quote
   // verify attester signature
-  await verifyAttesterSignedQuote(attesterSignedQuote, { didResolveKey })
+  await verifyAttesterSignedQuote(attesterSignedQuote, { dereferenceDidUrl })
   // verify claimer signature
+  const { keyUri, signature } = signatureFromJson(claimerSignature)
   await verifyDidSignature({
-    ...signatureFromJson(claimerSignature),
+    signature,
+    signerUrl: keyUri,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr({ ...attesterSignedQuote, claimerDid, rootHash })),
     expectedSigner: claimerDid,
     expectedVerificationRelationship: 'authentication',
     // @ts-expect-error why would this complain?
-    dereferenceDidUrl: didResolveKey,
+    dereferenceDidUrl,
   })
 }

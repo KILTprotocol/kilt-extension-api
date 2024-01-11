@@ -8,7 +8,7 @@
 import type { DidDocument, DidUrl, VerificationMethod } from '@kiltprotocol/types'
 import * as Did from '@kiltprotocol/did'
 import { randomAsHex } from '@polkadot/util-crypto'
-import { DecryptCallback, EncryptCallback } from '@kiltprotocol/types'
+import { DecryptCallback, EncryptCallback } from '../../../types/Message.js'
 
 import type { ISessionRequest, ISession, ISessionResponse } from '../../../types/index.js'
 import { KeyError } from '../../Error.js'
@@ -44,7 +44,7 @@ export function requestSession(didDocument: DidDocument, name: string): ISession
  * @param encryptCallback - A callback function used for encryption.
  * @param signCallback - A callback function used for signing.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Used for testing only
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if encryption key is missing.
  * @throws Error if decrypted challenge doesn't match the original challenge.
  * @returns An object containing the prepared session information.
@@ -56,12 +56,12 @@ export async function verifySession(
   encryptCallback: EncryptCallback,
   authenticationSigner: ISession['authenticationSigner'],
   {
-    resolveKey = Did.dereference,
+    dereferenceDidUrl = Did.dereference,
   }: {
-    resolveKey?: typeof Did.dereference
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ): Promise<ISession> {
-  const { contentStream: encryptionKey } = await resolveKey(receiverEncryptionKeyUri, {
+  const { contentStream: encryptionKey } = await dereferenceDidUrl(receiverEncryptionKeyUri, {
     accept: 'application/did+json',
   })
   if ((encryptionKey as VerificationMethod)?.type !== 'Multikey') {
@@ -72,7 +72,7 @@ export async function verifySession(
     data: encryptedChallenge,
     nonce,
     peerPublicKey: Did.multibaseKeyToDidKey((encryptionKey as VerificationMethod).publicKeyMultibase).publicKey,
-    verificationMethod: encryptionKeyUri as any,
+    verificationMethod: encryptionKeyUri,
   })
 
   const decryptedChallenge = u8aToString(decryptedBytes.data)

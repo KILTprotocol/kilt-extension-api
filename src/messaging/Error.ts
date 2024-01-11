@@ -5,20 +5,13 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-export declare class MessageError extends Error {}
-export declare class HashMalformedError extends MessageError {
-  constructor(hash?: string, type?: string)
-}
-
-export declare class SignatureMalformedError extends MessageError {}
-export declare class UnknownMessageBodyTypeError extends MessageError {}
-export declare class DecodingMessageError extends MessageError {}
-export declare class CTypeUnknownPropertiesError extends MessageError {}
-export declare class InvalidDidFormatError extends MessageError {}
-export declare class KeyError extends MessageError {}
-export declare class DidError extends MessageError {
-  constructor(context?: string, type?: string)
-}
-export declare class IdentityMismatchError extends MessageError {
-  constructor(context?: string, type?: string)
-}
+export class MessageError extends Error {}
+export class HashMalformedError extends MessageError {}
+export class SignatureMalformedError extends MessageError {}
+export class UnknownMessageBodyTypeError extends MessageError {}
+export class DecodingMessageError extends MessageError {}
+export class CTypeUnknownPropertiesError extends MessageError {}
+export class InvalidDidFormatError extends MessageError {}
+export class KeyError extends MessageError {}
+export class DidError extends MessageError {}
+export class IdentityMismatchError extends MessageError {}

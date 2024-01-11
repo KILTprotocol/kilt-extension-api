@@ -5,11 +5,17 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DidUrl, DidDocument, EncryptCallback, DecryptCallback, VerificationMethod } from '@kiltprotocol/types'
+import { DidUrl, DidDocument, VerificationMethod } from '@kiltprotocol/types'
 import { stringToU8a } from '@polkadot/util'
 import * as Did from '@kiltprotocol/did'
 
-import type { ISessionRequest, ISession, ISessionResponse } from '../../../types/index.js'
+import type {
+  ISessionRequest,
+  ISession,
+  ISessionResponse,
+  EncryptCallback,
+  DecryptCallback,
+} from '../../../types/index.js'
 
 /**
  * Prepares and returns a session response along with the prepared session.
@@ -19,7 +25,7 @@ import type { ISessionRequest, ISession, ISessionResponse } from '../../../types
  * @param decryptCallback - A callback function used for decryption.
  * @param signCallback - A callback function used for signing.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Used for testing only
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if keyAgreement is missing in the DID document.
  * @throws Error if receiverEncryptionKeyUri is not a valid DID URI.
  * @returns An object containing the prepared session and session response.
@@ -31,9 +37,9 @@ export async function receiveSessionRequest(
   decryptCallback: DecryptCallback,
   authenticationSigner: ISession['authenticationSigner'],
   {
-    resolveKey = Did.dereference,
+    dereferenceDidUrl = Did.dereference,
   }: {
-    resolveKey?: typeof Did.dereference
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ): Promise<{ session: ISession; sessionResponse: ISessionResponse }> {
   if (!didDocument.keyAgreement) {
@@ -42,7 +48,9 @@ export async function receiveSessionRequest(
   const responseEncryptionKey: DidUrl = `${didDocument.id}${didDocument.keyAgreement?.[0]}`
 
   Did.validateDid(receiverEncryptionKeyUri)
-  const { contentStream: receiverKey } = await resolveKey(receiverEncryptionKeyUri, { accept: 'application/did+json' })
+  const { contentStream: receiverKey } = await dereferenceDidUrl(receiverEncryptionKeyUri, {
+    accept: 'application/did+json',
+  })
   if ((receiverKey as any).type !== 'Multikey') {
     throw new Error('receiver key is expected to resolve to a Multikey verification method')
   }

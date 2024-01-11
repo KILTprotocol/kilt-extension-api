@@ -90,16 +90,16 @@ export function assertKnownMessageBody(message: IMessage): void {
 export function ensureOwnerIsSender(message: IMessage): void {
   if (isRequestAttestation(message)) {
     if (!Did.isSameSubject(message.body.content.credential.claim.owner, message.sender)) {
-      throw new MessageError.IdentityMismatchError('Claim', 'Sender')
+      throw new MessageError.IdentityMismatchError('Sender not matching claim owner')
     }
   } else if (isSubmitAttestation(message)) {
     if (!Did.isSameSubject(message.body.content.attestation.owner, message.sender)) {
-      throw new MessageError.IdentityMismatchError('Attestation', 'Sender')
+      throw new MessageError.IdentityMismatchError('Sender not matching attestation issuer')
     }
   } else if (isSubmitCredential(message)) {
     message.body.content.forEach((presentation) => {
       if (!Did.isSameSubject(presentation.claim.owner, message.sender)) {
-        throw new MessageError.IdentityMismatchError('Claims', 'Sender')
+        throw new MessageError.IdentityMismatchError('Sender not matching claim owner')
       }
     })
   }

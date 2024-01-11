@@ -26,7 +26,7 @@ import { isIRequestCredential } from '../../../utils/index.js'
  * @param session.encryptCallback - A callback function used for encryption.
  * @param session.authenticationSigner - A signer interface for signing with your DID's authentication method.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Used for tests only.
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if the decrypted message is not a request credential message.
  * @throws Error if credentials do not match.
  * @returns A promise that resolves to an encrypted message containing the submitted credentials.
@@ -42,12 +42,12 @@ export async function submitCredential(
     authenticationSigner,
   }: ISession,
   {
-    resolveKey,
+    dereferenceDidUrl,
   }: {
-    resolveKey?: typeof dereference
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<IEncryptedMessage<ISubmitCredential>> {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { dereferenceDidUrl })
   assertKnownMessage(decryptedMessage)
 
   if (!isIRequestCredential(decryptedMessage)) {
@@ -86,5 +86,5 @@ export async function submitCredential(
 
   const message = fromBody(body, sender, receiver)
   message.inReplyTo = decryptedMessage.messageId
-  return encrypt(message, encryptCallback, receiverEncryptionKeyUri, { resolveKey })
+  return encrypt(message, encryptCallback, receiverEncryptionKeyUri, { dereferenceDidUrl })
 }

@@ -37,16 +37,16 @@ import { encodeAddress } from '@polkadot/keyring'
  * @param session.senderEncryptionKeyUri - The URI of the sender's encryption key.
  * @param session.encryptCallback - A callback function used for encryption.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Only used for testing
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @returns A promise that resolves to an object containing the encrypted message and the original message.
  */
 export async function submitTerms(
   content: ITerms,
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession,
   {
-    resolveKey,
+    dereferenceDidUrl,
   }: {
-    resolveKey?: typeof Did.dereference
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ): Promise<IMessageWorkflow> {
   const body: ISubmitTerms = {
@@ -59,7 +59,7 @@ export async function submitTerms(
 
   const message = fromBody(body, sender, receiver)
   return {
-    encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri, { dereferenceDidUrl }),
     message,
   }
 }
@@ -74,7 +74,7 @@ export async function submitTerms(
  * @param session.encryptCallback - A callback function used for encryption.
  * @param session.decryptCallback - A callback function used for decryption.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Only used for testing.
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if the decrypted message is not a request attestation message.
  * @throws Error if the message IDs do not match.
  * @returns A promise that resolves to an object containing the encrypted response message and the response message itself.
@@ -84,12 +84,12 @@ export async function requestPayment(
   { message }: IMessageWorkflow,
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback, decryptCallback }: ISession,
   {
-    resolveKey,
+    dereferenceDidUrl,
   }: {
-    resolveKey?: typeof Did.dereference
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ) {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { dereferenceDidUrl })
   assertKnownMessage(decryptedMessage)
   if (!isRequestAttestation(decryptedMessage)) {
     throw new Error('Wrong message. Expected request attestation message')
@@ -113,7 +113,7 @@ export async function requestPayment(
   const response = fromBody(body, sender, receiver)
   response.inReplyTo = decryptedMessage.messageId
   return {
-    encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri, { dereferenceDidUrl }),
     message: response,
   }
 }
@@ -233,7 +233,7 @@ async function validateTx(
  * @param session.encryptCallback - A callback function used for encryption.
  * @param session.decryptCallback - A callback function used for decryption.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Should only be used for testing
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if the decrypted message is not a request attestation message.
  * @throws Error if the message IDs do not match.
  * @throws Error if the attestation is in the wrong format.
@@ -246,12 +246,12 @@ export async function submitAttestation(
   { message }: IMessageWorkflow,
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback, decryptCallback }: ISession,
   {
-    resolveKey,
+    dereferenceDidUrl,
   }: {
-    resolveKey?: typeof Did.dereference
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ): Promise<IMessageWorkflow> {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { dereferenceDidUrl })
 
   if (!isRequestAttestation(decryptedMessage)) {
     throw new Error('Wrong message. Expected request attestation message')
@@ -289,7 +289,7 @@ export async function submitAttestation(
   const response = fromBody(responseBody, sender, receiver)
   response.inReplyTo = decryptedMessage.messageId
   return {
-    encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri, { dereferenceDidUrl }),
     message: response,
   }
 }

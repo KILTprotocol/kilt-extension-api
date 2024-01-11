@@ -5,12 +5,18 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DecryptCallback, DidUrl, EncryptCallback, VerificationMethod } from '@kiltprotocol/types'
+import type { DidUrl, VerificationMethod } from '@kiltprotocol/types'
 import * as Did from '@kiltprotocol/did'
 import * as MessageError from './Error.js'
 import { hexToU8a, stringToU8a, u8aToHex, u8aToString } from '@polkadot/util'
 
-import type { IEncryptedMessage, IEncryptedMessageContents, IMessage } from '../types/index.js'
+import type {
+  EncryptCallback,
+  DecryptCallback,
+  IEncryptedMessage,
+  IEncryptedMessageContents,
+  IMessage,
+} from '../types/index.js'
 
 /**
  * Checks if the message object is well-formed.
@@ -57,21 +63,21 @@ async function getPublicKeyForKeyAgreement(
  * @param encrypted The encrypted message.
  * @param decryptCallback The callback to decrypt with the secret key.
  * @param decryptionOptions Options to perform the decryption operation.
- * @param decryptionOptions.resolveKey The method to dereference the DID's key agreement key.
+ * @param decryptionOptions.dereferenceDidUrl The method to dereference the DID's key agreement key.
  * @returns The original [[Message]].
  */
 export async function decrypt(
   encrypted: IEncryptedMessage,
   decryptCallback: DecryptCallback,
   {
-    resolveKey = Did.dereference,
+    dereferenceDidUrl = Did.dereference,
   }: {
-    resolveKey?: typeof Did.dereference
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ): Promise<IMessage> {
   const { senderKeyUri, receiverKeyUri, ciphertext, nonce, receivedAt } = encrypted
 
-  const { publicKey: peerPublicKey, controller } = await getPublicKeyForKeyAgreement(resolveKey, senderKeyUri)
+  const { publicKey: peerPublicKey, controller } = await getPublicKeyForKeyAgreement(dereferenceDidUrl, senderKeyUri)
 
   const { fragment } = Did.parse(receiverKeyUri)
   if (!fragment) {
@@ -85,7 +91,7 @@ export async function decrypt(
         peerPublicKey,
         data: hexToU8a(ciphertext),
         nonce: hexToU8a(nonce),
-        verificationMethod: { id: fragment } as VerificationMethod,
+        verificationMethod: receiverKeyUri,
       })
     ).data
   } catch (cause) {
@@ -110,7 +116,7 @@ export async function decrypt(
 
   verifyMessageEnvelope(decrypted)
   if (sender !== controller) {
-    throw new MessageError.IdentityMismatchError('Encryption key', `Sender: ${sender}, found: ${controller}`)
+    throw new MessageError.IdentityMismatchError(`Sender: ${sender}, found: ${controller}`)
   }
 
   return decrypted
@@ -123,7 +129,7 @@ export async function decrypt(
  * @param encryptCallback The callback to encrypt with the secret key.
  * @param receiverKeyUri The key URI of the receiver.
  * @param encryptionOptions Options to perform the encryption operation.
- * @param encryptionOptions.resolveKey The DID key resolver to use.
+ * @param encryptionOptions.dereferenceDidUrl The DID key resolver to use.
  *
  * @returns The encrypted version of the original [[Message]], see [[IEncryptedMessage]].
  */
@@ -132,15 +138,15 @@ export async function encrypt(
   encryptCallback: EncryptCallback,
   receiverKeyUri: DidUrl,
   {
-    resolveKey = Did.dereference,
+    dereferenceDidUrl = Did.dereference,
   }: {
-    resolveKey?: typeof Did.dereference
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ): Promise<IEncryptedMessage> {
   verifyMessageEnvelope(message)
-  const { publicKey: peerPublicKey, controller } = await getPublicKeyForKeyAgreement(resolveKey, receiverKeyUri)
+  const { publicKey: peerPublicKey, controller } = await getPublicKeyForKeyAgreement(dereferenceDidUrl, receiverKeyUri)
   if (message.receiver !== controller) {
-    throw new MessageError.IdentityMismatchError('receiver public key', 'receiver')
+    throw new MessageError.IdentityMismatchError('Message.recevier does not match controller of receiver public key')
   }
 
   const toEncrypt: IEncryptedMessageContents = {
@@ -168,7 +174,7 @@ export async function encrypt(
     receivedAt: message.receivedAt,
     ciphertext,
     nonce,
-    senderKeyUri: `${controller}${encrypted.verificationMethod.id}`,
+    senderKeyUri: encrypted.verificationMethod,
     receiverKeyUri,
   }
 }
