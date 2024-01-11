@@ -5,23 +5,22 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import {
-  KiltKeyringPair,
+import { NewLightDidVerificationKey, didKeyToVerificationMethod, getFullDid, getStoreTx } from '@kiltprotocol/did'
+import type {
+  Did,
+  DidDocument,
+  DidUrl,
   KeyringPair,
   KiltEncryptionKeypair,
-  DidDocument,
-  NewLightDidVerificationKey,
-  KeyRelationship,
-  DidServiceEndpoint,
-  DidKey,
-  DidVerificationKey,
-  DecryptCallback,
-  EncryptCallback,
+  KiltKeyringPair,
+  Service,
+  SignerInterface,
+  VerificationMethod,
+  VerificationRelationship,
 } from '@kiltprotocol/types'
-
-import { Did, SignCallback } from '@kiltprotocol/sdk-js'
-import { Crypto } from '@kiltprotocol/utils'
-import { blake2AsU8a, blake2AsHex } from '@polkadot/util-crypto'
+import { Crypto, Signers } from '@kiltprotocol/utils'
+import { blake2AsHex, blake2AsU8a } from '@polkadot/util-crypto'
+import type { DecryptCallback, EncryptCallback } from '../types/Message.js'
 
 /**
  * Generates a callback that can be used for signing.
@@ -29,22 +28,37 @@ import { blake2AsU8a, blake2AsHex } from '@polkadot/util-crypto'
  * @param keypair The keypair to use for signing.
  * @returns The callback.
  */
-export function makeSignCallback(keypair: KeyringPair): KeyToolSignCallback {
-  return (didDocument) =>
-    async function sign({ data, keyRelationship }) {
-      const keyId = didDocument[keyRelationship]?.[0].id
-      const keyType = didDocument[keyRelationship]?.[0].type
-      if (keyId === undefined || keyType === undefined) {
-        throw new Error(`Key for purpose "${keyRelationship}" not found in did "${didDocument.uri}"`)
+export function makeDidSigners(
+  keypair: KeyringPair,
+  select: {
+    algorithms?: string[]
+    id?: string
+    verificationRelationship?: string
+  } = {}
+): KeyToolSigners {
+  return (async (didDocument) => {
+    const signersNonFlattened = await Promise.all(
+      // TODO: we should map keys to VMs based on public keys
+      didDocument.verificationMethod?.map(({ id }) =>
+        Signers.getSignersForKeypair({ keypair, id: `${didDocument.id}${id}` })
+      ) ?? []
+    )
+    const signers = signersNonFlattened.flat()
+    if (select) {
+      const selectors: Signers.SignerSelector[] = []
+      if (select.algorithms) {
+        selectors.push(Signers.select.byAlgorithm(select.algorithms))
       }
-      const signature = keypair.sign(data, { withType: false })
-
-      return {
-        signature,
-        keyUri: `${didDocument.uri}${keyId}`,
-        keyType,
+      if (select.id) {
+        selectors.push(Signers.select.bySignerId([select.id]))
       }
+      if (select.verificationRelationship) {
+        selectors.push(Signers.select.byDid(didDocument, { verificationRelationship: select.verificationRelationship }))
+      }
+      return Signers.selectSigners(signers, ...selectors)
     }
+    return signers
+  }) as KeyToolSigners
 }
 
 /**
@@ -53,14 +67,8 @@ export function makeSignCallback(keypair: KeyringPair): KeyToolSignCallback {
  * @param keypair The keypair to use for signing.
  * @returns The callback.
  */
-export function makeStoreDidCallback(keypair: KiltKeyringPair): StoreDidCallback {
-  return async function sign({ data }) {
-    const signature = keypair.sign(data, { withType: false })
-    return {
-      signature,
-      keyType: keypair.type,
-    }
-  }
+export function makeStoreDidSigners(keypair: KiltKeyringPair): Promise<StoreDidCallback> {
+  return Signers.getSignersForKeypair({ keypair })
 }
 
 /**
@@ -69,14 +77,14 @@ export function makeStoreDidCallback(keypair: KiltKeyringPair): StoreDidCallback
  * @param type The type to use for the keypair.
  * @returns The keypair, matching sign callback, a key usable as DID authentication key.
  */
-export function makeSigningKeyTool(type: KiltKeyringPair['type'] = 'sr25519'): KeyTool {
+export async function makeSigningKeyTool(type: KiltKeyringPair['type'] = 'sr25519'): Promise<KeyTool> {
   const keypair = Crypto.makeKeypairFromSeed(undefined, type)
-  const getSignCallback = makeSignCallback(keypair)
-  const storeDidCallback = makeStoreDidCallback(keypair)
+  const getSigners = makeDidSigners(keypair)
+  const storeDidCallback = await makeStoreDidSigners(keypair)
 
   return {
     keypair,
-    getSignCallback,
+    getSigners,
     storeDidCallback,
     authentication: [keypair as NewLightDidVerificationKey],
   }
@@ -90,14 +98,15 @@ export function makeSigningKeyTool(type: KiltKeyringPair['type'] = 'sr25519'): K
  * @returns A full DID instance that is not yet written to the blockchain.
  */
 export async function createLocalDemoFullDidFromLightDid(lightDid: DidDocument): Promise<DidDocument> {
-  const { uri, authentication } = lightDid
-
+  const { id, authentication, verificationMethod, keyAgreement } = lightDid
+  const fullDid = getFullDid(id)
   return {
-    uri: Did.getFullDidUri(uri),
+    id: fullDid,
     authentication,
     assertionMethod: authentication,
     capabilityDelegation: authentication,
-    keyAgreement: lightDid.keyAgreement,
+    keyAgreement,
+    verificationMethod: verificationMethod?.map((vm) => ({ ...vm, controller: fullDid })),
   }
 }
 
@@ -135,9 +144,9 @@ export type EncryptionKeyToolCallback = (didDocument: DidDocument) => EncryptCal
 export function makeEncryptCallback({ secretKey }: KiltEncryptionKeypair): EncryptionKeyToolCallback {
   return (didDocument) => {
     return async function encryptCallback({ data, peerPublicKey }) {
-      const keyId = didDocument.keyAgreement?.[0].id
+      const keyId = didDocument.keyAgreement?.[0]
       if (!keyId) {
-        throw new Error(`Encryption key not found in did "${didDocument.uri}"`)
+        throw new Error(`Encryption key not found in did "${didDocument.id}"`)
       }
       const { box, nonce } = Crypto.encryptAsymmetric(data, peerPublicKey, secretKey)
       return {
@@ -146,7 +155,7 @@ export function makeEncryptCallback({ secretKey }: KiltEncryptionKeypair): Encry
         // encrypted data
         data: box,
         // used did key uri for encryption.
-        keyUri: `${didDocument.uri}${keyId}`,
+        verificationMethod: `${didDocument.id}${keyId}`,
       }
     }
   }
@@ -184,7 +193,7 @@ export function makeEncryptionKeyTool(seed: string): EncryptionKeyTool {
 }
 
 // Mock function to generate a key ID without having to rely on a real chain metadata.
-export function computeKeyId(key: DidKey['publicKey']): DidKey['id'] {
+export function computeKeyId(key: Uint8Array): VerificationMethod['id'] {
   return `#${blake2AsHex(key, 256)}`
 }
 
@@ -194,12 +203,14 @@ export function computeKeyId(key: DidKey['publicKey']): DidKey['id'] {
  * @param KiltKeyringPair The public key and the used public-key-concept.
  * @returns DidVerificationKey
  */
-function makeDidKeyFromKeypair({ publicKey, type }: KiltKeyringPair): DidVerificationKey {
-  return {
-    id: computeKeyId(publicKey),
+function verificationMethodFromKeypair(
+  { publicKey, type }: { publicKey: Uint8Array; type: string },
+  controller: Did
+): VerificationMethod {
+  return didKeyToVerificationMethod(controller, computeKeyId(publicKey), {
+    keyType: type as any,
     publicKey,
-    type,
-  }
+  })
 }
 
 /**
@@ -218,16 +229,17 @@ export async function createLocalDemoFullDidFromKeypair(
     keyRelationships = new Set(['assertionMethod', 'capabilityDelegation', 'keyAgreement']),
     endpoints = [],
   }: {
-    keyRelationships?: Set<Omit<KeyRelationship, 'authentication'>>
-    endpoints?: DidServiceEndpoint[]
+    keyRelationships?: Set<Omit<VerificationRelationship, 'authentication'>>
+    endpoints?: Service[]
   } = {}
 ): Promise<DidDocument> {
-  const authKey = makeDidKeyFromKeypair(keypair)
-  const uri = Did.getFullDidUriFromKey(authKey)
+  const id = getFullDid(keypair.address)
+  const authKey = verificationMethodFromKeypair(keypair, id)
 
   const result: DidDocument = {
-    uri,
-    authentication: [authKey],
+    id,
+    authentication: [authKey.id],
+    verificationMethod: [authKey],
     service: endpoints,
   }
 
@@ -235,30 +247,39 @@ export async function createLocalDemoFullDidFromKeypair(
     const encryptionKeypair = makeEncryptionKeyTool(`${keypair.publicKey}//enc`).keyAgreement[0]
 
     // encryption key with public key, private key, type, and id.
-    const encKey = {
-      ...encryptionKeypair,
-      id: computeKeyId(encryptionKeypair.publicKey),
-    }
-    result.keyAgreement = [encKey]
+    const encKey = verificationMethodFromKeypair(encryptionKeypair, id)
+
+    result.keyAgreement = [encKey.id]
+    result.verificationMethod?.push(encKey)
   }
   if (keyRelationships.has('assertionMethod')) {
-    const attKey = makeDidKeyFromKeypair(keypair.derive('//att') as KiltKeyringPair)
-    result.assertionMethod = [attKey]
+    const attKey = verificationMethodFromKeypair(keypair.derive('//att'), id)
+    result.assertionMethod = [attKey.id]
+    result.verificationMethod?.push(attKey)
   }
   if (keyRelationships.has('capabilityDelegation')) {
-    const delKey = makeDidKeyFromKeypair(keypair.derive('//del') as KiltKeyringPair)
-    result.capabilityDelegation = [delKey]
+    const delKey = verificationMethodFromKeypair(keypair.derive('//del'), id)
+    result.capabilityDelegation = [delKey.id]
+    result.verificationMethod?.push(delKey)
   }
 
   return result
 }
 
-export type KeyToolSignCallback = (didDocument: DidDocument) => SignCallback
-type StoreDidCallback = Parameters<typeof Did.getStoreTx>['2']
+type StoreDidCallback = Parameters<typeof getStoreTx>['2']
 
 export interface KeyTool {
   keypair: KiltKeyringPair
-  getSignCallback: KeyToolSignCallback
   storeDidCallback: StoreDidCallback
+  getSigners<T extends string = string>(
+    didDocument: DidDocument,
+    selectors?: {
+      algorithms?: readonly string[]
+      id?: string
+      verificationRelationship?: string
+    }
+  ): Promise<SignerInterface<T, DidUrl>[]>
   authentication: [NewLightDidVerificationKey]
 }
+
+export type KeyToolSigners = KeyTool['getSigners']

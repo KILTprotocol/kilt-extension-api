@@ -6,56 +6,52 @@
  */
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import {
-  Did,
-  DidDocument,
-  Credential,
-  KiltKeyringPair,
-  DecryptCallback,
-  EncryptCallback,
-  connect,
-  ICType,
-  CType,
-  CTypeHash,
-  IClaim,
-  Claim,
-  ICredential,
-} from '@kiltprotocol/sdk-js'
-import { BN } from '@polkadot/util'
+import { CType } from '@kiltprotocol/credentials'
+import * as Did from '@kiltprotocol/did'
+import { Claim, Credential } from '@kiltprotocol/legacy-credentials'
+import { connect } from '@kiltprotocol/sdk-js'
+import { CTypeHash, DidDocument, ICType, IClaim, ICredential, KiltKeyringPair } from '@kiltprotocol/types'
 import { Crypto } from '@kiltprotocol/utils'
-import { mnemonicGenerate } from '@polkadot/util-crypto'
 import Keyring from '@polkadot/keyring'
-
+import { BN } from '@polkadot/util'
+import { mnemonicGenerate } from '@polkadot/util-crypto'
+import { requestCredential, submitCredential, verifySubmittedCredentialMessage } from '.'
 import {
-  KeyToolSignCallback,
+  KeyToolSigners,
   createAttestation,
   createCtype,
   fundAccount,
   generateDid,
   keypairs,
   makeDecryptCallback,
+  makeDidSigners,
   makeEncryptCallback,
-  makeSignCallback,
   startContainer,
 } from '../../../tests'
-import { receiveSessionRequest, requestSession, verifySession } from '../session'
-import { IRequestCredential, ISession, ISessionRequest, ISubmitCredential } from '../../../types'
-import { requestCredential, submitCredential, verifySubmittedCredentialMessage } from '.'
+import type {
+  DecryptCallback,
+  EncryptCallback,
+  IRequestCredential,
+  ISession,
+  ISessionRequest,
+  ISubmitCredential,
+} from '../../../types'
 import { isIRequestCredential, isSubmitCredential } from '../../../utils'
 import { decrypt } from '../../MessageEnvelope'
+import { receiveSessionRequest, requestSession, verifySession } from '../session'
 
 describe('Verifier', () => {
   //Alice
   let aliceAccount: KiltKeyringPair
   let aliceFullDid: DidDocument
-  let aliceSign: KeyToolSignCallback
-  let aliceSignAssertion: KeyToolSignCallback
+  let aliceSign: KeyToolSigners
+  let aliceSignAssertion: KeyToolSigners
   let aliceDecryptCallback: DecryptCallback
   let aliceEncryptCallback: EncryptCallback
 
   //Bob
   let bobFullDid: DidDocument
-  let bobSign: KeyToolSignCallback
+  let bobSign: KeyToolSigners
   let bobDecryptCallback: DecryptCallback
   let bobEncryptCallback: EncryptCallback
 
@@ -86,8 +82,8 @@ describe('Verifier', () => {
     const keyPairsAlice = await keypairs(aliceMnemonic)
     aliceEncryptCallback = makeEncryptCallback(keyPairsAlice.keyAgreement)(aliceFullDid)
     aliceDecryptCallback = makeDecryptCallback(keyPairsAlice.keyAgreement)
-    aliceSign = makeSignCallback(keyPairsAlice.authentication)
-    aliceSignAssertion = makeSignCallback(keyPairsAlice.assertionMethod)
+    aliceSign = makeDidSigners(keyPairsAlice.authentication)
+    aliceSignAssertion = makeDidSigners(keyPairsAlice.assertionMethod)
 
     // Setup Bob
     const bobMnemonic = mnemonicGenerate()
@@ -97,7 +93,7 @@ describe('Verifier', () => {
     const keyPairsBob = await keypairs(bobMnemonic)
     bobEncryptCallback = makeEncryptCallback(keyPairsBob.keyAgreement)(bobFullDid)
     bobDecryptCallback = makeDecryptCallback(keyPairsBob.keyAgreement)
-    bobSign = makeSignCallback(keyPairsBob.authentication)
+    bobSign = makeDidSigners(keyPairsBob.authentication)
 
     // Session Setup
     sessionRequest = requestSession(aliceFullDid, 'MyApp')
@@ -106,7 +102,7 @@ describe('Verifier', () => {
       sessionRequest,
       bobEncryptCallback,
       bobDecryptCallback,
-      bobSign(bobFullDid)
+      await bobSign(bobFullDid)
     )
     bobSession = session
     aliceSession = await verifySession(
@@ -114,22 +110,22 @@ describe('Verifier', () => {
       sessionResponse,
       aliceDecryptCallback,
       aliceEncryptCallback,
-      aliceSign(aliceFullDid)
+      await aliceSign(aliceFullDid)
     )
 
     // CType and Credential Setup
     testCType = CType.fromProperties('testCtype', { name: { type: 'string' } })
-    await createCtype(aliceFullDid.uri, aliceAccount, aliceMnemonic, testCType)
+    await createCtype(aliceFullDid.id, aliceAccount, aliceMnemonic, testCType)
 
     claimContents = { name: 'Bob' }
-    const claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, bobFullDid.uri)
+    const claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, bobFullDid.id)
     cTypeHash = claim.cTypeHash
     credential = Credential.fromClaim(claim)
 
     await createAttestation(
       aliceAccount,
-      aliceFullDid.uri,
-      aliceSignAssertion(aliceFullDid),
+      aliceFullDid.id,
+      await aliceSignAssertion(aliceFullDid),
       credential.rootHash,
       cTypeHash
     )
@@ -164,7 +160,7 @@ describe('Verifier', () => {
 
     it('should request a credential with owner information', async () => {
       const cTypes = [{ cTypeHash: cTypeHash }]
-      const owner = aliceFullDid.uri
+      const owner = aliceFullDid.id
       const requestedCredential = await requestCredential(aliceSession, cTypes, owner)
 
       expect(isIRequestCredential(requestedCredential.message)).toBeTruthy()
@@ -216,7 +212,7 @@ describe('Verifier', () => {
       const invalidCredential = Credential.fromClaim(invalidClaim)
 
       const cTypes = [{ cTypeHash: cTypeHash }]
-      const { encryptedMessage } = await requestCredential(aliceSession, cTypes, bobFullDid.uri)
+      const { encryptedMessage } = await requestCredential(aliceSession, cTypes, bobFullDid.id)
 
       await expect(submitCredential([invalidCredential], encryptedMessage, bobSession)).rejects.toThrowError()
     })

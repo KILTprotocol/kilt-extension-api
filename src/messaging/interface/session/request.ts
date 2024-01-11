@@ -45,6 +45,7 @@ export function requestSession(didDocument: DidDocument, name: string): ISession
  * @param signers - An array of signers linked to your DID, from which the authentication signer will be selected.
  * @param options - Additional options for the function.
  * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
+ * @param options.didDocument - The Did Document of the DID used by the requesting party. Optional, will be fetched if not passed.
  * @throws Error if encryption key is missing.
  * @throws Error if decrypted challenge doesn't match the original challenge.
  * @returns An object containing the prepared session information.

@@ -5,80 +5,77 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { Did, DidDocument, DidKey, DidResourceUri, ResolvedDidKey, init } from '@kiltprotocol/sdk-js'
-
+import { createLightDidDocument, multibaseKeyToDidKey } from '@kiltprotocol/did'
+import { init } from '@kiltprotocol/sdk-js'
+import type { DidDocument, VerificationMethod } from '@kiltprotocol/types'
+import { u8aEq, u8aToString } from '@polkadot/util'
+import { receiveSessionRequest, requestSession, verifySession } from '.'
 import {
-  KeyToolSignCallback,
+  KeyToolSigners,
   createLocalDemoFullDidFromLightDid,
   makeEncryptionKeyTool,
+  makeMockDereference,
   makeSigningKeyTool,
 } from '../../../tests'
-import { receiveSessionRequest, requestSession, verifySession } from '.'
-import { ISession, ISessionRequest, ISessionResponse } from '../../../types'
+import type { ISession, ISessionRequest, ISessionResponse } from '../../../types'
 import { KeyError } from '../../Error'
-import { u8aToString } from '@polkadot/util'
 
 describe('Session', () => {
+  let dereferenceDidUrl: ReturnType<typeof makeMockDereference>
   //Alice
   let aliceLightDid: DidDocument
   let aliceLightDidWithDetails: DidDocument
   let aliceFullDid: DidDocument
-  let aliceSign: KeyToolSignCallback
+  let aliceSign: KeyToolSigners
   const aliceEncKey = makeEncryptionKeyTool('Alice//enc')
 
   //Bob
   let bobLightDid: DidDocument
   let bobLightDidWithDetails: DidDocument
   let bobFullDid: DidDocument
-  let bobSign: KeyToolSignCallback
+  let bobSign: KeyToolSigners
   const bobEncKey = makeEncryptionKeyTool('Bob//enc')
 
   //session
   let sessionRequest: ISessionRequest
   let sessionResponse: { session: ISession; sessionResponse: ISessionResponse }
 
-  async function resolveKey(keyUri: DidResourceUri, keyRelationship = 'authentication'): Promise<ResolvedDidKey> {
-    const { did } = Did.parse(keyUri)
-    const document = [
-      aliceLightDidWithDetails,
-      aliceLightDid,
-      aliceFullDid,
-      bobLightDidWithDetails,
-      bobLightDid,
-      bobFullDid,
-    ].find(({ uri }) => uri === did)
-    if (!document) throw new Error('Cannot resolve mocked DID')
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return Did.keyToResolvedKey(document[keyRelationship as keyof DidDocument]![0] as DidKey, did)
-  }
-
   beforeAll(async () => {
     await init()
-    const aliceAuthKey = makeSigningKeyTool('ed25519')
-    aliceSign = aliceAuthKey.getSignCallback
-    aliceLightDid = Did.createLightDidDocument({
+    const aliceAuthKey = await makeSigningKeyTool('ed25519')
+    aliceSign = aliceAuthKey.getSigners
+    aliceLightDid = createLightDidDocument({
       authentication: aliceAuthKey.authentication,
       keyAgreement: aliceEncKey.keyAgreement,
     })
-    aliceLightDidWithDetails = Did.createLightDidDocument({
+    aliceLightDidWithDetails = createLightDidDocument({
       authentication: aliceAuthKey.authentication,
       keyAgreement: aliceEncKey.keyAgreement,
       service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
     })
     aliceFullDid = await createLocalDemoFullDidFromLightDid(aliceLightDid)
 
-    const bobAuthKey = makeSigningKeyTool('ed25519')
-    bobSign = bobAuthKey.getSignCallback
-    bobLightDid = Did.createLightDidDocument({
+    const bobAuthKey = await makeSigningKeyTool('ed25519')
+    bobSign = bobAuthKey.getSigners
+    bobLightDid = createLightDidDocument({
       authentication: bobAuthKey.authentication,
       keyAgreement: bobEncKey.keyAgreement,
     })
-    bobLightDidWithDetails = Did.createLightDidDocument({
+    bobLightDidWithDetails = createLightDidDocument({
       authentication: bobAuthKey.authentication,
       keyAgreement: bobEncKey.keyAgreement,
       service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
     })
     bobFullDid = await createLocalDemoFullDidFromLightDid(bobLightDid)
+
+    dereferenceDidUrl = makeMockDereference([
+      aliceLightDidWithDetails,
+      aliceLightDid,
+      aliceFullDid,
+      bobLightDidWithDetails,
+      bobLightDid,
+      bobFullDid,
+    ])
 
     sessionRequest = requestSession(aliceFullDid, 'MyApp')
     sessionResponse = await receiveSessionRequest(
@@ -86,16 +83,16 @@ describe('Session', () => {
       sessionRequest,
       bobEncKey.encrypt(bobFullDid),
       bobEncKey.decrypt,
-      bobSign(bobFullDid),
+      await bobSign(bobFullDid),
       {
-        resolveKey,
+        dereferenceDidUrl,
       }
     )
   })
   it('should create a valid session request', () => {
     const result: ISessionRequest = requestSession(aliceFullDid, 'MyApp')
 
-    const encryptionKeyUri = `${aliceFullDid.uri}${aliceFullDid.keyAgreement?.[0].id}` as DidResourceUri
+    const encryptionKeyUri = `${aliceFullDid.id}${aliceFullDid.keyAgreement?.[0]}`
     expect(result.name).toBe('MyApp')
     expect(result.encryptionKeyUri).toBe(encryptionKeyUri)
     expect(result.challenge).toHaveLength(50)
@@ -112,8 +109,8 @@ describe('Session', () => {
       sessionRequest,
       bobEncKey.encrypt(bobFullDid),
       bobEncKey.decrypt,
-      bobSign(bobFullDid),
-      { resolveKey }
+      await bobSign(bobFullDid),
+      { dereferenceDidUrl }
     )
 
     const { session, sessionResponse } = response
@@ -127,13 +124,14 @@ describe('Session', () => {
       data: encryptedChallenge,
       nonce: nonce,
       peerPublicKey: bobEncKey.keyAgreement[0].publicKey,
-      keyUri: sessionRequest.encryptionKeyUri,
+      verificationMethod: sessionRequest.encryptionKeyUri,
     })
     const decryptedChallenge = u8aToString(decryptedChallengeBytes.data)
     expect(decryptedChallenge).toBe(challenge)
 
-    const bobsEncryptionKey = await resolveKey(encryptionKeyUri, 'keyAgreement')
-    expect(bobsEncryptionKey.publicKey).toBe(bobEncKey.keyAgreement[0].publicKey)
+    const { contentStream: bobsEncryptionKey } = await dereferenceDidUrl(encryptionKeyUri)
+    const dereferencedKey = multibaseKeyToDidKey((bobsEncryptionKey as VerificationMethod).publicKeyMultibase).publicKey
+    expect(u8aEq(bobEncKey.keyAgreement[0].publicKey, dereferencedKey)).toBe(true)
   })
 
   it('provide legit session response', async () => {
@@ -144,8 +142,8 @@ describe('Session', () => {
           sessionResponse.sessionResponse,
           aliceEncKey.decrypt,
           aliceEncKey.encrypt(aliceFullDid),
-          aliceSign(aliceFullDid),
-          { resolveKey }
+          await aliceSign(aliceFullDid),
+          { dereferenceDidUrl }
         )
     )
   })
@@ -161,8 +159,8 @@ describe('Session', () => {
         sessionResponse.sessionResponse,
         aliceEncKey.decrypt,
         aliceEncKey.encrypt(aliceFullDid),
-        aliceSign(aliceFullDid),
-        { resolveKey }
+        await aliceSign(aliceFullDid),
+        { dereferenceDidUrl }
       )
     ).rejects.toThrowError('Invalid challenge')
   })
