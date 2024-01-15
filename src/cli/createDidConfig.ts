@@ -84,20 +84,20 @@ async function write(toWrite: unknown, outPath?: string) {
 async function run() {
   await yargs(process.argv.slice(2))
     .command(
-      'fromCredentials [pathToCredential..]',
+      'fromCredential [pathToCredential..]',
       'create a Did Configuration Resource from one or more existing Domain Linkage Credentials',
       (ygs) =>
         ygs.options(commonOpts).positional('pathToCredential', {
-          describe: 'Path to a json file containing the credential presentation',
+          describe: 'Path to a json file containing a Domain Linkage Credential',
           type: 'string',
           demandOption: true,
           array: true,
         }),
       async ({ pathToCredential, outFile }) => {
         const credentials: DomainLinkageCredential[] = await Promise.all(
-          pathToCredential.map(async (pathToCredential) => {
+          pathToCredential.map(async (path) => {
             try {
-              return JSON.parse(await readFile(pathToCredential, { encoding: 'utf-8' }))
+              return JSON.parse(await readFile(path, { encoding: 'utf-8' }))
             } catch (cause) {
               throw new Error(`Cannot parse file ${pathToCredential}`, { cause })
             }
@@ -107,7 +107,7 @@ async function run() {
         try {
           didResource = didConfigResourceFromCredentials(credentials)
         } catch (cause) {
-          throw new Error('Credential Presentation is not suitable for use in a Did Configuration Resource', {
+          throw new Error('Credential is not suitable for use in a Did Configuration Resource', {
             cause,
           })
         }
