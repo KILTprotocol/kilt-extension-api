@@ -5,16 +5,17 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DidUrl, DidDocument, VerificationMethod } from '@kiltprotocol/types'
-import { stringToU8a } from '@polkadot/util'
 import * as Did from '@kiltprotocol/did'
+import { DidDocument, DidUrl, SignerInterface, VerificationMethod } from '@kiltprotocol/types'
+import { Signers } from '@kiltprotocol/utils'
+import { stringToU8a } from '@polkadot/util'
 
 import type {
-  ISessionRequest,
-  ISession,
-  ISessionResponse,
-  EncryptCallback,
   DecryptCallback,
+  EncryptCallback,
+  ISession,
+  ISessionRequest,
+  ISessionResponse,
 } from '../../../types/index.js'
 
 /**
@@ -23,7 +24,7 @@ import type {
  * @param sessionRequest - The session request details.
  * @param encryptCallback - A callback function used for encryption.
  * @param decryptCallback - A callback function used for decryption.
- * @param signCallback - A callback function used for signing.
+ * @param signers - An array of signers linked to your DID, from which the authentication signer will be selected.
  * @param options - Additional options for the function.
  * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if keyAgreement is missing in the DID document.
@@ -35,7 +36,7 @@ export async function receiveSessionRequest(
   { challenge, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionRequest,
   encryptCallback: EncryptCallback,
   decryptCallback: DecryptCallback,
-  authenticationSigner: ISession['authenticationSigner'],
+  signers: SignerInterface[],
   {
     dereferenceDidUrl = Did.dereference,
   }: {
@@ -44,6 +45,14 @@ export async function receiveSessionRequest(
 ): Promise<{ session: ISession; sessionResponse: ISessionResponse }> {
   if (!didDocument.keyAgreement) {
     throw new Error('keyAgreement is necessary')
+  }
+  const authenticationSigner = Signers.selectSigner<SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>>(
+    signers,
+    Signers.select.byDid(didDocument, { verificationRelationship: 'authentication' }),
+    Signers.select.verifiableOnChain()
+  )
+  if (!authenticationSigner) {
+    throw new Error('a signer for the responder DID authentication method is required')
   }
   const responseEncryptionKey: DidUrl = `${didDocument.id}${didDocument.keyAgreement?.[0]}`
 

@@ -5,14 +5,14 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import type { DidDocument, DidUrl, VerificationMethod } from '@kiltprotocol/types'
 import * as Did from '@kiltprotocol/did'
+import type { DidDocument, DidUrl, SignerInterface, VerificationMethod } from '@kiltprotocol/types'
+import { Signers } from '@kiltprotocol/utils'
+import { u8aToString } from '@polkadot/util'
 import { randomAsHex } from '@polkadot/util-crypto'
 import { DecryptCallback, EncryptCallback } from '../../../types/Message.js'
-
-import type { ISessionRequest, ISession, ISessionResponse } from '../../../types/index.js'
+import type { ISession, ISessionRequest, ISessionResponse } from '../../../types/index.js'
 import { KeyError } from '../../Error.js'
-import { u8aToString } from '@polkadot/util'
 
 /**
  * Requests a session with a given DID document and name.
@@ -42,7 +42,7 @@ export function requestSession(didDocument: DidDocument, name: string): ISession
  * @param sessionResponse - The session response details.
  * @param decryptCallback - A callback function used for decryption.
  * @param encryptCallback - A callback function used for encryption.
- * @param signCallback - A callback function used for signing.
+ * @param signers - An array of signers linked to your DID, from which the authentication signer will be selected.
  * @param options - Additional options for the function.
  * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if encryption key is missing.
@@ -54,10 +54,12 @@ export async function verifySession(
   { encryptedChallenge, nonce, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionResponse,
   decryptCallback: DecryptCallback,
   encryptCallback: EncryptCallback,
-  authenticationSigner: ISession['authenticationSigner'],
+  signers: SignerInterface[],
   {
+    didDocument,
     dereferenceDidUrl = Did.dereference,
   }: {
+    didDocument?: DidDocument
     dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ): Promise<ISession> {
@@ -66,6 +68,21 @@ export async function verifySession(
   })
   if ((encryptionKey as VerificationMethod)?.type !== 'Multikey') {
     throw new Error('An encryption key is required')
+  }
+  if (!didDocument) {
+    didDocument = (
+      await dereferenceDidUrl(Did.parse(encryptionKeyUri).did, {
+        accept: 'application/did+json',
+      })
+    ).contentStream as DidDocument
+  }
+  const authenticationSigner = Signers.selectSigner<SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>>(
+    signers,
+    Signers.select.byDid(didDocument, { verificationRelationship: 'authentication' }),
+    Signers.select.verifiableOnChain()
+  )
+  if (!authenticationSigner) {
+    throw new Error('a signer for the responder DID authentication method is required')
   }
 
   const decryptedBytes = await decryptCallback({
