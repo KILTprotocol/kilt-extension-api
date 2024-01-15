@@ -91,7 +91,7 @@ export async function decrypt(
         peerPublicKey,
         data: hexToU8a(ciphertext),
         nonce: hexToU8a(nonce),
-        verificationMethod: receiverKeyUri,
+        keyUri: receiverKeyUri,
       })
     ).data
   } catch (cause) {
@@ -174,7 +174,7 @@ export async function encrypt(
     receivedAt: message.receivedAt,
     ciphertext,
     nonce,
-    senderKeyUri: encrypted.verificationMethod,
+    senderKeyUri: encrypted.keyUri,
     receiverKeyUri,
   }
 }

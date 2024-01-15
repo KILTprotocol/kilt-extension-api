@@ -254,7 +254,7 @@ export interface EncryptResponseData {
   /**
    * The DID verification method used for the encryption.
    */
-  verificationMethod: DidUrl
+  keyUri: DidUrl
 }
 
 /**
@@ -283,7 +283,7 @@ export interface DecryptRequestData {
   /**
    * The DID verification method, which should be used for decryption.
    */
-  verificationMethod: DidUrl
+  keyUri: DidUrl
 }
 
 export interface DecryptResponseData {

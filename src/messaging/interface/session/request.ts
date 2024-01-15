@@ -90,7 +90,7 @@ export async function verifySession(
     data: encryptedChallenge,
     nonce,
     peerPublicKey: Did.multibaseKeyToDidKey((encryptionKey as VerificationMethod).publicKeyMultibase).publicKey,
-    verificationMethod: encryptionKeyUri,
+    keyUri: encryptionKeyUri,
   })
 
   const decryptedChallenge = u8aToString(decryptedBytes.data)

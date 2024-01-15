@@ -124,7 +124,7 @@ describe('Session', () => {
       data: encryptedChallenge,
       nonce: nonce,
       peerPublicKey: bobEncKey.keyAgreement[0].publicKey,
-      verificationMethod: sessionRequest.encryptionKeyUri,
+      keyUri: sessionRequest.encryptionKeyUri,
     })
     const decryptedChallenge = u8aToString(decryptedChallengeBytes.data)
     expect(decryptedChallenge).toBe(challenge)

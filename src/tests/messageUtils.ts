@@ -155,7 +155,7 @@ export function makeEncryptCallback({ secretKey }: KiltEncryptionKeypair): Encry
         // encrypted data
         data: box,
         // used did key uri for encryption.
-        verificationMethod: `${didDocument.id}${keyId}`,
+        keyUri: `${didDocument.id}${keyId}`,
       }
     }
   }
