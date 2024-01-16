@@ -29,6 +29,11 @@
       "import": "./esm/quote/index.js",
       "require": "./quote/index.js",
       "default": "./quote/index.js"
+    },
+    "./utils": {
+      "import": "./esm/utils/index.js",
+      "require": "./utils/index.js",
+      "default": "./utils/index.js"
     }
   },
   "files": [
