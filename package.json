@@ -43,7 +43,8 @@
     "index.d.ts",
     "getExtension",
     "cli",
-    "utils"
+    "utils",
+    "types"
   ],
   "author": "KILT <info@kilt.io>",
   "license": "BSD-4-Clause",
