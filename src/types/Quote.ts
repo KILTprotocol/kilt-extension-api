@@ -5,7 +5,7 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import type { DidSignature, DidUri, ICredential, CTypeHash } from '@kiltprotocol/types'
+import type { DidSignature, Did, ICredential, CTypeHash } from '@kiltprotocol/types'
 
 /**
  * Interface to break down the costs for a quote.
@@ -16,7 +16,7 @@ export interface ICostBreakdown {
   gross: number
 }
 export interface IQuote {
-  attesterDid: DidUri
+  attesterDid: Did
   cTypeHash: CTypeHash
   cost: ICostBreakdown
   currency: string
@@ -38,7 +38,7 @@ export interface IQuoteAttesterSigned extends IQuote {
 export interface IQuoteAgreement extends IQuoteAttesterSigned {
   // Attached credential hash for linking the Quote to the credential that it refers to
   rootHash: ICredential['rootHash']
-  claimerDid: DidUri
+  claimerDid: Did
   // The signature of the claimer.
   claimerSignature: DidSignature
 }

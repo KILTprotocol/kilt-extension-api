@@ -5,7 +5,7 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { Did } from '@kiltprotocol/sdk-js'
+import * as Did from '@kiltprotocol/did'
 
 import { IEncryptedMessage, IError, IReject, ISession } from '../../../types/index.js'
 import { fromBody } from '../../utils.js'

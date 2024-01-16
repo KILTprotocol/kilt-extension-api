@@ -5,20 +5,22 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
+import { Blockchain } from '@kiltprotocol/chain-helpers'
+import { CType } from '@kiltprotocol/credentials'
+import { authorizeTx, dereference, getStoreTx, parse } from '@kiltprotocol/did'
+import { ConfigService, DidResolver } from '@kiltprotocol/sdk-js'
 import {
+  DereferenceResult,
   Did,
-  SignCallback,
-  Blockchain,
-  KiltKeyringPair,
   DidDocument,
-  ChainHelpers,
-  CType,
-  DidUri,
-  ConfigService,
-  Utils,
+  DidUrl,
   KeyringPair,
   KiltEncryptionKeypair,
-} from '@kiltprotocol/sdk-js'
+  KiltKeyringPair,
+  SignerInterface,
+} from '@kiltprotocol/types'
+import { Crypto, Signers } from '@kiltprotocol/utils'
+import Keyring from '@polkadot/keyring'
 import { BN } from '@polkadot/util'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { GenericContainer, Wait } from 'testcontainers'
@@ -26,7 +28,7 @@ import { ctypeDomainLinkage } from '../wellKnownDidConfiguration/index.js'
 
 export const faucet = async () => {
   await cryptoWaitReady()
-  const keyring = new Utils.Keyring({ ss58Format: 38, type: 'ed25519' })
+  const keyring = new Keyring({ ss58Format: 38, type: 'ed25519' })
 
   const faucetSeed = 'receive clutch item involve chaos clutch furnace arrest claw isolate okay together'
 
@@ -35,18 +37,18 @@ export const faucet = async () => {
 
 export async function createAttestation(
   account: KeyringPair,
-  did: DidUri,
-  signCallback: SignCallback,
+  did: Did,
+  signers: SignerInterface[],
   claimHash: string,
   ctypeHash: string
 ) {
   const api = ConfigService.get('api')
   const createAttesstationTx = api.tx.attestation.add(claimHash, ctypeHash, null)
 
-  const authorizedAttestationCreationTx = await Did.authorizeTx(
+  const authorizedAttestationCreationTx = await authorizeTx(
     did,
     createAttesstationTx,
-    signCallback,
+    signers,
     account.address as `4${string}`
   )
 
@@ -60,7 +62,7 @@ export async function fundAccount(address: KiltKeyringPair['address'], amount: B
   const transferTx = api.tx.balances.transfer(address, amount)
   const devAccount = await faucet()
 
-  await ChainHelpers.Blockchain.signAndSubmitTx(transferTx, devAccount, {
+  await Blockchain.signAndSubmitTx(transferTx, devAccount, {
     resolveOn: Blockchain.IS_FINALIZED,
   })
 }
@@ -68,11 +70,11 @@ export async function fundAccount(address: KiltKeyringPair['address'], amount: B
 export async function keypairs(
   mnemonic: string
 ): Promise<{ authentication: KiltKeyringPair; assertionMethod: KiltKeyringPair; keyAgreement: KiltEncryptionKeypair }> {
-  const authentication = Utils.Crypto.makeKeypairFromUri(mnemonic)
+  const authentication = Crypto.makeKeypairFromUri(mnemonic)
 
-  const assertionMethod = Utils.Crypto.makeKeypairFromUri(mnemonic)
+  const assertionMethod = Crypto.makeKeypairFromUri(mnemonic)
 
-  const keyAgreement = Utils.Crypto.makeEncryptionKeypairFromSeed(Utils.Crypto.mnemonicToMiniSecret(mnemonic))
+  const keyAgreement = Crypto.makeEncryptionKeypairFromSeed(Crypto.mnemonicToMiniSecret(mnemonic))
 
   return {
     authentication,
@@ -84,70 +86,61 @@ export async function keypairs(
 export async function generateDid(account: KiltKeyringPair, mnemonic: string): Promise<DidDocument> {
   const { authentication, assertionMethod, keyAgreement } = await keypairs(mnemonic)
 
-  const uri = Did.getFullDidUriFromKey(authentication)
+  const uri = `did:kilt:${authentication.address}` as const
 
-  let fullDid = await Did.resolve(uri)
-  if (fullDid?.document) return fullDid.document
+  let fullDid = await DidResolver.resolve(uri, {})
+  if (fullDid?.didDocument) return fullDid.didDocument
 
-  const extrinsic = await Did.getStoreTx(
+  const extrinsic = await getStoreTx(
     {
       authentication: [authentication],
       assertionMethod: [assertionMethod],
       keyAgreement: [keyAgreement],
     },
     account.address,
-    async ({ data }) => ({
-      signature: authentication.sign(data),
-      keyType: authentication.type,
-    })
+    await Signers.getSignersForKeypair({ keypair: authentication })
   )
 
   await Blockchain.signAndSubmitTx(extrinsic, account, {
     resolveOn: Blockchain.IS_FINALIZED,
   })
 
-  fullDid = await Did.resolve(uri)
-  if (!fullDid || !fullDid.document) throw new Error('Could not fetch created DID document')
-  return fullDid.document
+  fullDid = await DidResolver.resolve(uri, {})
+  if (!fullDid || !fullDid.didDocument) throw new Error('Could not fetch created DID document')
+  return fullDid.didDocument
 }
 
-export async function assertionSigner({
+export async function assertionSigners({
   assertionMethod,
   didDocument,
 }: {
   assertionMethod: KiltKeyringPair
   didDocument: DidDocument
-}): Promise<SignCallback> {
+}): Promise<SignerInterface[]> {
   if (!didDocument.assertionMethod) throw new Error('no assertionMethod')
-  return async ({ data }) => ({
-    signature: assertionMethod.sign(data),
-    keyType: 'ed25519',
-    keyUri: `${didDocument.uri}${didDocument.assertionMethod![0].id}`,
+  return Signers.getSignersForKeypair({
+    keypair: assertionMethod,
+    id: `${didDocument.id}${didDocument.assertionMethod![0]}`,
   })
 }
 
-export async function createCtype(
-  didUri: DidUri,
-  account: KiltKeyringPair,
-  mnemonic: string,
-  ctype = ctypeDomainLinkage
-) {
+export async function createCtype(didUri: Did, account: KiltKeyringPair, mnemonic: string, ctype = ctypeDomainLinkage) {
   const api = ConfigService.get('api')
 
   const { assertionMethod: assertion } = await keypairs(mnemonic)
-  const fullDid = await Did.resolve(didUri)
+  const fullDid = await DidResolver.resolve(didUri, {})
   if (!fullDid) throw new Error('no did')
-  const { document } = fullDid
+  const { didDocument: document } = fullDid
   if (!document) throw new Error('no document')
   const { assertionMethod } = document
   if (!assertionMethod) throw new Error('no assertion key')
   const encodedCType = CType.toChain(ctype)
   const ctypeTx = api.tx.ctype.add(encodedCType)
 
-  const authorizedCtypeCreationTx = await Did.authorizeTx(
+  const authorizedCtypeCreationTx = await authorizeTx(
     didUri,
     ctypeTx,
-    await assertionSigner({ assertionMethod: assertion, didDocument: document }),
+    await assertionSigners({ assertionMethod: assertion, didDocument: document }),
     account.address as `4${string}`
   )
 
@@ -169,4 +162,24 @@ export async function startContainer(): Promise<string> {
   const host = started.getHost()
   const WS_ADDRESS = `ws://${host}:${port}`
   return WS_ADDRESS
+}
+
+export function makeMockDereference(didDocuments: DidDocument[]): typeof dereference {
+  async function dereferenceDidUrl(keyUri: DidUrl | Did): Promise<DereferenceResult<'application/did+json'>> {
+    const { did, fragment } = parse(keyUri)
+    const document = didDocuments.find(({ id }) => id === did)
+    if (!document) throw new Error('Cannot resolve mocked DID')
+    let result
+    if (!fragment) {
+      result = document
+    } else {
+      result = document.verificationMethod?.find(({ id }) => keyUri.endsWith(id))
+    }
+    return {
+      contentStream: result,
+      contentMetadata: {},
+      dereferencingMetadata: { contentType: 'application/did+json' } as const,
+    }
+  }
+  return dereferenceDidUrl
 }

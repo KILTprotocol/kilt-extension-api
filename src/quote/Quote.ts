@@ -15,18 +15,11 @@
  * @packageDocumentation
  */
 
-import type {
-  IQuote,
-  IQuoteAgreement,
-  IQuoteAttesterSigned,
-  ICredential,
-  SignCallback,
-  DidResolveKey,
-  DidUri,
-} from '@kiltprotocol/types'
-import { Crypto, JsonSchema } from '@kiltprotocol/utils'
+import { dereference, signatureFromJson, verifyDidSignature } from '@kiltprotocol/did'
+import type { Did, DidUrl, ICredential, SignerInterface } from '@kiltprotocol/types'
+import { Crypto, JsonSchema, Signers } from '@kiltprotocol/utils'
+import { IQuote, IQuoteAgreement, IQuoteAttesterSigned } from '../types/Quote.js'
 import * as QuoteError from './Error.js'
-import { resolveKey, verifyDidSignature, signatureToJson, signatureFromJson } from '@kiltprotocol/did'
 import { QuoteSchema } from './QuoteSchema.js'
 
 /**
@@ -58,22 +51,23 @@ export function validateQuoteSchema(schema: JsonSchema.Schema, validate: unknown
  * Signs a [[Quote]] object as an Attester.
  *
  * @param quoteInput A [[Quote]] object.
- * @param sign The callback to sign with the private key.
+ * @param signer A signer interface handling signing with the attester's authentication key.
  * @returns A signed [[Quote]] object.
  */
-export async function createAttesterSignedQuote(quoteInput: IQuote, sign: SignCallback): Promise<IQuoteAttesterSigned> {
+export async function createAttesterSignedQuote(
+  quoteInput: IQuote,
+  signer: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>
+): Promise<IQuoteAttesterSigned> {
   if (!validateQuoteSchema(QuoteSchema, quoteInput)) {
     throw new QuoteError.QuoteUnverifiableError()
   }
 
-  const signature = await sign({
+  const signature = await signer.sign({
     data: Crypto.hash(Crypto.encodeObjectAsStr(quoteInput)),
-    did: quoteInput.attesterDid,
-    keyRelationship: 'authentication',
   })
   return {
     ...quoteInput,
-    attesterSignature: signatureToJson(signature),
+    attesterSignature: { signature: Crypto.u8aToHex(signature), keyUri: signer.id },
   }
 }
 
@@ -82,23 +76,26 @@ export async function createAttesterSignedQuote(quoteInput: IQuote, sign: SignCa
  *
  * @param quote The object which to be verified.
  * @param options Optional settings.
- * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ * @param options.dereferenceDidUrl Resolve function used in the process of verifying the attester signature.
  */
 export async function verifyAttesterSignedQuote(
   quote: IQuoteAttesterSigned,
   {
-    didResolveKey = resolveKey,
+    dereferenceDidUrl,
   }: {
-    didResolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<void> {
   const { attesterSignature, ...basicQuote } = quote
+  const { keyUri, signature } = signatureFromJson(attesterSignature)
   await verifyDidSignature({
-    ...signatureFromJson(attesterSignature),
+    signerUrl: keyUri,
+    signature,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
     expectedSigner: basicQuote.attesterDid,
-    expectedVerificationMethod: 'authentication',
-    didResolveKey,
+    expectedVerificationRelationship: 'authentication',
+    // @ts-expect-error this is dumb
+    dereferenceDidUrl,
   })
 
   const messages: string[] = []
@@ -112,30 +109,33 @@ export async function verifyAttesterSignedQuote(
  *
  * @param attesterSignedQuote A [[Quote]] object signed by an Attester.
  * @param credentialRootHash A root hash of the entire object.
- * @param sign The callback to sign with the private key.
+ * @param signer A signer interface handling signing with the Claimer's authentication key.
  * @param claimerDid The DID of the Claimer, who has to sign.
  * @param options Optional settings.
- * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ * @param options.dereferenceDidUrl Resolve function used in the process of verifying the attester signature.
  * @returns A [[Quote]] agreement signed by both the Attester and Claimer.
  */
 export async function createQuoteAgreement(
   attesterSignedQuote: IQuoteAttesterSigned,
   credentialRootHash: ICredential['rootHash'],
-  sign: SignCallback,
-  claimerDid: DidUri,
+  signer: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>,
+  claimerDid: Did,
   {
-    didResolveKey = resolveKey,
+    dereferenceDidUrl,
   }: {
-    didResolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<IQuoteAgreement> {
   const { attesterSignature, ...basicQuote } = attesterSignedQuote
 
+  const transformed = signatureFromJson(attesterSignature)
   await verifyDidSignature({
-    ...signatureFromJson(attesterSignature),
+    signature: transformed.signature,
+    signerUrl: transformed.keyUri,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
-    expectedVerificationMethod: 'authentication',
-    didResolveKey,
+    expectedVerificationRelationship: 'authentication',
+    // @ts-expect-error why would this complain?
+    dereferenceDidUrl,
   })
 
   const quoteAgreement = {
@@ -143,15 +143,13 @@ export async function createQuoteAgreement(
     rootHash: credentialRootHash,
     claimerDid,
   }
-  const signature = await sign({
+  const signature = await signer.sign({
     data: Crypto.hash(Crypto.encodeObjectAsStr(quoteAgreement)),
-    did: claimerDid,
-    keyRelationship: 'authentication',
   })
 
   return {
     ...quoteAgreement,
-    claimerSignature: signatureToJson(signature),
+    claimerSignature: { signature: Crypto.u8aToHex(signature), keyUri: signer.id },
   }
 }
 
@@ -160,25 +158,28 @@ export async function createQuoteAgreement(
  *
  * @param quote The object to be verified.
  * @param options Optional settings.
- * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ * @param options.dereferenceDidUrl Resolve function used in the process of verifying the attester signature.
  */
 export async function verifyQuoteAgreement(
   quote: IQuoteAgreement,
   {
-    didResolveKey = resolveKey,
+    dereferenceDidUrl,
   }: {
-    didResolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<void> {
   const { claimerSignature, claimerDid, rootHash, ...attesterSignedQuote } = quote
   // verify attester signature
-  await verifyAttesterSignedQuote(attesterSignedQuote, { didResolveKey })
+  await verifyAttesterSignedQuote(attesterSignedQuote, { dereferenceDidUrl })
   // verify claimer signature
+  const { keyUri, signature } = signatureFromJson(claimerSignature)
   await verifyDidSignature({
-    ...signatureFromJson(claimerSignature),
+    signature,
+    signerUrl: keyUri,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr({ ...attesterSignedQuote, claimerDid, rootHash })),
     expectedSigner: claimerDid,
-    expectedVerificationMethod: 'authentication',
-    didResolveKey,
+    expectedVerificationRelationship: 'authentication',
+    // @ts-expect-error why would this complain?
+    dereferenceDidUrl,
   })
 }

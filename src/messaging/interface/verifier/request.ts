@@ -6,8 +6,10 @@
  */
 
 import { randomAsHex } from '@polkadot/util-crypto'
-import { CTypeHash, DidResolveKey, DidUri } from '@kiltprotocol/types'
-import { CType, Credential, Did } from '@kiltprotocol/sdk-js'
+import { CTypeHash, Did } from '@kiltprotocol/types'
+import { Credential } from '@kiltprotocol/legacy-credentials'
+import { CType } from '@kiltprotocol/credentials'
+import { dereference, parse } from '@kiltprotocol/did'
 
 import type {
   ISession,
@@ -32,21 +34,21 @@ import { decrypt, encrypt, fromBody } from '../../index.js'
  * @param cTypes[].requiredProperties - An optional array of required property names.
  * @param owner - An optional owner DID for the credential.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Only used for tests
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @returns A promise that resolves to an object containing the encrypted request message, the request message itself, and the challenge.
  */
 export async function requestCredential(
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession,
   cTypes: Array<{
     cTypeHash: CTypeHash
-    trustedAttesters?: DidUri[]
+    trustedAttesters?: Did[]
     requiredProperties?: string[]
   }>,
-  owner?: DidUri,
+  owner?: Did,
   {
-    resolveKey = Did.resolveKey,
+    dereferenceDidUrl,
   }: {
-    resolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<ICredentialRequest> {
   const challenge = randomAsHex(24)
@@ -64,13 +66,13 @@ export async function requestCredential(
     type: 'request-credential',
   }
 
-  const { did: sender } = Did.parse(senderEncryptionKeyUri)
-  const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
+  const { did: sender } = parse(senderEncryptionKeyUri)
+  const { did: receiver } = parse(receiverEncryptionKeyUri)
 
   const message = fromBody(body, sender, receiver) as IMessage<IRequestCredential>
 
   return {
-    encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri, { dereferenceDidUrl }),
     message,
     challenge,
   }
@@ -84,7 +86,7 @@ export async function requestCredential(
  * @param requestMessage - The previous request message.
  * @param challenge - The challenge associated with the credential request.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional)
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if the decrypted message points to the wrong previous message.
  * @throws Error if the original message is not a request credential message.
  * @throws Error if the decrypted message is not a submit credential message.
@@ -96,12 +98,12 @@ export async function verifySubmittedCredentialMessage(
   { decryptCallback }: ISession,
   { message: requestMessage, challenge }: ICredentialRequest,
   {
-    resolveKey = Did.resolveKey,
+    dereferenceDidUrl,
   }: {
-    resolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<IMessage<ISubmitCredential>> {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { dereferenceDidUrl })
 
   if (decryptedMessage.inReplyTo !== requestMessage.messageId) {
     throw new Error('Wrong Reply. Decrypted message points to wrong previous message')

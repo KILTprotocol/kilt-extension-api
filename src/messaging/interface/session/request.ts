@@ -5,14 +5,14 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DidDocument, DidResolveKey, DidResourceUri, SignCallback } from '@kiltprotocol/types'
-import { Did } from '@kiltprotocol/sdk-js'
-import { randomAsHex } from '@polkadot/util-crypto'
-import { DecryptCallback, EncryptCallback } from '@kiltprotocol/types'
-
-import type { ISessionRequest, ISession, ISessionResponse } from '../../../types/index.js'
-import { KeyError } from '../../Error.js'
+import * as Did from '@kiltprotocol/did'
+import type { DidDocument, DidUrl, SignerInterface, VerificationMethod } from '@kiltprotocol/types'
+import { Signers } from '@kiltprotocol/utils'
 import { u8aToString } from '@polkadot/util'
+import { randomAsHex } from '@polkadot/util-crypto'
+import { DecryptCallback, EncryptCallback } from '../../../types/Message.js'
+import type { ISession, ISessionRequest, ISessionResponse } from '../../../types/index.js'
+import { KeyError } from '../../Error.js'
 
 /**
  * Requests a session with a given DID document and name.
@@ -26,7 +26,7 @@ export function requestSession(didDocument: DidDocument, name: string): ISession
     throw new KeyError('KeyAgreement does not exists')
   }
 
-  const encryptionKeyUri = `${didDocument.uri}${didDocument.keyAgreement?.[0].id}` as DidResourceUri
+  const encryptionKeyUri = `${didDocument.id}${didDocument.keyAgreement?.[0]}` as DidUrl
 
   const challenge = randomAsHex(24)
   return {
@@ -42,9 +42,10 @@ export function requestSession(didDocument: DidDocument, name: string): ISession
  * @param sessionResponse - The session response details.
  * @param decryptCallback - A callback function used for decryption.
  * @param encryptCallback - A callback function used for encryption.
- * @param signCallback - A callback function used for signing.
+ * @param signers - An array of signers linked to your DID, from which the authentication signer will be selected.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Used for testing only
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
+ * @param options.didDocument - The Did Document of the DID used by the requesting party. Optional, will be fetched if not passed.
  * @throws Error if encryption key is missing.
  * @throws Error if decrypted challenge doesn't match the original challenge.
  * @returns An object containing the prepared session information.
@@ -54,22 +55,41 @@ export async function verifySession(
   { encryptedChallenge, nonce, encryptionKeyUri: receiverEncryptionKeyUri }: ISessionResponse,
   decryptCallback: DecryptCallback,
   encryptCallback: EncryptCallback,
-  signCallback: SignCallback,
+  signers: SignerInterface[],
   {
-    resolveKey = Did.resolveKey,
+    didDocument,
+    dereferenceDidUrl = Did.dereference,
   }: {
-    resolveKey?: DidResolveKey
+    didDocument?: DidDocument
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ): Promise<ISession> {
-  const encryptionKey = await resolveKey(receiverEncryptionKeyUri, 'keyAgreement')
-  if (!encryptionKey) {
+  const { contentStream: encryptionKey } = await dereferenceDidUrl(receiverEncryptionKeyUri, {
+    accept: 'application/did+json',
+  })
+  if ((encryptionKey as VerificationMethod)?.type !== 'Multikey') {
     throw new Error('An encryption key is required')
+  }
+  if (!didDocument) {
+    didDocument = (
+      await dereferenceDidUrl(Did.parse(encryptionKeyUri).did, {
+        accept: 'application/did+json',
+      })
+    ).contentStream as DidDocument
+  }
+  const authenticationSigner = Signers.selectSigner<SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>>(
+    signers,
+    Signers.select.byDid(didDocument, { verificationRelationship: 'authentication' }),
+    Signers.select.verifiableOnChain()
+  )
+  if (!authenticationSigner) {
+    throw new Error('a signer for the responder DID authentication method is required')
   }
 
   const decryptedBytes = await decryptCallback({
     data: encryptedChallenge,
     nonce,
-    peerPublicKey: encryptionKey.publicKey,
+    peerPublicKey: Did.multibaseKeyToDidKey((encryptionKey as VerificationMethod).publicKeyMultibase).publicKey,
     keyUri: encryptionKeyUri,
   })
 
@@ -82,7 +102,7 @@ export async function verifySession(
   return {
     encryptCallback,
     decryptCallback,
-    signCallback,
+    authenticationSigner,
     receiverEncryptionKeyUri,
     senderEncryptionKeyUri: encryptionKeyUri,
   }

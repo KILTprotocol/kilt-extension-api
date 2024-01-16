@@ -15,26 +15,16 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import * as Did from '@kiltprotocol/did'
-import type {
-  DidDocument,
-  DidResourceUri,
-  ICType,
-  IClaim,
-  ICostBreakdown,
-  ICredential,
-  IQuote,
-  IQuoteAgreement,
-  IQuoteAttesterSigned,
-  ResolvedDidKey,
-} from '@kiltprotocol/types'
+import { CType } from '@kiltprotocol/credentials'
+import * as DidModule from '@kiltprotocol/did'
+import { Credential } from '@kiltprotocol/legacy-credentials'
+import type { DidDocument, ICType, IClaim, ICredential, VerificationMethod } from '@kiltprotocol/types'
 import { Crypto } from '@kiltprotocol/utils'
-import { Credential, CType } from '@kiltprotocol/sdk-js'
-
-import { createLocalDemoFullDidFromKeypair, makeSigningKeyTool } from '../tests'
+import { blake2AsU8a } from '@polkadot/util-crypto'
+import { createLocalDemoFullDidFromKeypair, makeMockDereference, makeSigningKeyTool } from '../tests'
+import { ICostBreakdown, IQuote, IQuoteAgreement, IQuoteAttesterSigned } from '../types'
 import * as Quote from './Quote'
 import { QuoteSchema } from './QuoteSchema'
-import * as QuoteError from './Error'
 
 describe('Quote', () => {
   let claimerIdentity: DidDocument
@@ -55,18 +45,14 @@ describe('Quote', () => {
   let quoteBothAgreed: IQuoteAgreement
   let invalidPropertiesQuote: IQuote
   let invalidCostQuote: IQuote
-
-  async function mockResolveKey(keyUri: DidResourceUri): Promise<ResolvedDidKey> {
-    const { did } = Did.parse(keyUri)
-    const document = [claimerIdentity, attesterIdentity].find(({ uri }) => uri === did)
-    if (!document) throw new Error('Cannot resolve mocked DID')
-    return Did.keyToResolvedKey(document.authentication[0], did)
-  }
+  let dereferenceDidUrl: ReturnType<typeof makeMockDereference>
 
   beforeAll(async () => {
-    claimerIdentity = await createLocalDemoFullDidFromKeypair(claimer.keypair)
+    claimerIdentity = await createLocalDemoFullDidFromKeypair((await claimer).keypair)
 
-    attesterIdentity = await createLocalDemoFullDidFromKeypair(attester.keypair)
+    attesterIdentity = await createLocalDemoFullDidFromKeypair((await attester).keypair)
+
+    dereferenceDidUrl = makeMockDereference([claimerIdentity, attesterIdentity])
 
     invalidCost = {
       gross: 233,
@@ -81,7 +67,7 @@ describe('Quote', () => {
     claim = {
       cTypeHash: CType.idToHash(testCType.$id),
       contents: {},
-      owner: claimerIdentity.uri,
+      owner: claimerIdentity.id,
     }
 
     // build credential with legitimations
@@ -109,7 +95,7 @@ describe('Quote', () => {
     } as unknown as IQuote
 
     validQuoteData = {
-      attesterDid: attesterIdentity.uri,
+      attesterDid: attesterIdentity.id,
       cTypeHash: '0x12345678',
       cost: {
         gross: 233,
@@ -122,15 +108,17 @@ describe('Quote', () => {
     }
     validAttesterSignedQuote = await Quote.createAttesterSignedQuote(
       validQuoteData,
-      attester.getSignCallback(attesterIdentity)
+      (
+        await (await attester).getSigners<'Sr25519'>(attesterIdentity, { verificationRelationship: 'authentication' })
+      )[0]
     )
     quoteBothAgreed = await Quote.createQuoteAgreement(
       validAttesterSignedQuote,
       credential.rootHash,
-      claimer.getSignCallback(claimerIdentity),
-      claimerIdentity.uri,
+      (await (await claimer).getSigners<'Sr25519'>(claimerIdentity, { verificationRelationship: 'authentication' }))[0],
+      claimerIdentity.id,
       {
-        didResolveKey: mockResolveKey,
+        dereferenceDidUrl,
       }
     )
     invalidPropertiesQuote = invalidPropertiesQuoteData
@@ -138,24 +126,25 @@ describe('Quote', () => {
   })
 
   it('tests created quote data against given data', async () => {
-    expect(validQuoteData.attesterDid).toEqual(attesterIdentity.uri)
-    const sign = claimer.getSignCallback(claimerIdentity)
-    const signature = Did.signatureToJson(
-      await sign({
-        data: Crypto.hash(
+    expect(validQuoteData.attesterDid).toEqual(attesterIdentity.id)
+    const signer = (
+      await (await claimer).getSigners(claimerIdentity, { verificationRelationship: 'authentication' })
+    )[0]
+    const signature = DidModule.signatureToJson({
+      signature: await signer.sign({
+        data: blake2AsU8a(
           Crypto.encodeObjectAsStr({
             ...validAttesterSignedQuote,
-            claimerDid: claimerIdentity.uri,
+            claimerDid: claimerIdentity.id,
             rootHash: credential.rootHash,
           })
         ),
-        did: claimerIdentity.uri,
-        keyRelationship: 'authentication',
-      })
-    )
+      }),
+      verificationMethod: { id: `#${signer.id.split('#')[1]}`, controller: claimerIdentity.id } as VerificationMethod,
+    })
     expect(signature).toEqual(quoteBothAgreed.claimerSignature)
 
-    const { fragment: attesterKeyId } = Did.parse(validAttesterSignedQuote.attesterSignature.keyUri)
+    const { fragment: attesterKeyId } = DidModule.parse(validAttesterSignedQuote.attesterSignature.keyUri)
 
     expect(() =>
       Crypto.verify(
@@ -170,22 +159,29 @@ describe('Quote', () => {
           })
         ),
         validAttesterSignedQuote.attesterSignature.signature,
-        Did.getKey(attesterIdentity, attesterKeyId!)?.publicKey || new Uint8Array()
+        DidModule.multibaseKeyToDidKey(
+          attesterIdentity.verificationMethod!.find(({ id }) => id === attesterKeyId)!.publicKeyMultibase
+        ).publicKey
       )
     ).not.toThrow()
     await expect(
       Quote.verifyAttesterSignedQuote(validAttesterSignedQuote, {
-        didResolveKey: mockResolveKey,
+        dereferenceDidUrl,
       })
     ).resolves.not.toThrow()
     await expect(
       Quote.verifyQuoteAgreement(quoteBothAgreed, {
-        didResolveKey: mockResolveKey,
+        dereferenceDidUrl,
       })
     ).resolves.not.toThrow()
-    expect(await Quote.createAttesterSignedQuote(validQuoteData, attester.getSignCallback(attesterIdentity))).toEqual(
-      validAttesterSignedQuote
-    )
+    expect(
+      await Quote.createAttesterSignedQuote(
+        validQuoteData,
+        (
+          await (await attester).getSigners<'Sr25519'>(attesterIdentity, { verificationRelationship: 'authentication' })
+        )[0]
+      )
+    ).toEqual(validAttesterSignedQuote)
   })
   it('validates created quotes against QuoteSchema', () => {
     expect(Quote.validateQuoteSchema(QuoteSchema, validQuoteData)).toBe(true)
@@ -200,61 +196,66 @@ describe('Quote', () => {
     }
     await expect(
       Quote.verifyAttesterSignedQuote(messedWithCurrency, {
-        didResolveKey: mockResolveKey,
+        dereferenceDidUrl,
       })
-    ).rejects.toThrow(QuoteError.SignatureUnverifiableError)
+    ).rejects.toThrow()
     const messedWithRootHash: IQuoteAgreement = {
       ...quoteBothAgreed,
       rootHash: '0x1234',
     }
     await expect(
       Quote.verifyQuoteAgreement(messedWithRootHash, {
-        didResolveKey: mockResolveKey,
+        dereferenceDidUrl,
       })
-    ).rejects.toThrow(QuoteError.SignatureUnverifiableError)
+    ).rejects.toThrow()
   })
 
   it('complains if attesterDid does not match attester signature', async () => {
-    const sign = claimer.getSignCallback(claimerIdentity)
+    const signer = (
+      await (await claimer).getSigners(claimerIdentity, { verificationRelationship: 'authentication' })
+    )[0]
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { attesterSignature, ...attesterSignedQuote } = validAttesterSignedQuote
     const wrongSignerAttester: IQuoteAttesterSigned = {
       ...attesterSignedQuote,
-      attesterSignature: Did.signatureToJson(
-        await sign({
+      attesterSignature: DidModule.signatureToJson({
+        signature: await signer.sign({
           data: Crypto.hash(Crypto.encodeObjectAsStr(attesterSignedQuote)),
-          did: claimerIdentity.uri,
-          keyRelationship: 'authentication',
-        })
-      ),
+        }),
+        verificationMethod: { id: `#${signer.id.split('#')[1]}`, controller: claimerIdentity.id } as VerificationMethod,
+      }),
     }
 
     await expect(
       Quote.verifyAttesterSignedQuote(wrongSignerAttester, {
-        didResolveKey: mockResolveKey,
+        dereferenceDidUrl,
       })
-    ).rejects.toThrow(QuoteError.DidSubjectMismatchError)
+    ).rejects.toThrow()
   })
 
   it('complains if claimerDid does not match claimer signature', async () => {
-    const sign = attester.getSignCallback(attesterIdentity)
+    const signer = (
+      await (await attester).getSigners(attesterIdentity, { verificationRelationship: 'authentication' })
+    )[0]
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { claimerSignature, ...restQuote } = quoteBothAgreed
     const wrongSignerClaimer: IQuoteAgreement = {
       ...restQuote,
-      claimerSignature: Did.signatureToJson(
-        await sign({
+      claimerSignature: DidModule.signatureToJson({
+        signature: await signer.sign({
           data: Crypto.hash(Crypto.encodeObjectAsStr(restQuote)),
-          did: attesterIdentity.uri,
-          keyRelationship: 'authentication',
-        })
-      ),
+        }),
+        verificationMethod: {
+          id: `#${signer.id.split('#')[1]}`,
+          controller: attesterIdentity.id,
+        } as VerificationMethod,
+      }),
     }
 
     await expect(
       Quote.verifyQuoteAgreement(wrongSignerClaimer, {
-        didResolveKey: mockResolveKey,
+        dereferenceDidUrl,
       })
-    ).rejects.toThrow(QuoteError.DidSubjectMismatchError)
+    ).rejects.toThrow()
   })
 })

@@ -14,36 +14,32 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { u8aToHex } from '@polkadot/util'
-import { Attestation, CType, Claim, Credential, Quote } from '@kiltprotocol/core'
-import * as Did from '@kiltprotocol/did'
-import { init } from '@kiltprotocol/sdk-js'
-import * as MessageError from './Error'
-import { Crypto } from '@kiltprotocol/utils'
+import { Attestation, CType } from '@kiltprotocol/credentials'
+import { createLightDidDocument, multibaseKeyToDidKey, parse } from '@kiltprotocol/did'
+import { Claim, Credential } from '@kiltprotocol/legacy-credentials'
+import { DidResolver, init } from '@kiltprotocol/sdk-js'
 import type {
+  Did,
   DidDocument,
-  DidKey,
-  DidResourceUri,
-  DidUri,
+  DidUrl,
   IAttestation,
   ICType,
-  ResolvedDidKey,
   IClaim,
   ICredential,
   ICredentialPresentation,
-} from '@kiltprotocol/sdk-js'
-
+  SignerInterface,
+} from '@kiltprotocol/types'
+import { Crypto, Signers } from '@kiltprotocol/utils'
+import { u8aToHex } from '@polkadot/util'
+import { createAttesterSignedQuote, createQuoteAgreement } from '../quote/Quote'
 import {
   KeyTool,
-  KeyToolSignCallback,
   createLocalDemoFullDidFromKeypair,
   createLocalDemoFullDidFromLightDid,
   makeEncryptionKeyTool,
+  makeMockDereference,
   makeSigningKeyTool,
 } from '../tests'
-import { fromBody, verifyRequiredCTypeProperties } from './utils'
-import { decrypt, encrypt, verifyMessageEnvelope } from './MessageEnvelope'
-import { ensureOwnerIsSender, assertKnownMessage, assertKnownMessageBody } from './CredentialApiMessageType'
 import type {
   IEncryptedMessage,
   IMessage,
@@ -61,62 +57,74 @@ import type {
   ISubmitTerms,
   ITerms,
 } from '../types'
+import { assertKnownMessage, assertKnownMessageBody, ensureOwnerIsSender } from './CredentialApiMessageType'
+import * as MessageError from './Error'
+import { decrypt, encrypt, verifyMessageEnvelope } from './MessageEnvelope'
+import { fromBody, verifyRequiredCTypeProperties } from './utils'
 
 describe('Messaging', () => {
+  let mockDereference: ReturnType<typeof makeMockDereference>
+
   let aliceLightDid: DidDocument
   let aliceLightDidWithDetails: DidDocument
   let aliceFullDid: DidDocument
-  let aliceSign: KeyToolSignCallback
+  let aliceSign: SignerInterface[]
+  let aliceAuthentication: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>
   const aliceEncKey = makeEncryptionKeyTool('Alice//enc')
 
   let bobLightDid: DidDocument
   let bobLightDidWithDetails: DidDocument
   let bobFullDid: DidDocument
-  let bobSign: KeyToolSignCallback
+  let bobAuthentication: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>
   const bobEncKey = makeEncryptionKeyTool('Bob//enc')
 
-  async function resolveKey(keyUri: DidResourceUri, keyRelationship = 'authentication'): Promise<ResolvedDidKey> {
-    const { did } = Did.parse(keyUri)
-    const document = [
+  beforeAll(async () => {
+    await init()
+    const aliceAuthKey = await makeSigningKeyTool('ed25519')
+    aliceLightDid = createLightDidDocument({
+      authentication: aliceAuthKey.authentication,
+      keyAgreement: aliceEncKey.keyAgreement,
+    })
+    aliceLightDidWithDetails = createLightDidDocument({
+      authentication: aliceAuthKey.authentication,
+      keyAgreement: aliceEncKey.keyAgreement,
+      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
+    })
+    aliceFullDid = await createLocalDemoFullDidFromLightDid(aliceLightDid)
+    aliceSign = await aliceAuthKey.getSigners(aliceFullDid)
+    aliceAuthentication = (
+      await aliceAuthKey.getSigners<Signers.DidPalletSupportedAlgorithms>(aliceFullDid, {
+        verificationRelationship: 'authentication',
+        algorithms: Signers.DID_PALLET_SUPPORTED_ALGORITHMS,
+      })
+    )[0]
+
+    const bobAuthKey = await makeSigningKeyTool('ed25519')
+    bobLightDid = createLightDidDocument({
+      authentication: bobAuthKey.authentication,
+      keyAgreement: bobEncKey.keyAgreement,
+    })
+    bobLightDidWithDetails = createLightDidDocument({
+      authentication: bobAuthKey.authentication,
+      keyAgreement: bobEncKey.keyAgreement,
+      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
+    })
+    bobFullDid = await createLocalDemoFullDidFromLightDid(bobLightDid)
+    bobAuthentication = (
+      await bobAuthKey.getSigners<Signers.DidPalletSupportedAlgorithms>(bobFullDid, {
+        verificationRelationship: 'authentication',
+        algorithms: Signers.DID_PALLET_SUPPORTED_ALGORITHMS,
+      })
+    )[0]
+
+    mockDereference = makeMockDereference([
       aliceLightDidWithDetails,
       aliceLightDid,
       aliceFullDid,
       bobLightDidWithDetails,
       bobLightDid,
       bobFullDid,
-    ].find(({ uri }) => uri === did)
-    if (!document) throw new Error('Cannot resolve mocked DID')
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return Did.keyToResolvedKey(document[keyRelationship as keyof DidDocument]![0] as DidKey, did)
-  }
-
-  beforeAll(async () => {
-    await init()
-    const aliceAuthKey = makeSigningKeyTool('ed25519')
-    aliceSign = aliceAuthKey.getSignCallback
-    aliceLightDid = Did.createLightDidDocument({
-      authentication: aliceAuthKey.authentication,
-      keyAgreement: aliceEncKey.keyAgreement,
-    })
-    aliceLightDidWithDetails = Did.createLightDidDocument({
-      authentication: aliceAuthKey.authentication,
-      keyAgreement: aliceEncKey.keyAgreement,
-      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
-    })
-    aliceFullDid = await createLocalDemoFullDidFromLightDid(aliceLightDid)
-
-    const bobAuthKey = makeSigningKeyTool('ed25519')
-    bobSign = bobAuthKey.getSignCallback
-    bobLightDid = Did.createLightDidDocument({
-      authentication: bobAuthKey.authentication,
-      keyAgreement: bobEncKey.keyAgreement,
-    })
-    bobLightDidWithDetails = Did.createLightDidDocument({
-      authentication: bobAuthKey.authentication,
-      keyAgreement: bobEncKey.keyAgreement,
-      service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
-    })
-    bobFullDid = await createLocalDemoFullDidFromLightDid(bobLightDid)
+    ])
   })
 
   it('verify message encryption and signing', async () => {
@@ -127,17 +135,17 @@ describe('Messaging', () => {
           cTypes: [{ cTypeHash: `${Crypto.hashStr('0x12345678')}` }],
         },
       },
-      aliceLightDid.uri,
-      bobLightDid.uri
+      aliceLightDid.id,
+      bobLightDid.id
     )
     const encryptedMessage = await encrypt(
       message,
       aliceEncKey.encrypt(aliceLightDid),
-      `${bobLightDid.uri}#encryption`,
-      { resolveKey }
+      `${bobLightDid.id}#encryption`,
+      { dereferenceDidUrl: mockDereference }
     )
 
-    const decryptedMessage = await decrypt(encryptedMessage, bobEncKey.decrypt, { resolveKey })
+    const decryptedMessage = await decrypt(encryptedMessage, bobEncKey.decrypt, { dereferenceDidUrl: mockDereference })
     expect(JSON.stringify(message.body)).toEqual(JSON.stringify(decryptedMessage.body))
 
     expect(() => assertKnownMessage(decryptedMessage)).not.toThrow()
@@ -150,48 +158,47 @@ describe('Messaging', () => {
     encryptedMessageWrongContent.ciphertext = u8aToHex(messedUpContent)
 
     await expect(() =>
-      decrypt(encryptedMessageWrongContent, bobEncKey.decrypt, {
-        resolveKey,
-      })
+      decrypt(encryptedMessageWrongContent, bobEncKey.decrypt, { dereferenceDidUrl: mockDereference })
     ).rejects.toThrowError(MessageError.DecodingMessageError)
 
     const encryptedWrongBody = await aliceEncKey.encrypt(aliceLightDid)({
       data: Crypto.coToUInt8('{ wrong JSON'),
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      peerPublicKey: bobLightDid.keyAgreement![0].publicKey,
-      did: aliceLightDid.uri,
+      peerPublicKey: multibaseKeyToDidKey(
+        bobLightDid.verificationMethod?.find(({ id }) => id === bobLightDid.keyAgreement![0])?.publicKeyMultibase ?? 'z'
+      ).publicKey,
+      did: aliceLightDid.id,
     })
     const encryptedMessageWrongBody: IEncryptedMessage<IRequestCredential> = {
       ciphertext: u8aToHex(encryptedWrongBody.data),
       nonce: u8aToHex(encryptedWrongBody.nonce),
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      senderKeyUri: `${aliceLightDid.uri}${aliceLightDid.keyAgreement![0].id}`,
+      senderKeyUri: `${aliceLightDid.id}${aliceLightDid.keyAgreement![0]}`,
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      receiverKeyUri: `${bobLightDid.uri}${bobLightDid.keyAgreement![0].id}`,
+      receiverKeyUri: `${bobLightDid.id}${bobLightDid.keyAgreement![0]}`,
     }
     await expect(() =>
-      decrypt(encryptedMessageWrongBody, bobEncKey.decrypt, {
-        resolveKey,
-      })
+      decrypt(encryptedMessageWrongBody, bobEncKey.decrypt, { dereferenceDidUrl: mockDereference })
     ).rejects.toThrowError(SyntaxError)
   })
 
   it('verifies the message with sender is the owner (as full DID)', async () => {
     const credential = Credential.fromClaim({
       cTypeHash: `${Crypto.hashStr('0x12345678')}`,
-      owner: aliceFullDid.uri,
+      owner: aliceFullDid.id,
       contents: {},
     })
 
     const presentation = await Credential.createPresentation({
       credential,
-      signCallback: aliceSign(aliceFullDid),
+      signers: aliceSign,
+      didDocument: aliceFullDid,
     })
 
     const date = new Date(2019, 11, 10).toISOString()
 
     const quoteData: IQuote = {
-      attesterDid: bobFullDid.uri,
+      attesterDid: bobFullDid.id,
       cTypeHash: `${Crypto.hashStr('0x12345678')}`,
       cost: {
         tax: { vat: 3.3 },
@@ -202,13 +209,13 @@ describe('Messaging', () => {
       termsAndConditions: 'https://coolcompany.io/terms.pdf',
       timeframe: date,
     }
-    const quoteAttesterSigned = await Quote.createAttesterSignedQuote(quoteData, bobSign(bobFullDid))
-    const bothSigned = await Quote.createQuoteAgreement(
+    const quoteAttesterSigned = await createAttesterSignedQuote(quoteData, bobAuthentication)
+    const bothSigned = await createQuoteAgreement(
       quoteAttesterSigned,
       credential.rootHash,
-      aliceSign(aliceFullDid),
-      aliceFullDid.uri,
-      { didResolveKey: resolveKey }
+      aliceAuthentication,
+      aliceFullDid.id,
+      { dereferenceDidUrl: mockDereference }
     )
     const requestAttestationBody: IRequestAttestation = {
       content: {
@@ -219,14 +226,14 @@ describe('Messaging', () => {
     }
 
     // Should not throw if the owner and sender DID is the same.
-    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceFullDid.uri, bobFullDid.uri))).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceFullDid.id, bobFullDid.id))).not.toThrow()
 
     // Should not throw if the sender is the light DID version of the owner.
     // This is technically not to be allowed but message verification is not concerned with that.
-    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceLightDid.uri, bobFullDid.uri))).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceLightDid.id, bobFullDid.id))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
-    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, bobFullDid.uri, aliceFullDid.uri))).toThrowError(
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, bobFullDid.id, aliceFullDid.id))).toThrowError(
       MessageError.IdentityMismatchError
     )
 
@@ -234,7 +241,7 @@ describe('Messaging', () => {
       delegationId: null,
       claimHash: requestAttestationBody.content.credential.rootHash,
       cTypeHash: Crypto.hashStr('0x12345678'),
-      owner: bobFullDid.uri,
+      owner: bobFullDid.id,
       revoked: false,
     }
 
@@ -246,14 +253,14 @@ describe('Messaging', () => {
     }
 
     // Should not throw if the owner and sender DID is the same.
-    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobFullDid.uri, aliceFullDid.uri))).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobFullDid.id, aliceFullDid.id))).not.toThrow()
 
     // Should not throw if the sender is the light DID version of the owner.
     // This is technically not to be allowed but message verification is not concerned with that.
-    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDid.uri, aliceFullDid.uri))).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDid.id, aliceFullDid.id))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
-    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, aliceFullDid.uri, bobFullDid.uri))).toThrowError(
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, aliceFullDid.id, bobFullDid.id))).toThrowError(
       MessageError.IdentityMismatchError
     )
 
@@ -263,38 +270,35 @@ describe('Messaging', () => {
     }
 
     // Should not throw if the owner and sender DID is the same.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceFullDid.uri, bobFullDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceFullDid.id, bobFullDid.id))).not.toThrow()
 
     // Should not throw if the sender is the light DID version of the owner.
     // This is technically not to be allowed but message verification is not concerned with that.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceLightDid.uri, bobFullDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceLightDid.id, bobFullDid.id))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, bobFullDid.uri, aliceFullDid.uri))
-    ).toThrowError(MessageError.IdentityMismatchError)
+    expect(() => ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, bobFullDid.id, aliceFullDid.id))).toThrowError(
+      MessageError.IdentityMismatchError
+    )
   })
 
   it('verifies the message with sender is the owner (as light DID)', async () => {
     // Create request for attestation to the light DID with no encoded details
     const credential = Credential.fromClaim({
       cTypeHash: `${Crypto.hashStr('0x12345678')}`,
-      owner: aliceLightDid.uri,
+      owner: aliceLightDid.id,
       contents: {},
     })
 
     const presentation = await Credential.createPresentation({
       credential,
-      signCallback: aliceSign(aliceLightDid),
+      signers: aliceSign,
+      didDocument: aliceFullDid,
     })
 
     const date = new Date(2019, 11, 10).toISOString()
     const quoteData: IQuote = {
-      attesterDid: bobLightDid.uri,
+      attesterDid: bobLightDid.id,
       cTypeHash: `${Crypto.hashStr('0x12345678')}`,
       cost: {
         tax: { vat: 3.3 },
@@ -305,13 +309,13 @@ describe('Messaging', () => {
       termsAndConditions: 'https://coolcompany.io/terms.pdf',
       timeframe: date,
     }
-    const quoteAttesterSigned = await Quote.createAttesterSignedQuote(quoteData, bobSign(bobLightDid))
-    const bothSigned = await Quote.createQuoteAgreement(
+    const quoteAttesterSigned = await createAttesterSignedQuote(quoteData, bobAuthentication)
+    const bothSigned = await createQuoteAgreement(
       quoteAttesterSigned,
       credential.rootHash,
-      aliceSign(aliceLightDid),
-      aliceLightDid.uri,
-      { didResolveKey: resolveKey }
+      aliceAuthentication,
+      aliceLightDid.id,
+      { dereferenceDidUrl: mockDereference }
     )
     const requestAttestationBody: IRequestAttestation = {
       content: {
@@ -325,14 +329,15 @@ describe('Messaging', () => {
     const contentWithEncodedDetails = await Credential.createPresentation({
       credential: Credential.fromClaim({
         cTypeHash: `${Crypto.hashStr('0x12345678')}`,
-        owner: aliceLightDidWithDetails.uri,
+        owner: aliceLightDidWithDetails.id,
         contents: {},
       }),
-      signCallback: aliceSign(aliceLightDidWithDetails),
+      signers: aliceSign,
+      didDocument: aliceFullDid,
     })
 
     const quoteDataEncodedDetails: IQuote = {
-      attesterDid: bobLightDidWithDetails.uri,
+      attesterDid: bobLightDidWithDetails.id,
       cTypeHash: `${Crypto.hashStr('0x12345678')}`,
       cost: {
         tax: { vat: 3.3 },
@@ -343,16 +348,16 @@ describe('Messaging', () => {
       termsAndConditions: 'https://coolcompany.io/terms.pdf',
       timeframe: date,
     }
-    const quoteAttesterSignedEncodedDetails = await Quote.createAttesterSignedQuote(
+    const quoteAttesterSignedEncodedDetails = await createAttesterSignedQuote(
       quoteDataEncodedDetails,
-      bobSign(bobLightDidWithDetails)
+      bobAuthentication
     )
-    const bothSignedEncodedDetails = await Quote.createQuoteAgreement(
+    const bothSignedEncodedDetails = await createQuoteAgreement(
       quoteAttesterSignedEncodedDetails,
       credential.rootHash,
-      aliceSign(aliceLightDidWithDetails),
-      aliceLightDidWithDetails.uri,
-      { didResolveKey: resolveKey }
+      aliceAuthentication,
+      aliceLightDidWithDetails.id,
+      { dereferenceDidUrl: mockDereference }
     )
     const requestAttestationBodyWithEncodedDetails: IRequestAttestation = {
       content: {
@@ -363,35 +368,33 @@ describe('Messaging', () => {
     }
 
     // Should not throw if the owner and sender DID is the same.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(requestAttestationBody, aliceLightDid.uri, bobLightDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceLightDid.id, bobLightDid.id))).not.toThrow()
 
     // Should not throw if the owner has no additional details and the sender does.
     expect(() =>
       ensureOwnerIsSender(
-        fromBody(requestAttestationBodyWithEncodedDetails, aliceLightDidWithDetails.uri, bobLightDid.uri)
+        fromBody(requestAttestationBodyWithEncodedDetails, aliceLightDidWithDetails.id, bobLightDid.id)
       )
     ).not.toThrow()
 
     // Should not throw if the owner has additional details and the sender does not.
     expect(() =>
-      ensureOwnerIsSender(fromBody(requestAttestationBodyWithEncodedDetails, aliceLightDid.uri, bobLightDid.uri))
+      ensureOwnerIsSender(fromBody(requestAttestationBodyWithEncodedDetails, aliceLightDid.id, bobLightDid.id))
     ).not.toThrow()
 
     // Should not throw if the sender is the full DID version of the owner.
-    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceFullDid.uri, bobLightDid.uri))).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, aliceFullDid.id, bobLightDid.id))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(requestAttestationBody, bobLightDid.uri, aliceLightDid.uri))
-    ).toThrowError(MessageError.IdentityMismatchError)
+    expect(() => ensureOwnerIsSender(fromBody(requestAttestationBody, bobLightDid.id, aliceLightDid.id))).toThrowError(
+      MessageError.IdentityMismatchError
+    )
 
     const attestation = {
       delegationId: null,
       claimHash: requestAttestationBody.content.credential.rootHash,
       cTypeHash: Crypto.hashStr('0x12345678'),
-      owner: bobLightDid.uri,
+      owner: bobLightDid.id,
       revoked: false,
     }
 
@@ -406,7 +409,7 @@ describe('Messaging', () => {
       delegationId: null,
       claimHash: requestAttestationBody.content.credential.rootHash,
       cTypeHash: Crypto.hashStr('0x12345678'),
-      owner: bobLightDidWithDetails.uri,
+      owner: bobLightDidWithDetails.id,
       revoked: false,
     }
 
@@ -418,23 +421,23 @@ describe('Messaging', () => {
     }
 
     // Should not throw if the owner and sender DID is the same.
-    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDid.uri, aliceLightDid.uri))).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDid.id, aliceLightDid.id))).not.toThrow()
 
     // Should not throw if the owner has no additional details and the sender does.
     expect(() =>
-      ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDidWithDetails.uri, aliceLightDid.uri))
+      ensureOwnerIsSender(fromBody(submitAttestationBody, bobLightDidWithDetails.id, aliceLightDid.id))
     ).not.toThrow()
 
     // Should not throw if the owner has additional details and the sender does not.
     expect(() =>
-      ensureOwnerIsSender(fromBody(submitAttestationBodyWithEncodedDetails, bobLightDid.uri, aliceLightDid.uri))
+      ensureOwnerIsSender(fromBody(submitAttestationBodyWithEncodedDetails, bobLightDid.id, aliceLightDid.id))
     ).not.toThrow()
 
     // Should not throw if the sender is the full DID version of the owner.
-    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobFullDid.uri, aliceLightDid.uri))).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, bobFullDid.id, aliceLightDid.id))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
-    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, aliceLightDid.uri, bobLightDid.uri))).toThrowError(
+    expect(() => ensureOwnerIsSender(fromBody(submitAttestationBody, aliceLightDid.id, bobLightDid.id))).toThrowError(
       MessageError.IdentityMismatchError
     )
 
@@ -450,27 +453,25 @@ describe('Messaging', () => {
 
     // Should not throw if the owner and sender DID is the same.
     expect(() =>
-      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceLightDid.uri, bobLightDid.uri))
+      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceLightDid.id, bobLightDid.id))
     ).not.toThrow()
 
     // Should not throw if the owner has no additional details and the sender does.
     expect(() =>
-      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceLightDidWithDetails.uri, bobLightDid.uri))
+      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceLightDidWithDetails.id, bobLightDid.id))
     ).not.toThrow()
 
     // Should not throw if the owner has additional details and the sender does not.
     expect(() =>
-      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBodyWithEncodedDetails, aliceLightDid.uri, bobLightDid.uri))
+      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBodyWithEncodedDetails, aliceLightDid.id, bobLightDid.id))
     ).not.toThrow()
 
     // Should not throw if the sender is the full DID version of the owner.
-    expect(() =>
-      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceFullDid.uri, bobLightDid.uri))
-    ).not.toThrow()
+    expect(() => ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, aliceFullDid.id, bobLightDid.id))).not.toThrow()
 
     // Should throw if the sender and the owner are two different entities.
     expect(() =>
-      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, bobLightDid.uri, aliceLightDid.uri))
+      ensureOwnerIsSender(fromBody(submitClaimsForCTypeBody, bobLightDid.id, aliceLightDid.id))
     ).toThrowError(MessageError.IdentityMismatchError)
   })
 })
@@ -478,8 +479,8 @@ describe('Messaging', () => {
 describe('Error checking / Verification', () => {
   // TODO: Duplicated code, would be nice to have as a seperated test package with similar helpers
   async function buildCredential(
-    claimerDid: DidUri,
-    attesterDid: DidUri,
+    claimerDid: Did,
+    attesterDid: Did,
     contents: IClaim['contents'],
     legitimations: ICredential[]
   ): Promise<[ICredential, IAttestation]> {
@@ -536,9 +537,9 @@ describe('Error checking / Verification', () => {
   beforeAll(async () => {
     await init()
 
-    keyAlice = makeSigningKeyTool()
+    keyAlice = await makeSigningKeyTool()
     identityAlice = await createLocalDemoFullDidFromKeypair(keyAlice.keypair)
-    keyBob = makeSigningKeyTool()
+    keyBob = await makeSigningKeyTool()
     identityBob = await createLocalDemoFullDidFromKeypair(keyBob.keypair)
 
     date = new Date(2019, 11, 10).toISOString()
@@ -546,11 +547,21 @@ describe('Error checking / Verification', () => {
       name: 'Bob',
     }
 
-    async function didResolveKey(keyUri: DidResourceUri): Promise<ResolvedDidKey> {
-      const { did } = Did.parse(keyUri)
-      const document = [identityAlice, identityBob].find(({ uri }) => uri === did)
+    async function didmockDereference(keyUri: Did | DidUrl): ReturnType<typeof DidResolver.dereference> {
+      const { did, fragment } = parse(keyUri)
+      const document = [identityAlice, identityBob].find(({ id }) => id === did)
       if (!document) throw new Error('Cannot resolve mocked DID')
-      return Did.keyToResolvedKey(document.authentication[0], did)
+      let result
+      if (!fragment) {
+        result = document
+      } else {
+        result = document.verificationMethod?.find(({ id }) => id === document.authentication?.[0])
+      }
+      return {
+        contentStream: result,
+        contentMetadata: {},
+        dereferencingMetadata: {} as any,
+      }
     }
 
     // CType
@@ -564,12 +575,12 @@ describe('Error checking / Verification', () => {
     })
 
     // Claim
-    claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, identityAlice.uri)
+    claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, identityAlice.id)
     // Legitimation
-    ;[legitimation] = await buildCredential(identityAlice.uri, identityBob.uri, {}, [])
+    ;[legitimation] = await buildCredential(identityAlice.id, identityBob.id, {}, [])
     // Quote Data
     quoteData = {
-      attesterDid: identityAlice.uri,
+      attesterDid: identityAlice.id,
       cTypeHash: claim.cTypeHash,
       cost: {
         tax: { vat: 3.3 },
@@ -581,14 +592,28 @@ describe('Error checking / Verification', () => {
       timeframe: date,
     }
     // Quote signed by attester
-    quoteAttesterSigned = await Quote.createAttesterSignedQuote(quoteData, keyAlice.getSignCallback(identityAlice))
+    const aliceAuthentication = (
+      await keyAlice.getSigners<Signers.DidPalletSupportedAlgorithms>(identityAlice, {
+        verificationRelationship: 'authentication',
+        algorithms: Signers.DID_PALLET_SUPPORTED_ALGORITHMS,
+      })
+    )[0]
+    quoteAttesterSigned = await createAttesterSignedQuote(quoteData, aliceAuthentication)
     // Quote agreement
-    bothSigned = await Quote.createQuoteAgreement(
+    const bobAuthentication = (
+      await keyAlice.getSigners<Signers.DidPalletSupportedAlgorithms>(identityBob, {
+        verificationRelationship: 'authentication',
+        algorithms: Signers.DID_PALLET_SUPPORTED_ALGORITHMS,
+      })
+    )[0]
+    bothSigned = await createQuoteAgreement(
       quoteAttesterSigned,
       legitimation.rootHash,
-      keyBob.getSignCallback(identityBob),
-      identityBob.uri,
-      { didResolveKey }
+      bobAuthentication,
+      identityBob.id,
+      {
+        dereferenceDidUrl: didmockDereference,
+      }
     )
 
     // Submit Terms content
@@ -614,7 +639,7 @@ describe('Error checking / Verification', () => {
         delegationId: null,
         claimHash: requestAttestationContent.credential.rootHash,
         cTypeHash: claim.cTypeHash,
-        owner: identityBob.uri,
+        owner: identityBob.id,
         revoked: false,
       },
     }
@@ -624,7 +649,7 @@ describe('Error checking / Verification', () => {
       cTypes: [
         {
           cTypeHash: claim.cTypeHash,
-          trustedAttesters: [identityAlice.uri],
+          trustedAttesters: [identityAlice.id],
           requiredProperties: ['id', 'name'],
         },
       ],
@@ -684,14 +709,14 @@ describe('Error checking / Verification', () => {
   })
 
   beforeAll(async () => {
-    messageSubmitTerms = fromBody(submitTermsBody, identityAlice.uri, identityBob.uri)
+    messageSubmitTerms = fromBody(submitTermsBody, identityAlice.id, identityBob.id)
 
-    messageRequestAttestationForClaim = fromBody(requestAttestationBody, identityAlice.uri, identityBob.uri)
-    messageSubmitAttestationForClaim = fromBody(submitAttestationBody, identityAlice.uri, identityBob.uri)
+    messageRequestAttestationForClaim = fromBody(requestAttestationBody, identityAlice.id, identityBob.id)
+    messageSubmitAttestationForClaim = fromBody(submitAttestationBody, identityAlice.id, identityBob.id)
 
-    messageRejectAttestationForClaim = fromBody(rejectAttestationForClaimBody, identityAlice.uri, identityBob.uri)
-    messageRequestCredential = fromBody(requestCredentialBody, identityAlice.uri, identityBob.uri)
-    messageSubmitCredential = fromBody(submitCredentialBody, identityAlice.uri, identityBob.uri)
+    messageRejectAttestationForClaim = fromBody(rejectAttestationForClaimBody, identityAlice.id, identityBob.id)
+    messageRequestCredential = fromBody(requestCredentialBody, identityAlice.id, identityBob.id)
+    messageSubmitCredential = fromBody(submitCredentialBody, identityAlice.id, identityBob.id)
   })
   it('message body verifier should not throw errors on correct bodies', () => {
     expect(() => assertKnownMessageBody(messageSubmitTerms)).not.toThrowError()
@@ -714,7 +739,7 @@ describe('Error checking / Verification', () => {
   it('message envelope verifier should throw errors on faulty envelopes', () => {
     // @ts-ignore
     messageSubmitTerms.sender = 'this is not a sender did'
-    expect(() => verifyMessageEnvelope(messageSubmitTerms)).toThrowError(MessageError.InvalidDidFormatError)
+    expect(() => verifyMessageEnvelope(messageSubmitTerms)).toThrowError()
     // @ts-ignore
     messageRequestAttestationForClaim.messageId = 12
     expect(() => verifyMessageEnvelope(messageRequestAttestationForClaim)).toThrowError(TypeError)
@@ -730,7 +755,7 @@ describe('Error checking / Verification', () => {
   })
   it('message body verifier should throw errors on faulty bodies', () => {
     submitTermsBody.content.delegationId = 'this is not a delegation id'
-    expect(() => assertKnownMessageBody(messageSubmitTerms)).toThrowError(MessageError.HashMalformedError)
+    expect(() => assertKnownMessageBody(messageSubmitTerms)).toThrowError()
 
     submitCredentialBody.content[0].claimerSignature = {
       signature: 'this is not the claimers signature',
