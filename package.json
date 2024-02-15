@@ -63,9 +63,9 @@
     "prepack": "yarn build"
   },
   "dependencies": {
-    "@kiltprotocol/sdk-js": "^0.34.0",
-    "@kiltprotocol/types": "^0.34.0",
-    "@kiltprotocol/vc-export": "^0.34.0",
+    "@kiltprotocol/sdk-js": "^0.35.0",
+    "@kiltprotocol/types": "^0.35.0",
+    "@kiltprotocol/vc-export": "^0.35.0",
     "@polkadot/keyring": "^12.3.2",
     "@polkadot/util": "^12.3.2",
     "yargs": "^17.7.2"
