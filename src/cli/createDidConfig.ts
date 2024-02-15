@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 
+/**
+ * Copyright (c) 2018-2024, Built on KILT.
+ *
+ * This source code is licensed under the BSD 4-Clause "Original" license
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
 import { Credential, Did, connect, disconnect } from '@kiltprotocol/sdk-js'
 import { DidResourceUri, DidUri, ICredentialPresentation, SignCallback } from '@kiltprotocol/types'
 
@@ -9,8 +16,8 @@ import { u8aEq } from '@polkadot/util'
 import { readFile, writeFile } from 'fs/promises'
 import yargs from 'yargs/yargs'
 
-import { didConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration'
-import { DidConfigResource } from '../types'
+import { didConfigResourceFromCredential, createCredential } from '../wellKnownDidConfiguration/index.js'
+import type { DidConfigResource } from '../types/index.js'
 
 type KeyType = 'sr25519' | 'ed25519' | 'ecdsa'
 
@@ -22,7 +29,7 @@ const createCredentialOpts = {
     type: 'string',
     demandOption: true,
     description:
-      'DID of the issuer (and subject) of the Domain Linkage Credential. If omitted, this is attempted to be inferred from the assertionMethod.',
+      'DID of the issuer (and subject) of the Domain Linkage Credential. If omitted, attempts to infer from the assertionMethod.',
   },
   seed: {
     type: 'string',
@@ -30,7 +37,7 @@ const createCredentialOpts = {
     description: 'Mnemonic or seed for the assertionMethod key to be used for issuing a new credential.',
     demandOption: true,
   },
-  keyType: { alias: 't', choices: ['sr25519', 'ed25519', 'ecdsa'] as const, default: 'sr25519' },
+  keyType: { alias: 't', choices: ['sr25519', 'ed25519', 'ecdsa'] as const, default: 'ed25519' },
   wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
 } as const
 

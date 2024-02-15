@@ -1,6 +1,21 @@
-import type { IEncryptedMessage, DidUri, KiltAddress, DidResourceUri } from '@kiltprotocol/types'
-import type { HexString } from '@polkadot/util/types'
-import type { CredentialDigestProof, SelfSignedProof, VerifiableCredential, constants } from '@kiltprotocol/vc-export'
+/**
+ * Copyright (c) 2018-2024, Built on KILT.
+ *
+ * This source code is licensed under the BSD 4-Clause "Original" license
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
+import { DidResourceUri, DidUri, IEncryptedMessage, KiltAddress } from '@kiltprotocol/types'
+import { HexString } from './Imported.js'
+import { CredentialDigestProof, SelfSignedProof, VerifiableCredential, constants } from '@kiltprotocol/vc-export'
+import { IMessage } from './Message.js'
+
+export * from './Message.js'
+export * from './Quote.js'
+export * from './Imported.js'
+export * from './Session.js'
+export * from './Credential.js'
+export * from './Window.js'
 
 export type This = typeof globalThis
 
@@ -82,7 +97,7 @@ export interface CredentialSubject {
 
 type Contexts = [
   typeof constants.DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
-  'https://identity.foundation/.well-known/did-configuration/v1'
+  'https://identity.foundation/.well-known/did-configuration/v1',
 ]
 
 export type DomainLinkageProof = {
@@ -101,4 +116,9 @@ export interface DomainLinkageCredential
 export interface DidConfigResource {
   '@context': string
   linked_dids: [DomainLinkageCredential]
+}
+
+export interface IMessageWorkflow {
+  message: IMessage
+  encryptedMessage: IEncryptedMessage
 }

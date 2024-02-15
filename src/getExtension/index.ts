@@ -1,4 +1,11 @@
-import { ApiWindow, InjectedWindowProvider, PubSubSessionV1, PubSubSessionV2 } from '../types'
+/**
+ * Copyright (c) 2018-2024, Built on KILT.
+ *
+ * This source code is licensed under the BSD 4-Clause "Original" license
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
+import type { ApiWindow, InjectedWindowProvider, PubSubSessionV1, PubSubSessionV2 } from '../types/index.js'
 
 // cross-environment reference to global object (aka 'window' in browser environments)
 const apiWindow = globalThis as Window & ApiWindow

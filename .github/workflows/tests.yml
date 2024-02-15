@@ -10,7 +10,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-          cache: "yarn"
+          cache: 'yarn'
 
       - name: yarn install
         run: yarn install --immutable
@@ -28,13 +28,12 @@ jobs:
 
       - name: set image name
         run: |
-          echo "IMG_NAME=${{ steps.login-ecr.outputs.registry }}/kiltprotocol/mashnet-node:latest" >> "$GITHUB_ENV"
-
+          echo "IMG_NAME=${{ steps.login-ecr.outputs.registry }}/kilt/prototype-chain:latest" >> "$GITHUB_ENV"
       - name: pull image
         run: docker pull $IMG_NAME
 
       - name: run tests
-        timeout-minutes: 5
+        timeout-minutes: 10
         env:
           TESTCONTAINERS_NODE_IMG: ${{ env.IMG_NAME }}
         run: |

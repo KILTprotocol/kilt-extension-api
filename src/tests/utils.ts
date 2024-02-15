@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) 2018-2024, Built on KILT.
+ *
+ * This source code is licensed under the BSD 4-Clause "Original" license
+ * found in the LICENSE file in the root directory of this source tree.
+ */
+
 import {
   Did,
   SignCallback,
@@ -8,20 +15,14 @@ import {
   CType,
   DidUri,
   ConfigService,
-  KiltEncryptionKeypair,
   Utils,
+  KeyringPair,
+  KiltEncryptionKeypair,
 } from '@kiltprotocol/sdk-js'
 import { BN } from '@polkadot/util'
-import {
-  blake2AsU8a,
-  keyFromPath,
-  ed25519PairFromSeed,
-  keyExtractPath,
-  mnemonicToMiniSecret,
-  cryptoWaitReady,
-} from '@polkadot/util-crypto'
+import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { GenericContainer, Wait } from 'testcontainers'
-import { ctypeDomainLinkage } from '../wellKnownDidConfiguration'
+import { ctypeDomainLinkage } from '../wellKnownDidConfiguration/index.js'
 
 export const faucet = async () => {
   await cryptoWaitReady()
@@ -30,6 +31,28 @@ export const faucet = async () => {
   const faucetSeed = 'receive clutch item involve chaos clutch furnace arrest claw isolate okay together'
 
   return keyring.createFromUri(faucetSeed, { type: 'ed25519' })
+}
+
+export async function createAttestation(
+  account: KeyringPair,
+  did: DidUri,
+  signCallback: SignCallback,
+  claimHash: string,
+  ctypeHash: string
+) {
+  const api = ConfigService.get('api')
+  const createAttesstationTx = api.tx.attestation.add(claimHash, ctypeHash, null)
+
+  const authorizedAttestationCreationTx = await Did.authorizeTx(
+    did,
+    createAttesstationTx,
+    signCallback,
+    account.address as `4${string}`
+  )
+
+  await Blockchain.signAndSubmitTx(authorizedAttestationCreationTx, account, {
+    resolveOn: Blockchain.IS_FINALIZED,
+  })
 }
 
 export async function fundAccount(address: KiltKeyringPair['address'], amount: BN): Promise<void> {
@@ -42,34 +65,24 @@ export async function fundAccount(address: KiltKeyringPair['address'], amount: B
   })
 }
 
-export async function keypairs(account: KiltKeyringPair, mnemonic: string) {
-  const authentication = {
-    ...account.derive('//did//0'),
-    type: 'ed25519',
-  } as KiltKeyringPair
-  const assertion = {
-    ...account.derive('//did//assertion//0'),
-    type: 'ed25519',
-  } as KiltKeyringPair
-  const keyAgreement: KiltEncryptionKeypair = (function () {
-    const secretKeyPair = ed25519PairFromSeed(mnemonicToMiniSecret(mnemonic))
-    const { path } = keyExtractPath('//did//keyAgreement//0')
-    const { secretKey } = keyFromPath(secretKeyPair, path, 'ed25519')
-    return {
-      ...Utils.Crypto.naclBoxPairFromSecret(blake2AsU8a(secretKey)),
-      type: 'x25519',
-    }
-  })()
+export async function keypairs(
+  mnemonic: string
+): Promise<{ authentication: KiltKeyringPair; assertionMethod: KiltKeyringPair; keyAgreement: KiltEncryptionKeypair }> {
+  const authentication = Utils.Crypto.makeKeypairFromUri(mnemonic)
+
+  const assertionMethod = Utils.Crypto.makeKeypairFromUri(mnemonic)
+
+  const keyAgreement = Utils.Crypto.makeEncryptionKeypairFromSeed(Utils.Crypto.mnemonicToMiniSecret(mnemonic))
 
   return {
     authentication,
-    assertion,
+    assertionMethod,
     keyAgreement,
   }
 }
 
 export async function generateDid(account: KiltKeyringPair, mnemonic: string): Promise<DidDocument> {
-  const { authentication, assertion, keyAgreement } = await keypairs(account, mnemonic)
+  const { authentication, assertionMethod, keyAgreement } = await keypairs(mnemonic)
 
   const uri = Did.getFullDidUriFromKey(authentication)
 
@@ -79,7 +92,7 @@ export async function generateDid(account: KiltKeyringPair, mnemonic: string): P
   const extrinsic = await Did.getStoreTx(
     {
       authentication: [authentication],
-      assertionMethod: [assertion],
+      assertionMethod: [assertionMethod],
       keyAgreement: [keyAgreement],
     },
     account.address,
@@ -99,38 +112,42 @@ export async function generateDid(account: KiltKeyringPair, mnemonic: string): P
 }
 
 export async function assertionSigner({
-  assertion,
+  assertionMethod,
   didDocument,
 }: {
-  assertion: KiltKeyringPair
+  assertionMethod: KiltKeyringPair
   didDocument: DidDocument
 }): Promise<SignCallback> {
-  const { assertionMethod } = didDocument
-  if (!assertionMethod) throw new Error('no assertionMethod')
+  if (!didDocument.assertionMethod) throw new Error('no assertionMethod')
   return async ({ data }) => ({
-    signature: assertion.sign(data),
+    signature: assertionMethod.sign(data),
     keyType: 'ed25519',
-    keyUri: `${didDocument.uri}${assertionMethod[0].id}`,
+    keyUri: `${didDocument.uri}${didDocument.assertionMethod![0].id}`,
   })
 }
 
-export async function createCtype(didUri: DidUri, account: KiltKeyringPair, mnemonic: string) {
+export async function createCtype(
+  didUri: DidUri,
+  account: KiltKeyringPair,
+  mnemonic: string,
+  ctype = ctypeDomainLinkage
+) {
   const api = ConfigService.get('api')
 
-  const { assertion } = await keypairs(account, mnemonic)
+  const { assertionMethod: assertion } = await keypairs(mnemonic)
   const fullDid = await Did.resolve(didUri)
   if (!fullDid) throw new Error('no did')
   const { document } = fullDid
   if (!document) throw new Error('no document')
   const { assertionMethod } = document
   if (!assertionMethod) throw new Error('no assertion key')
-  const encodedCType = CType.toChain(ctypeDomainLinkage)
+  const encodedCType = CType.toChain(ctype)
   const ctypeTx = api.tx.ctype.add(encodedCType)
 
   const authorizedCtypeCreationTx = await Did.authorizeTx(
     didUri,
     ctypeTx,
-    await assertionSigner({ assertion, didDocument: document }),
+    await assertionSigner({ assertionMethod: assertion, didDocument: document }),
     account.address as `4${string}`
   )
 
