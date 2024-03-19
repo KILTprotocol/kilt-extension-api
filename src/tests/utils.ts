@@ -158,7 +158,7 @@ export async function createCtype(
 
 export async function startContainer(): Promise<string> {
   const WS_PORT = 9944
-  const image = process.env.TESTCONTAINERS_NODE_IMG || 'kiltprotocol/mashnet-node'
+  const image = process.env.TESTCONTAINERS_NODE_IMG || 'kiltprotocol/standalone-node'
   console.log(`using testcontainer with image ${image}`)
   const testcontainer = new GenericContainer(image)
     .withCommand(['--dev', `--rpc-port=${WS_PORT}`, '--rpc-external'])
