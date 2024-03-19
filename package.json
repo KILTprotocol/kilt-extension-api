@@ -66,6 +66,9 @@
     "@kiltprotocol/sdk-js": "^0.35.0",
     "@kiltprotocol/types": "^0.35.0",
     "@kiltprotocol/vc-export": "^0.35.0",
+    "@kiltprotocol/es256k-jcs-2023": "latest-rc",
+    "@kiltprotocol/sr25519-jcs-2023": "latest-rc",
+    "@kiltprotocol/eddsa-jcs-2022": "latest-rc",
     "@polkadot/keyring": "^12.3.2",
     "@polkadot/util": "^12.3.2",
     "yargs": "^17.7.2"
