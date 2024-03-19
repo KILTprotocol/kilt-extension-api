@@ -7,14 +7,7 @@
 
 import { createSigner } from '@kiltprotocol/eddsa-jcs-2022'
 import { SignerInterface } from '@kiltprotocol/jcs-data-integrity-proofs-common'
-import {
-  DidDocument,
-  DidResourceUri,
-  DidUri,
-  KiltKeyringPair,
-  connect,
-  disconnect,
-} from '@kiltprotocol/sdk-js'
+import { DidDocument, DidResourceUri, DidUri, KiltKeyringPair, connect, disconnect } from '@kiltprotocol/sdk-js'
 import { Keyring } from '@kiltprotocol/utils'
 import { BN } from '@polkadot/util'
 import { mnemonicGenerate, mnemonicToMiniSecret } from '@polkadot/util-crypto'
@@ -65,7 +58,7 @@ describe('Well Known Did Configuration integration test', () => {
         id: didUri,
         origin,
       },
-      proof: expect.objectContaining({type: KILT_SELF_SIGNED_PROOF_TYPE}),
+      proof: expect.objectContaining({ type: KILT_SELF_SIGNED_PROOF_TYPE }),
       type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
       issuer: didUri,
       issuanceDate: expect.any(String),

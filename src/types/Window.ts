@@ -28,4 +28,3 @@ export interface InjectedWindowProvider<T> {
 export interface ApiWindow extends This {
   kilt: Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>
 }
-
