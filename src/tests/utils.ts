@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018-2023, Built on KILT.
+ * Copyright (c) 2018-2024, Built on KILT.
  *
  * This source code is licensed under the BSD 4-Clause "Original" license
  * found in the LICENSE file in the root directory of this source tree.
@@ -161,7 +161,7 @@ export async function startContainer(): Promise<string> {
   const image = process.env.TESTCONTAINERS_NODE_IMG || 'kiltprotocol/mashnet-node'
   console.log(`using testcontainer with image ${image}`)
   const testcontainer = new GenericContainer(image)
-    .withCommand(['--dev', `--ws-port=${WS_PORT}`, '--ws-external'])
+    .withCommand(['--dev', `--rpc-port=${WS_PORT}`, '--rpc-external'])
     .withExposedPorts(WS_PORT)
     .withWaitStrategy(Wait.forLogMessage(`:${WS_PORT}`))
   const started = await testcontainer.start()
