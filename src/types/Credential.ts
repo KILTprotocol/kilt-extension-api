@@ -5,14 +5,14 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import type { DidUri as Did } from '@kiltprotocol/types'
+import type { DidUri } from '@kiltprotocol/types'
 import type { constants } from '@kiltprotocol/vc-export'
 
 import { DOMAIN_LINKAGE_CREDENTIAL_TYPE } from '../wellKnownDidConfiguration/index.js'
 import type { SelfSignedProof } from './LegacyProofs.js'
 
 export type CredentialSubject = {
-  id: Did
+  id: DidUri
   origin: string
 }
 

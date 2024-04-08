@@ -51,8 +51,8 @@ const createCredentialOpts = {
   wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
 } as const
 
-async function issueCredential(did: string, origin: string, seed: string, keyType: KeyType, proofType?: string) {
-  const { didDocument } = await Did.resolveCompliant(did as DidUri)
+async function issueCredential(did: DidUri, origin: string, seed: string, keyType: KeyType, proofType?: string) {
+  const { didDocument } = await Did.resolveCompliant(did)
   const assertionMethodId = didDocument?.assertionMethod?.[0]
   const assertionMethod = didDocument?.verificationMethod?.find(({ id }) => id.endsWith(assertionMethodId ?? '<none>'))
   if (!assertionMethod) {
@@ -82,7 +82,7 @@ async function issueCredential(did: string, origin: string, seed: string, keyTyp
     { proofType } as { proofType: typeof DATA_INTEGRITY_PROOF_TYPE | typeof KILT_SELF_SIGNED_PROOF_TYPE }
   )
 
-  await verifyDomainLinkageCredential(credential, origin, { expectedDid: did as DidUri })
+  await verifyDomainLinkageCredential(credential, origin, { expectedDid: did })
 
   return credential
 }
@@ -145,7 +145,7 @@ async function run() {
       },
       async ({ origin, seed, keyType, wsAddress, outFile, did, proofType }) => {
         await connect(wsAddress)
-        const credential = await issueCredential(did, origin, seed, keyType, proofType)
+        const credential = await issueCredential(did as DidUri, origin, seed, keyType, proofType)
         await write(credential, outFile)
       }
     )
@@ -157,7 +157,7 @@ async function run() {
         await connect(wsAddress)
         const credentials = await Promise.all(
           [DATA_INTEGRITY_PROOF_TYPE, KILT_SELF_SIGNED_PROOF_TYPE].map((proofType) =>
-            issueCredential(did, origin, seed, keyType, proofType)
+            issueCredential(did as DidUri, origin, seed, keyType, proofType)
           )
         )
         const didResource = didConfigResourceFromCredentials(credentials)
