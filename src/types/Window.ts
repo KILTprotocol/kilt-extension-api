@@ -7,9 +7,8 @@
 
 import { DidResourceUri, KiltAddress } from '@kiltprotocol/types'
 import { HexString } from './Imported.js'
-import { CredentialDigestProof, SelfSignedProof } from '@kiltprotocol/vc-export'
 
-import { DomainLinkageCredential, PubSubSessionV1, PubSubSessionV2 } from './index.js'
+import { PubSubSessionV1, PubSubSessionV2 } from './index.js'
 
 export type This = typeof globalThis
 
@@ -28,15 +27,4 @@ export interface InjectedWindowProvider<T> {
 
 export interface ApiWindow extends This {
   kilt: Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>
-}
-
-export type DomainLinkageProof = {
-  type: Array<SelfSignedProof['type'] | CredentialDigestProof['type']>
-  rootHash: string
-} & Pick<SelfSignedProof, 'signature' | 'verificationMethod' | 'proofPurpose' | 'created'> &
-  Pick<CredentialDigestProof, 'claimHashes' | 'nonces'>
-
-export interface DidConfigResource {
-  '@context': string
-  linked_dids: [DomainLinkageCredential]
 }

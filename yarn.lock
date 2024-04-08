@@ -696,6 +696,32 @@
     "@polkadot/util" "^12.0.0"
     "@polkadot/util-crypto" "^12.0.0"
 
+"@kiltprotocol/eddsa-jcs-2022@latest-rc":
+  version "0.1.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@kiltprotocol/eddsa-jcs-2022/-/eddsa-jcs-2022-0.1.0-rc.2.tgz#a10e37d1eb90d74bcaa795726dd555c83e8bdf60"
+  integrity sha512-9rGwykwsrZzD0tppdp7HwtWrDb8va8oQ8x+/c2+sMHEBYBTjNTnCK/iwmJVpa2bJKmzcu/ihj0Xm711o7jyWwQ==
+  dependencies:
+    "@kiltprotocol/jcs-data-integrity-proofs-common" "^0.1.0-rc.2"
+    "@noble/curves" "^1.0.0"
+    "@scure/base" "^1.1.1"
+
+"@kiltprotocol/es256k-jcs-2023@latest-rc":
+  version "0.1.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@kiltprotocol/es256k-jcs-2023/-/es256k-jcs-2023-0.1.0-rc.2.tgz#cd19431dd8bd2c0d26be7c413656e8479a5907ae"
+  integrity sha512-C3FIt35hJ+SIrBr3lr6UffgoH8FBU7W8KKo5Tx0XoC+mi47v7WoWavkuXmVNZL+kXqIARbEixvv2sULYL0E+8A==
+  dependencies:
+    "@kiltprotocol/jcs-data-integrity-proofs-common" "^0.1.0-rc.2"
+    "@noble/curves" "^1.0.0"
+    "@scure/base" "^1.1.1"
+
+"@kiltprotocol/jcs-data-integrity-proofs-common@^0.1.0-rc.2":
+  version "0.1.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@kiltprotocol/jcs-data-integrity-proofs-common/-/jcs-data-integrity-proofs-common-0.1.0-rc.2.tgz#59c17827b10f290ee6ed7fe7a7dcbac7881eb704"
+  integrity sha512-0hMNKODX7eJYTNlwTzyivY/d9+AZa2NwV2jN5sGzt2LGzFB9iA7WBJlw7SzJbGpHNgaSysttWXfy1v62tFrA1w==
+  dependencies:
+    "@noble/hashes" "^1.3.0"
+    canonicalize "^2.0.0"
+
 "@kiltprotocol/messaging@0.35.0":
   version "0.35.0"
   resolved "https://registry.yarnpkg.com/@kiltprotocol/messaging/-/messaging-0.35.0.tgz#9789e4b213df2938c3f2af8fd4d5a38d6a6a44c8"
@@ -719,6 +745,15 @@
     "@kiltprotocol/messaging" "0.35.0"
     "@kiltprotocol/types" "0.35.0"
     "@kiltprotocol/utils" "0.35.0"
+
+"@kiltprotocol/sr25519-jcs-2023@latest-rc":
+  version "0.1.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@kiltprotocol/sr25519-jcs-2023/-/sr25519-jcs-2023-0.1.0-rc.2.tgz#d827aa6a9e65e8ed78dfd611a35f22371b3b45cb"
+  integrity sha512-tAleWeyRSQ6gcs0wexgW3DaIlRvy6+7g9nwOQk+7qW4hmL3J+2iYQASEgnZlTWqF4v0EA0oJUNrrmWpzlr4jNg==
+  dependencies:
+    "@kiltprotocol/jcs-data-integrity-proofs-common" "^0.1.0-rc.2"
+    "@polkadot/util-crypto" "^12.0.1"
+    "@scure/base" "^1.1.1"
 
 "@kiltprotocol/type-definitions@0.35.0":
   version "0.35.0"
@@ -768,17 +803,17 @@
     jsonld-signatures "^5.0.0"
     vc-js "^0.6.4"
 
-"@noble/curves@^1.3.0":
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-1.3.0.tgz#01be46da4fd195822dab821e72f71bf4aeec635e"
-  integrity sha512-t01iSXPuN+Eqzb4eBX0S5oubSqXbK/xXa1Ne18Hj8f9pStxztHCE2gfboSp/dZRLSqfuLpRK2nDXDK+W9puocA==
+"@noble/curves@^1.0.0", "@noble/curves@^1.3.0":
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-1.4.0.tgz#f05771ef64da724997f69ee1261b2417a49522d6"
+  integrity sha512-p+4cb332SFCrReJkCYe8Xzm0OWi4Jji5jVdIZRL/PmacmDkFNw6MrrV+gGpiPxLHbV+zKFRywUWbaseT+tZRXg==
   dependencies:
-    "@noble/hashes" "1.3.3"
+    "@noble/hashes" "1.4.0"
 
-"@noble/hashes@1.3.3", "@noble/hashes@^1.3.3":
-  version "1.3.3"
-  resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.3.3.tgz#39908da56a4adc270147bb07968bf3b16cfe1699"
-  integrity sha512-V7/fPHgl+jsVPXqqeOzT8egNj2iBIVt+ECeMMG8TdcnTikP3oaBtUVqpT/gYCR68aEBJSF+XbYUxStjbFMqIIA==
+"@noble/hashes@1.4.0", "@noble/hashes@^1.3.0", "@noble/hashes@^1.3.3":
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.4.0.tgz#45814aa329f30e4fe0ba49426f49dfccdd066426"
+  integrity sha512-V1JJ1WTRUqHHrOSh597hURcMqVKVGL/ea3kv0gSnEdsEZ0/+VyPghM1lMNGc00z7CIQorSvbKpuJkxvuHbvdbg==
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -987,7 +1022,7 @@
     rxjs "^7.8.1"
     tslib "^2.6.2"
 
-"@polkadot/util-crypto@12.6.2", "@polkadot/util-crypto@^12.0.0", "@polkadot/util-crypto@^12.3.2", "@polkadot/util-crypto@^12.6.2":
+"@polkadot/util-crypto@12.6.2", "@polkadot/util-crypto@^12.0.0", "@polkadot/util-crypto@^12.0.1", "@polkadot/util-crypto@^12.3.2", "@polkadot/util-crypto@^12.6.2":
   version "12.6.2"
   resolved "https://registry.yarnpkg.com/@polkadot/util-crypto/-/util-crypto-12.6.2.tgz#d2d51010e8e8ca88951b7d864add797dad18bbfc"
   integrity sha512-FEWI/dJ7wDMNN1WOzZAjQoIcCP/3vz3wvAp5QQm+lOrzOLj0iDmaIGIcBkz8HVm3ErfSe/uKP0KS4jgV/ib+Mg==
@@ -1126,7 +1161,7 @@
     tslib "^2.6.2"
     ws "^8.15.1"
 
-"@scure/base@^1.1.5":
+"@scure/base@^1.1.1", "@scure/base@^1.1.5":
   version "1.1.5"
   resolved "https://registry.yarnpkg.com/@scure/base/-/base-1.1.5.tgz#1d85d17269fe97694b9c592552dd9e5e33552157"
   integrity sha512-Brj9FiG2W1MRQSTB212YVPRrcbjkv48FoZi/u4l/zds/ieRrqsh7aUf6CLwkAq61oKXr/ZlTzlY66gLIj3TFTQ==
@@ -1847,6 +1882,11 @@ canonicalize@^1.0.1:
   version "1.0.8"
   resolved "https://registry.yarnpkg.com/canonicalize/-/canonicalize-1.0.8.tgz#24d1f1a00ed202faafd9bf8e63352cd4450c6df1"
   integrity sha512-0CNTVCLZggSh7bc5VkX5WWPWO+cyZbNd07IHIsSXLia/eAq+r836hgk+8BKoEh7949Mda87VUOitx5OddVj64A==
+
+canonicalize@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/canonicalize/-/canonicalize-2.0.0.tgz#32be2cef4446d67fd5348027a384cae28f17226a"
+  integrity sha512-ulDEYPv7asdKvqahuAY35c1selLdzDwHqugK92hfkzvlDCwXRRelDkR+Er33md/PtnpqHemgkuDPanZ4fiYZ8w==
 
 caseless@~0.12.0:
   version "0.12.0"
