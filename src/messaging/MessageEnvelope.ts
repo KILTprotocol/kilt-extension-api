@@ -8,6 +8,7 @@
 import { DecryptCallback, DidResolveKey, DidResourceUri, EncryptCallback } from '@kiltprotocol/types'
 import * as Did from '@kiltprotocol/did'
 import * as MessageError from './Error.js'
+import { SDKErrors as SDKErrorMessage } from '@kiltprotocol/sdk-js'
 import { hexToU8a, stringToU8a, u8aToHex, u8aToString } from '@polkadot/util'
 
 import type { IEncryptedMessage, IEncryptedMessageContents, IMessage } from '../types/index.js'
@@ -59,7 +60,7 @@ export async function decrypt(
 
   const { fragment } = Did.parse(receiverKeyUri)
   if (!fragment) {
-    throw new MessageError.DidError(`No fragment for the receiver key ID "${receiverKeyUri}"`)
+    throw new SDKErrorMessage.DidError(`No fragment for the receiver key ID "${receiverKeyUri}"`)
   }
 
   let data: Uint8Array

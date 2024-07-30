@@ -17,7 +17,7 @@
 import { u8aToHex } from '@polkadot/util'
 import { Attestation, CType, Claim, Credential, Quote } from '@kiltprotocol/core'
 import * as Did from '@kiltprotocol/did'
-import { init } from '@kiltprotocol/sdk-js'
+import { init, SDKErrors as SDKErrorMessage } from '@kiltprotocol/sdk-js'
 import * as MessageError from './Error'
 import { Crypto } from '@kiltprotocol/utils'
 import type {
@@ -714,7 +714,7 @@ describe('Error checking / Verification', () => {
   it('message envelope verifier should throw errors on faulty envelopes', () => {
     // @ts-ignore
     messageSubmitTerms.sender = 'this is not a sender did'
-    expect(() => verifyMessageEnvelope(messageSubmitTerms)).toThrowError(MessageError.InvalidDidFormatError)
+    expect(() => verifyMessageEnvelope(messageSubmitTerms)).toThrowError(SDKErrorMessage.InvalidDidFormatError)
     // @ts-ignore
     messageRequestAttestationForClaim.messageId = 12
     expect(() => verifyMessageEnvelope(messageRequestAttestationForClaim)).toThrowError(TypeError)
@@ -730,7 +730,7 @@ describe('Error checking / Verification', () => {
   })
   it('message body verifier should throw errors on faulty bodies', () => {
     submitTermsBody.content.delegationId = 'this is not a delegation id'
-    expect(() => assertKnownMessageBody(messageSubmitTerms)).toThrowError(MessageError.HashMalformedError)
+    expect(() => assertKnownMessageBody(messageSubmitTerms)).toThrowError(SDKErrorMessage.HashMalformedError)
 
     submitCredentialBody.content[0].claimerSignature = {
       signature: 'this is not the claimers signature',
