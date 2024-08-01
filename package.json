@@ -92,5 +92,6 @@
   },
   "bin": {
     "createDidConfig": "./cli/createDidConfig.js"
-  }
+  },
+  "packageManager": "yarn@4.3.1"
 }
