@@ -21,6 +21,7 @@ import {
   isIConfirmPayment,
 } from '../utils/index.js'
 import * as MessageError from './Error.js'
+import { SDKErrors as SDKErrorMessage } from '@kiltprotocol/sdk-js'
 import type { IMessage, CredentialApiMessageBody } from '../types/index.js'
 import { verifyMessageEnvelope } from './MessageEnvelope.js'
 
@@ -52,7 +53,7 @@ export function assertKnownMessageBody(message: IMessage): void {
     Attestation.verifyDataStructure(message.body.content.attestation)
   } else if (isRejectAttestation(message)) {
     if (!isHex(message.body.content)) {
-      throw new MessageError.HashMalformedError()
+      throw new SDKErrorMessage.HashMalformedError()
     }
   } else if (isIRequestCredential(message)) {
     message.body.content.cTypes.forEach(({ cTypeHash, trustedAttesters, requiredProperties }) => {
@@ -66,7 +67,7 @@ export function assertKnownMessageBody(message: IMessage): void {
     message.body.content.forEach((presentation) => {
       Credential.verifyDataStructure(presentation)
       if (!Did.isDidSignature(presentation.claimerSignature)) {
-        throw new MessageError.SignatureMalformedError()
+        throw new SDKErrorMessage.SignatureMalformedError()
       }
     })
   } else if (isIRequestPayment(message) || isIConfirmPayment(message)) {
