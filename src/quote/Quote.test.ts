@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018-2024, Built on KILT.
+ * Copyright (c) 2025, Built on KILT.
  *
  * This source code is licensed under the BSD 4-Clause "Original" license
  * found in the LICENSE file in the root directory of this source tree.
@@ -7,13 +7,6 @@
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-
-/**
- * Copyright (c) 2018-2024, BOTLabs GmbH.
- *
- * This source code is licensed under the BSD 4-Clause "Original" license
- * found in the LICENSE file in the root directory of this source tree.
- */
 
 import * as Did from '@kiltprotocol/did'
 import type {
