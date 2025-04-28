@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018-2024, Built on KILT.
+ * Copyright (c) 2025, Built on KILT.
  *
  * This source code is licensed under the BSD 4-Clause "Original" license
  * found in the LICENSE file in the root directory of this source tree.
@@ -193,8 +193,8 @@ export function makeEncryptionKeyTool(seed: string): EncryptionKeyTool {
 }
 
 // Mock function to generate a key ID without having to rely on a real chain metadata.
-export function computeKeyId(key: Uint8Array): VerificationMethod['id'] {
-  return `#${blake2AsHex(key, 256)}`
+export function computeKeyId(did: string, key: Uint8Array): VerificationMethod['id'] {
+  return `${did}#${blake2AsHex(key, 256)}` as DidUrl
 }
 
 /**
@@ -207,7 +207,8 @@ function verificationMethodFromKeypair(
   { publicKey, type }: { publicKey: Uint8Array; type: string },
   controller: Did
 ): VerificationMethod {
-  return didKeyToVerificationMethod(controller, computeKeyId(publicKey), {
+  return didKeyToVerificationMethod(controller, computeKeyId(controller, publicKey), {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     keyType: type as any,
     publicKey,
   })

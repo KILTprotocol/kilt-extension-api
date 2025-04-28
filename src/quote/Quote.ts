@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018-2024, Built on KILT.
+ * Copyright (c) 2025, Built on KILT.
  *
  * This source code is licensed under the BSD 4-Clause "Original" license
  * found in the LICENSE file in the root directory of this source tree.
@@ -87,9 +87,9 @@ export async function verifyAttesterSignedQuote(
   } = {}
 ): Promise<void> {
   const { attesterSignature, ...basicQuote } = quote
-  const { keyUri, signature } = signatureFromJson(attesterSignature)
+  const { signerUrl, signature } = signatureFromJson(attesterSignature)
   await verifyDidSignature({
-    signerUrl: keyUri,
+    signerUrl,
     signature,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
     expectedSigner: basicQuote.attesterDid,
@@ -131,7 +131,7 @@ export async function createQuoteAgreement(
   const transformed = signatureFromJson(attesterSignature)
   await verifyDidSignature({
     signature: transformed.signature,
-    signerUrl: transformed.keyUri,
+    signerUrl: transformed.signerUrl,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
     expectedVerificationRelationship: 'authentication',
     // @ts-expect-error why would this complain?
@@ -172,10 +172,10 @@ export async function verifyQuoteAgreement(
   // verify attester signature
   await verifyAttesterSignedQuote(attesterSignedQuote, { dereferenceDidUrl })
   // verify claimer signature
-  const { keyUri, signature } = signatureFromJson(claimerSignature)
+  const { signerUrl, signature } = signatureFromJson(claimerSignature)
   await verifyDidSignature({
     signature,
-    signerUrl: keyUri,
+    signerUrl: signerUrl,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr({ ...attesterSignedQuote, claimerDid, rootHash })),
     expectedSigner: claimerDid,
     expectedVerificationRelationship: 'authentication',
