@@ -1,15 +1,5 @@
 /**
- * Copyright (c) 2018-2024, Built on KILT.
- *
- * This source code is licensed under the BSD 4-Clause "Original" license
- * found in the LICENSE file in the root directory of this source tree.
- */
-
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-
-/**
- * Copyright (c) 2018-2024, BOTLabs GmbH.
+ * Copyright (c) 2025, Built on KILT.
  *
  * This source code is licensed under the BSD 4-Clause "Original" license
  * found in the LICENSE file in the root directory of this source tree.
@@ -18,7 +8,7 @@
 import { CType } from '@kiltprotocol/credentials'
 import * as DidModule from '@kiltprotocol/did'
 import { Credential } from '@kiltprotocol/legacy-credentials'
-import type { DidDocument, ICType, IClaim, ICredential, VerificationMethod } from '@kiltprotocol/types'
+import type { DidDocument, ICType, IClaim, ICredential } from '@kiltprotocol/types'
 import { Crypto } from '@kiltprotocol/utils'
 import { blake2AsU8a } from '@polkadot/util-crypto'
 import { createLocalDemoFullDidFromKeypair, makeMockDereference, makeSigningKeyTool } from '../tests'
@@ -73,14 +63,15 @@ describe('Quote', () => {
     // build credential with legitimations
     credential = Credential.fromClaim(claim)
 
-    // @ts-ignore
+    // Initialize the variable with proper type
     invalidCostQuoteData = {
+      attesterDid: attesterIdentity.id,
       cTypeHash: '0x12345678',
       cost: invalidCost,
       currency: 'Euro',
       timeframe: date,
       termsAndConditions: 'Lots of these',
-    } as IQuote
+    }
 
     invalidPropertiesQuoteData = {
       cTypeHash: '0x12345678',
@@ -130,21 +121,27 @@ describe('Quote', () => {
     const signer = (
       await (await claimer).getSigners(claimerIdentity, { verificationRelationship: 'authentication' })
     )[0]
-    const signature = DidModule.signatureToJson({
-      signature: await signer.sign({
-        data: blake2AsU8a(
-          Crypto.encodeObjectAsStr({
-            ...validAttesterSignedQuote,
-            claimerDid: claimerIdentity.id,
-            rootHash: credential.rootHash,
-          })
-        ),
-      }),
-      verificationMethod: { id: `#${signer.id.split('#')[1]}`, controller: claimerIdentity.id } as VerificationMethod,
+    const sig =  await signer.sign({
+      data: blake2AsU8a(
+        Crypto.encodeObjectAsStr({
+          ...validAttesterSignedQuote,
+          claimerDid: claimerIdentity.id,
+          rootHash: credential.rootHash,
+        })
+      ),
+    })
+
+    const signature = DidModule.signatureFromJson({
+      signature: sig.toString(),
+      keyId: signer.id,
     })
     expect(signature).toEqual(quoteBothAgreed.claimerSignature)
 
     const { fragment: attesterKeyId } = DidModule.parse(validAttesterSignedQuote.attesterSignature.keyUri)
+    const attesterKey = attesterIdentity.verificationMethod?.find(({ id }) => id === `#${attesterKeyId}`)
+    if (!attesterKey) {
+      throw new Error('Attester key not found')
+    }
 
     expect(() =>
       Crypto.verify(
@@ -159,9 +156,7 @@ describe('Quote', () => {
           })
         ),
         validAttesterSignedQuote.attesterSignature.signature,
-        DidModule.multibaseKeyToDidKey(
-          attesterIdentity.verificationMethod!.find(({ id }) => id === attesterKeyId)!.publicKeyMultibase
-        ).publicKey
+        DidModule.multibaseKeyToDidKey(attesterKey.publicKeyMultibase).publicKey
       )
     ).not.toThrow()
     await expect(
@@ -218,12 +213,12 @@ describe('Quote', () => {
     const { attesterSignature, ...attesterSignedQuote } = validAttesterSignedQuote
     const wrongSignerAttester: IQuoteAttesterSigned = {
       ...attesterSignedQuote,
-      attesterSignature: DidModule.signatureToJson({
-        signature: await signer.sign({
+      attesterSignature: {
+        signature: (await signer.sign({
           data: Crypto.hash(Crypto.encodeObjectAsStr(attesterSignedQuote)),
-        }),
-        verificationMethod: { id: `#${signer.id.split('#')[1]}`, controller: claimerIdentity.id } as VerificationMethod,
-      }),
+        })).toString(),
+        keyUri: signer.id,
+      },
     }
 
     await expect(
@@ -241,15 +236,12 @@ describe('Quote', () => {
     const { claimerSignature, ...restQuote } = quoteBothAgreed
     const wrongSignerClaimer: IQuoteAgreement = {
       ...restQuote,
-      claimerSignature: DidModule.signatureToJson({
-        signature: await signer.sign({
+      claimerSignature: {
+        signature: (await signer.sign({
           data: Crypto.hash(Crypto.encodeObjectAsStr(restQuote)),
-        }),
-        verificationMethod: {
-          id: `#${signer.id.split('#')[1]}`,
-          controller: attesterIdentity.id,
-        } as VerificationMethod,
-      }),
+        })).toString(),
+        keyUri: signer.id,
+      },
     }
 
     await expect(
