@@ -59,7 +59,7 @@ export async function createAttestation(
 
 export async function fundAccount(address: KiltKeyringPair['address'], amount: BN): Promise<void> {
   const api = ConfigService.get('api')
-  const transferTx = api.tx.balances.transfer(address, amount)
+  const transferTx = api.tx.balances.transferKeepAlive(address, amount)
   const devAccount = await faucet()
 
   await Blockchain.signAndSubmitTx(transferTx, devAccount, {
@@ -120,7 +120,7 @@ export async function assertionSigners({
   if (!didDocument.assertionMethod) throw new Error('no assertionMethod')
   return Signers.getSignersForKeypair({
     keypair: assertionMethod,
-    id: `${didDocument.id}${didDocument.assertionMethod![0]}`,
+    id: didDocument.assertionMethod![0],
   })
 }
 
@@ -151,10 +151,10 @@ export async function createCtype(didUri: Did, account: KiltKeyringPair, mnemoni
 
 export async function startContainer(): Promise<string> {
   const WS_PORT = 9944
-  const image = process.env.TESTCONTAINERS_NODE_IMG || 'kiltprotocol/mashnet-node'
+  const image = process.env.TESTCONTAINERS_NODE_IMG || 'kiltprotocol/standalone-node'
   console.log(`using testcontainer with image ${image}`)
   const testcontainer = new GenericContainer(image)
-    .withCommand(['--dev', `--ws-port=${WS_PORT}`, '--ws-external'])
+    .withCommand(['--dev', `--rpc-port=${WS_PORT}`, '--rpc-external'])
     .withExposedPorts(WS_PORT)
     .withWaitStrategy(Wait.forLogMessage(`:${WS_PORT}`))
   const started = await testcontainer.start()

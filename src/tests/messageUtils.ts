@@ -40,7 +40,7 @@ export function makeDidSigners(
     const signersNonFlattened = await Promise.all(
       // TODO: we should map keys to VMs based on public keys
       didDocument.verificationMethod?.map(({ id }) =>
-        Signers.getSignersForKeypair({ keypair, id: `${didDocument.id}${id}` })
+        Signers.getSignersForKeypair({ keypair, id: id })
       ) ?? []
     )
     const signers = signersNonFlattened.flat()
@@ -155,7 +155,7 @@ export function makeEncryptCallback({ secretKey }: KiltEncryptionKeypair): Encry
         // encrypted data
         data: box,
         // used did key uri for encryption.
-        keyUri: `${didDocument.id}${keyId}`,
+        keyUri: keyId,
       }
     }
   }

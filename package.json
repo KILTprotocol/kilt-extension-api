@@ -70,7 +70,7 @@
     "@kiltprotocol/sdk-js": "1.0.0",
     "@kiltprotocol/type-definitions": "^1.11502.0",
     "@kiltprotocol/types": "^0.100.0",
-    "@polkadot/api": "~12.2.0",
+    "@polkadot/api": "^12.2.0",
     "@polkadot/keyring": "^13.4.4",
     "@polkadot/types": "^12.2.0",
     "@polkadot/util": "^13.4.4",
@@ -98,5 +98,6 @@
   },
   "bin": {
     "createDidConfig": "./cli/createDidConfig.js"
-  }
+  },
+  "packageManager": "yarn@4.9.1"
 }

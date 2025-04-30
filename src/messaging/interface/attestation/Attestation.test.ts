@@ -296,7 +296,7 @@ describe('Attestation', () => {
 
     const api = ConfigService.get('api')
 
-    const txTransfer = api.tx.balances.transfer(aliceAccount.address, COST)
+    const txTransfer = api.tx.balances.transferKeepAlive(aliceAccount.address, COST)
 
     const finalizedTx = await Blockchain.signAndSubmitTx(txTransfer, bobAccount, {
       resolveOn: Blockchain.IS_FINALIZED,

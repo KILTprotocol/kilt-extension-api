@@ -54,7 +54,7 @@ export async function receiveSessionRequest(
   if (!authenticationSigner) {
     throw new Error('a signer for the responder DID authentication method is required')
   }
-  const responseEncryptionKey: DidUrl = `${didDocument.id}${didDocument.keyAgreement?.[0]}`
+  const responseEncryptionKey: DidUrl = didDocument.keyAgreement?.[0]
 
   Did.validateDid(receiverEncryptionKeyUri)
   const { contentStream: receiverKey } = await dereferenceDidUrl(receiverEncryptionKeyUri, {

@@ -26,7 +26,7 @@ export function requestSession(didDocument: DidDocument, name: string): ISession
     throw new KeyError('KeyAgreement does not exists')
   }
 
-  const encryptionKeyUri = `${didDocument.id}${didDocument.keyAgreement?.[0]}` as DidUrl
+  const encryptionKeyUri = didDocument.keyAgreement?.[0]
 
   const challenge = randomAsHex(24)
   return {
