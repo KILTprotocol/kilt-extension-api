@@ -8,7 +8,6 @@
 import { randomAsHex } from '@polkadot/util-crypto'
 import { CTypeHash, Did } from '@kiltprotocol/types'
 import { Credential } from '@kiltprotocol/legacy-credentials'
-import { CType } from '@kiltprotocol/credentials'
 import { dereference, parse } from '@kiltprotocol/did'
 
 import type {
@@ -21,6 +20,7 @@ import type {
 } from '../../../types/index.js'
 import { isIRequestCredential, isSubmitCredential } from '../../../utils/index.js'
 import { decrypt, encrypt, fromBody } from '../../index.js'
+import { dereferenceToResolve } from '../../../quote/Quote.js'
 
 /**
  * Requests a credential issuance with specified parameters.
@@ -52,10 +52,6 @@ export async function requestCredential(
   } = {}
 ): Promise<ICredentialRequest> {
   const challenge = randomAsHex(24)
-
-  cTypes.map(async (ctype) => {
-    await CType.fetchFromChain(`kilt:ctype:${ctype.cTypeHash}`)
-  })
 
   const body: IRequestCredential = {
     content: {
@@ -117,7 +113,7 @@ export async function verifySubmittedCredentialMessage(
     throw new Error('Wrong message. Expected submit credential message')
   }
 
-  await validateMessageBody(decryptedMessage, requestMessage, challenge)
+  await validateMessageBody(decryptedMessage, requestMessage, challenge, { dereferenceDidUrl })
 
   return decryptedMessage
 }
@@ -127,30 +123,43 @@ export async function verifySubmittedCredentialMessage(
  * @param decryptedMessage - The decrypted message containing the submitted credential.
  * @param originalMessage - The original request message.
  * @param challenge - The challenge associated with the credential request.
+ * @returns An array of boolean values indicating whether each credential presentation is revoked.
  * @throws Error if the ctype or user doesn't match.
  * @throws Error if credential presentation verification fails.
  */
 async function validateMessageBody(
   decryptedMessage: IMessage<ISubmitCredential>,
   originalMessage: IMessage<IRequestCredential>,
-  challenge: string
-) {
-  decryptedMessage.body.content.map(async (credentialPresentation) => {
-    const requestedCtype = originalMessage.body.content.cTypes.filter(
-      (ctype) => ctype.cTypeHash === credentialPresentation.claim.cTypeHash
-    )
+  challenge: string,
+  {
+    dereferenceDidUrl,
+  }: {
+    dereferenceDidUrl?: typeof dereference
+  } = {}
+): Promise<boolean[]> {
+  return Promise.all(
+    decryptedMessage.body.content.map(async (credentialPresentation) => {
+      const requestedCtype = originalMessage.body.content.cTypes.filter(
+        (ctype) => ctype.cTypeHash === credentialPresentation.claim.cTypeHash
+      )
 
-    if (requestedCtype.length === 0) {
-      throw new Error('Ctype does not match')
-    }
+      if (requestedCtype.length === 0) {
+        throw new Error('Ctype does not match')
+      }
 
-    if (
-      originalMessage.body.content.owner &&
-      originalMessage.body.content.owner !== credentialPresentation.claim.owner
-    ) {
-      throw new Error('Users do not match')
-    }
+      if (
+        originalMessage.body.content.owner &&
+        originalMessage.body.content.owner !== credentialPresentation.claim.owner
+      ) {
+        throw new Error('Users do not match')
+      }
 
-    await Credential.verifyPresentation(credentialPresentation, { challenge })
-  })
+      const { revoked } = await Credential.verifyPresentation(credentialPresentation, {
+        challenge,
+        didResolver: dereferenceToResolve(dereferenceDidUrl),
+      })
+
+      return revoked
+    })
+  )
 }

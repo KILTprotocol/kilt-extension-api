@@ -92,7 +92,7 @@ describe('Session', () => {
   it('should create a valid session request', () => {
     const result: ISessionRequest = requestSession(aliceFullDid, 'MyApp')
 
-    const encryptionKeyUri = `${aliceFullDid.id}${aliceFullDid.keyAgreement?.[0]}`
+    const encryptionKeyUri = aliceFullDid.keyAgreement?.[0]
     expect(result.name).toBe('MyApp')
     expect(result.encryptionKeyUri).toBe(encryptionKeyUri)
     expect(result.challenge).toHaveLength(50)

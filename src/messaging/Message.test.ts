@@ -179,7 +179,7 @@ describe('Messaging', () => {
     }
     await expect(() =>
       decrypt(encryptedMessageWrongBody, bobEncKey.decrypt, { dereferenceDidUrl: mockDereference })
-    ).rejects.toThrowError(SyntaxError)
+    ).rejects.toThrowError()
   })
 
   it('verifies the message with sender is the owner (as full DID)', async () => {

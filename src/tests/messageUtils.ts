@@ -39,9 +39,7 @@ export function makeDidSigners(
   return (async (didDocument) => {
     const signersNonFlattened = await Promise.all(
       // TODO: we should map keys to VMs based on public keys
-      didDocument.verificationMethod?.map(({ id }) =>
-        Signers.getSignersForKeypair({ keypair, id: id })
-      ) ?? []
+      didDocument.verificationMethod?.map(({ id }) => Signers.getSignersForKeypair({ keypair, id: id })) ?? []
     )
     const signers = signersNonFlattened.flat()
     if (select) {
@@ -100,13 +98,17 @@ export async function makeSigningKeyTool(type: KiltKeyringPair['type'] = 'sr2551
 export async function createLocalDemoFullDidFromLightDid(lightDid: DidDocument): Promise<DidDocument> {
   const { id, authentication, verificationMethod, keyAgreement } = lightDid
   const fullDid = getFullDid(id)
+  function overrideId(id: DidUrl) {
+    return id.replace(lightDid.id, fullDid) as DidUrl
+  }
+  const authKeyMapped = authentication?.map(overrideId)
   return {
     id: fullDid,
-    authentication,
-    assertionMethod: authentication,
-    capabilityDelegation: authentication,
-    keyAgreement,
-    verificationMethod: verificationMethod?.map((vm) => ({ ...vm, controller: fullDid })),
+    authentication: authKeyMapped,
+    assertionMethod: authKeyMapped,
+    capabilityDelegation: authKeyMapped,
+    keyAgreement: keyAgreement?.map(overrideId),
+    verificationMethod: verificationMethod?.map((vm) => ({ ...vm, controller: fullDid, id: overrideId(vm.id) })),
   }
 }
 

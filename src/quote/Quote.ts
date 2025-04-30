@@ -15,13 +15,37 @@
  * @packageDocumentation
  */
 
-import { dereference, signatureFromJson, verifyDidSignature } from '@kiltprotocol/did'
-import type { Did, DidUrl, ICredential, SignerInterface } from '@kiltprotocol/types'
+import { dereference, resolve, signatureFromJson, verifyDidSignature } from '@kiltprotocol/did'
+import type {
+  Did,
+  DidDocument,
+  DidUrl,
+  ICredential,
+  ResolutionMetadata,
+  ResolutionOptions,
+  SignerInterface,
+} from '@kiltprotocol/types'
 import { Crypto, JsonSchema, Signers } from '@kiltprotocol/utils'
 import { IQuote, IQuoteAgreement, IQuoteAttesterSigned } from '../types/Quote.js'
 import * as QuoteError from './Error.js'
 import { QuoteSchema } from './QuoteSchema.js'
 
+export function dereferenceToResolve(dereferenceImplementation?: typeof dereference): typeof resolve | undefined {
+  if (typeof dereferenceImplementation !== 'function') {
+    return dereferenceImplementation
+  }
+  return async (did: Did, resolutionOptions?: ResolutionOptions | undefined) => {
+    const { dereferencingMetadata, contentMetadata, contentStream } = await dereferenceImplementation(did, {
+      ...resolutionOptions,
+      accept: 'application/did+json',
+    })
+    return {
+      didResolutionMetadata: dereferencingMetadata as ResolutionMetadata,
+      didDocument: contentStream as DidDocument | undefined,
+      didDocumentMetadata: contentMetadata,
+    }
+  }
+}
 /**
  * Validates the quote against the meta schema and quote data against the provided schema.
  *
@@ -94,8 +118,7 @@ export async function verifyAttesterSignedQuote(
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
     expectedSigner: basicQuote.attesterDid,
     expectedVerificationRelationship: 'authentication',
-    // @ts-expect-error this is dumb
-    dereferenceDidUrl,
+    didResolver: dereferenceToResolve(dereferenceDidUrl),
   })
 
   const messages: string[] = []
@@ -134,8 +157,7 @@ export async function createQuoteAgreement(
     signerUrl: transformed.signerUrl,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
     expectedVerificationRelationship: 'authentication',
-    // @ts-expect-error why would this complain?
-    dereferenceDidUrl,
+    didResolver: dereferenceToResolve(dereferenceDidUrl),
   })
 
   const quoteAgreement = {
@@ -179,7 +201,6 @@ export async function verifyQuoteAgreement(
     message: Crypto.hashStr(Crypto.encodeObjectAsStr({ ...attesterSignedQuote, claimerDid, rootHash })),
     expectedSigner: claimerDid,
     expectedVerificationRelationship: 'authentication',
-    // @ts-expect-error why would this complain?
-    dereferenceDidUrl,
+    didResolver: dereferenceToResolve(dereferenceDidUrl),
   })
 }

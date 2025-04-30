@@ -11,6 +11,7 @@ import { Credential } from '@kiltprotocol/legacy-credentials'
 import type { DidDocument, ICType, IClaim, ICredential } from '@kiltprotocol/types'
 import { Crypto } from '@kiltprotocol/utils'
 import { blake2AsU8a } from '@polkadot/util-crypto'
+import { u8aToHex } from '@polkadot/util'
 import { createLocalDemoFullDidFromKeypair, makeMockDereference, makeSigningKeyTool } from '../tests'
 import { ICostBreakdown, IQuote, IQuoteAgreement, IQuoteAttesterSigned } from '../types'
 import * as Quote from './Quote'
@@ -121,7 +122,7 @@ describe('Quote', () => {
     const signer = (
       await (await claimer).getSigners(claimerIdentity, { verificationRelationship: 'authentication' })
     )[0]
-    const sig =  await signer.sign({
+    const sig = await signer.sign({
       data: blake2AsU8a(
         Crypto.encodeObjectAsStr({
           ...validAttesterSignedQuote,
@@ -131,14 +132,16 @@ describe('Quote', () => {
       ),
     })
 
-    const signature = DidModule.signatureFromJson({
-      signature: sig.toString(),
-      keyId: signer.id,
-    })
+    const signature = {
+      signature: u8aToHex(sig),
+      keyUri: signer.id,
+    }
     expect(signature).toEqual(quoteBothAgreed.claimerSignature)
 
-    const { fragment: attesterKeyId } = DidModule.parse(validAttesterSignedQuote.attesterSignature.keyUri)
-    const attesterKey = attesterIdentity.verificationMethod?.find(({ id }) => id === `#${attesterKeyId}`)
+    // const { fragment: attesterKeyId } = DidModule.parse(validAttesterSignedQuote.attesterSignature.keyUri)
+    const attesterKey = attesterIdentity.verificationMethod?.find(
+      ({ id }) => id === validAttesterSignedQuote.attesterSignature.keyUri
+    )
     if (!attesterKey) {
       throw new Error('Attester key not found')
     }
@@ -169,14 +172,14 @@ describe('Quote', () => {
         dereferenceDidUrl,
       })
     ).resolves.not.toThrow()
-    expect(
-      await Quote.createAttesterSignedQuote(
+    await expect(
+      Quote.createAttesterSignedQuote(
         validQuoteData,
         (
           await (await attester).getSigners<'Sr25519'>(attesterIdentity, { verificationRelationship: 'authentication' })
         )[0]
       )
-    ).toEqual(validAttesterSignedQuote)
+    ).resolves.toEqual(validAttesterSignedQuote)
   })
   it('validates created quotes against QuoteSchema', () => {
     expect(Quote.validateQuoteSchema(QuoteSchema, validQuoteData)).toBe(true)
@@ -214,9 +217,11 @@ describe('Quote', () => {
     const wrongSignerAttester: IQuoteAttesterSigned = {
       ...attesterSignedQuote,
       attesterSignature: {
-        signature: (await signer.sign({
-          data: Crypto.hash(Crypto.encodeObjectAsStr(attesterSignedQuote)),
-        })).toString(),
+        signature: (
+          await signer.sign({
+            data: Crypto.hash(Crypto.encodeObjectAsStr(attesterSignedQuote)),
+          })
+        ).toString(),
         keyUri: signer.id,
       },
     }
@@ -237,9 +242,11 @@ describe('Quote', () => {
     const wrongSignerClaimer: IQuoteAgreement = {
       ...restQuote,
       claimerSignature: {
-        signature: (await signer.sign({
-          data: Crypto.hash(Crypto.encodeObjectAsStr(restQuote)),
-        })).toString(),
+        signature: (
+          await signer.sign({
+            data: Crypto.hash(Crypto.encodeObjectAsStr(restQuote)),
+          })
+        ).toString(),
         keyUri: signer.id,
       },
     }

@@ -9,7 +9,7 @@
 import { CType } from '@kiltprotocol/credentials'
 import * as Did from '@kiltprotocol/did'
 import { Claim, Credential } from '@kiltprotocol/legacy-credentials'
-import { connect } from '@kiltprotocol/sdk-js'
+import { connect, disconnect } from '@kiltprotocol/sdk-js'
 import { CTypeHash, DidDocument, ICType, IClaim, ICredential, KiltKeyringPair } from '@kiltprotocol/types'
 import { Crypto } from '@kiltprotocol/utils'
 import Keyring from '@polkadot/keyring'
@@ -178,7 +178,11 @@ describe('Verifier', () => {
     it('Bob should be able to decrypt the message', async () => {
       const cTypes = [{ cTypeHash: cTypeHash }]
       const { encryptedMessage } = await requestCredential(aliceSession, cTypes)
-      expect(async () => await decrypt(encryptedMessage, bobDecryptCallback)).not.toThrowError()
+      await expect(decrypt(encryptedMessage, bobDecryptCallback)).resolves.toMatchObject({
+        body: {
+          type: 'request-credential',
+        },
+      })
     })
 
     it('submit credential', async () => {
@@ -223,7 +227,11 @@ describe('Verifier', () => {
 
       const credentialMessage = await submitCredential([credential], encryptedMessage, bobSession)
 
-      expect(async () => await decrypt(credentialMessage, aliceDecryptCallback)).not.toThrowError()
+      await expect(decrypt(credentialMessage, aliceDecryptCallback)).resolves.toMatchObject({
+        body: {
+          type: 'submit-credential',
+        },
+      })
     })
 
     it('verify submitted Credential', async () => {
@@ -237,3 +245,7 @@ describe('Verifier', () => {
     })
   })
 })
+
+afterAll(async () => {
+  await disconnect()
+}, 20000)

@@ -6,7 +6,7 @@
  */
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { Blockchain } from '@kiltprotocol/chain-helpers'
+import { Blockchain, disconnect } from '@kiltprotocol/chain-helpers'
 import { CType } from '@kiltprotocol/credentials'
 import { Claim, Credential } from '@kiltprotocol/legacy-credentials'
 import { ConfigService, connect } from '@kiltprotocol/sdk-js'
@@ -389,4 +389,8 @@ describe('Attestation', () => {
       receiveAttestation(submitAttestationMessage.encryptedMessage, requestAttestationMessages, bobSession)
     ).resolves.not.toThrowError()
   })
+})
+
+afterAll(async () => {
+  await disconnect()
 })
