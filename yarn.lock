@@ -414,7 +414,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint-community/eslint-utils@npm:^4.2.0, @eslint-community/eslint-utils@npm:^4.4.0":
+"@eslint-community/eslint-utils@npm:^4.2.0":
   version: 4.6.1
   resolution: "@eslint-community/eslint-utils@npm:4.6.1"
   dependencies:
@@ -422,6 +422,17 @@ __metadata:
   peerDependencies:
     eslint: ^6.0.0 || ^7.0.0 || >=8.0.0
   checksum: 10c0/cdeb6f8fc33a83726357d7f736075cdbd6e79dc7ac4b00b15680f1111d0f33bda583e7fafa5937245a058cc66302dc47568bba57b251302dc74964d8e87f56d7
+  languageName: node
+  linkType: hard
+
+"@eslint-community/eslint-utils@npm:^4.4.0":
+  version: 4.7.0
+  resolution: "@eslint-community/eslint-utils@npm:4.7.0"
+  dependencies:
+    eslint-visitor-keys: "npm:^3.4.3"
+  peerDependencies:
+    eslint: ^6.0.0 || ^7.0.0 || >=8.0.0
+  checksum: 10c0/c0f4f2bd73b7b7a9de74b716a664873d08ab71ab439e51befe77d61915af41a81ecec93b408778b3a7856185244c34c2c8ee28912072ec14def84ba2dec70adf
   languageName: node
   linkType: hard
 
@@ -920,7 +931,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@kiltprotocol/credentials@npm:0.100.0, @kiltprotocol/credentials@npm:^0.100.0":
+"@kiltprotocol/credentials@npm:0.100.0":
   version: 0.100.0
   resolution: "@kiltprotocol/credentials@npm:0.100.0"
   dependencies:
@@ -952,7 +963,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@kiltprotocol/did@npm:0.100.0, @kiltprotocol/did@npm:^0.100.0":
+"@kiltprotocol/did@npm:0.100.0":
   version: 0.100.0
   resolution: "@kiltprotocol/did@npm:0.100.0"
   dependencies:
@@ -1019,17 +1030,8 @@ __metadata:
   resolution: "@kiltprotocol/kilt-extension-api@workspace:."
   dependencies:
     "@kiltprotocol/augment-api": "npm:^1.11405.0"
-    "@kiltprotocol/credentials": "npm:^0.100.0"
-    "@kiltprotocol/did": "npm:^0.100.0"
     "@kiltprotocol/legacy-credentials": "npm:^0.100.0"
     "@kiltprotocol/sdk-js": "npm:1.0.0"
-    "@kiltprotocol/type-definitions": "npm:^1.11502.0"
-    "@kiltprotocol/types": "npm:^0.100.0"
-    "@polkadot/api": "npm:^12.2.0"
-    "@polkadot/keyring": "npm:^13.4.4"
-    "@polkadot/types": "npm:^12.2.0"
-    "@polkadot/util": "npm:^13.4.4"
-    "@polkadot/util-crypto": "npm:^13.4.4"
     "@types/jest": "npm:^28.0.0"
     "@types/node": "npm:^18.8.2"
     "@types/react": "npm:^18.0.21"
@@ -1104,7 +1106,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@kiltprotocol/type-definitions@npm:^1.11200.0, @kiltprotocol/type-definitions@npm:^1.11502.0":
+"@kiltprotocol/type-definitions@npm:^1.11200.0":
   version: 1.11502.0
   resolution: "@kiltprotocol/type-definitions@npm:1.11502.0"
   peerDependencies:
@@ -1113,7 +1115,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@kiltprotocol/types@npm:0.100.0, @kiltprotocol/types@npm:^0.100.0":
+"@kiltprotocol/types@npm:0.100.0":
   version: 0.100.0
   resolution: "@kiltprotocol/types@npm:0.100.0"
   dependencies:
@@ -1333,7 +1335,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@polkadot/api@npm:12.4.2, @polkadot/api@npm:^12.0.0, @polkadot/api@npm:^12.2.0":
+"@polkadot/api@npm:12.4.2, @polkadot/api@npm:^12.0.0":
   version: 12.4.2
   resolution: "@polkadot/api@npm:12.4.2"
   dependencies:
@@ -1358,7 +1360,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@polkadot/keyring@npm:^13.0.0, @polkadot/keyring@npm:^13.0.2, @polkadot/keyring@npm:^13.4.4":
+"@polkadot/keyring@npm:^13.0.0, @polkadot/keyring@npm:^13.0.2":
   version: 13.4.4
   resolution: "@polkadot/keyring@npm:13.4.4"
   dependencies:
@@ -1492,7 +1494,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@polkadot/types@npm:12.4.2, @polkadot/types@npm:^12.0.0, @polkadot/types@npm:^12.2.0":
+"@polkadot/types@npm:12.4.2, @polkadot/types@npm:^12.0.0":
   version: 12.4.2
   resolution: "@polkadot/types@npm:12.4.2"
   dependencies:
@@ -1508,7 +1510,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@polkadot/util-crypto@npm:13.4.4, @polkadot/util-crypto@npm:^13.0.0, @polkadot/util-crypto@npm:^13.0.2, @polkadot/util-crypto@npm:^13.4.4":
+"@polkadot/util-crypto@npm:13.4.4, @polkadot/util-crypto@npm:^13.0.0, @polkadot/util-crypto@npm:^13.0.2":
   version: 13.4.4
   resolution: "@polkadot/util-crypto@npm:13.4.4"
   dependencies:
@@ -1528,7 +1530,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@polkadot/util@npm:13.4.4, @polkadot/util@npm:^13.0.0, @polkadot/util@npm:^13.0.2, @polkadot/util@npm:^13.4.4":
+"@polkadot/util@npm:13.4.4, @polkadot/util@npm:^13.0.0, @polkadot/util@npm:^13.0.2":
   version: 13.4.4
   resolution: "@polkadot/util@npm:13.4.4"
   dependencies:

@@ -10,11 +10,6 @@ import { HexString } from './Imported.js'
 import { PubSubSessionV1, PubSubSessionV2 } from './Session.js'
 
 export type This = typeof globalThis
-
-export interface ApiWindow extends This {
-  kilt: Record<string, InjectedWindowProvider<PubSubSessionV1 | PubSubSessionV2>>
-}
-
 export interface InjectedWindowProvider<T> {
   startSession: (dAppName: string, dAppEncryptionKeyId: DidUrl, challenge: string) => Promise<T>
   name: string

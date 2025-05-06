@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           registry-url: 'https://registry.npmjs.org'
-          node-version: 18
+          node-version: 20
           cache: 'yarn'
 
       - name: yarn install
@@ -32,14 +32,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: set image name
+      - name: Set image name
         run: |
           echo "IMG_NAME=${{ steps.login-ecr.outputs.registry }}/kilt/prototype-chain:latest" >> "$GITHUB_ENV"
 
-      - name: pull image
+      - name: Pull Docker image
         run: docker pull $IMG_NAME
 
-      - name: run tests
+      - name: Run tests
         timeout-minutes: 5
         env:
           TESTCONTAINERS_NODE_IMG: ${{ env.IMG_NAME }}
