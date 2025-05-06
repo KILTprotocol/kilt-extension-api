@@ -204,8 +204,8 @@ function isICredentialPresentation(body: any): body is ICredentialPresentation {
   return (
     typeof body === 'object' &&
     body !== null &&
-    'holderSignature' in body &&
-    typeof body.holderSignature === 'object' &&
+    'claimerSignature' in body &&
+    typeof body.claimerSignature === 'object' &&
     'claim' in body &&
     'claimNonceMap' in body &&
     'claimHashes' in body &&
@@ -215,6 +215,6 @@ function isICredentialPresentation(body: any): body is ICredentialPresentation {
     Array.isArray(body.legitimations) &&
     'rootHash' in body &&
     typeof body.rootHash === 'string' &&
-    ('challenge' in body.holderSignature ? typeof body.holderSignature.challenge === 'string' : true)
+    ('challenge' in body.claimerSignature ? typeof body.claimerSignature.challenge === 'string' : true)
   )
 }

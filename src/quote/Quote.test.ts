@@ -136,7 +136,7 @@ describe('Quote', () => {
       signature: u8aToHex(sig),
       keyUri: signer.id,
     }
-    expect(signature).toEqual(quoteBothAgreed.holderSignature)
+    expect(signature).toEqual(quoteBothAgreed.claimerSignature)
 
     // const { fragment: issuerKeyId } = DidModule.parse(validIssuerSignedQuote.issuerSignature.keyUri)
     const issuerKey = issuerIdentity.verificationMethod?.find(
@@ -238,10 +238,10 @@ describe('Quote', () => {
       await (await issuer).getSigners(issuerIdentity, { verificationRelationship: 'authentication' })
     )[0]
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { holderSignature, ...restQuote } = quoteBothAgreed
+    const { claimerSignature, ...restQuote } = quoteBothAgreed
     const wrongSignerHolder: IQuoteAgreement = {
       ...restQuote,
-      holderSignature: {
+      claimerSignature: {
         signature: (
           await signer.sign({
             data: Crypto.hash(Crypto.encodeObjectAsStr(restQuote)),

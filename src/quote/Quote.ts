@@ -171,7 +171,7 @@ export async function createQuoteAgreement(
 
   return {
     ...quoteAgreement,
-    holderSignature: { signature: Crypto.u8aToHex(signature), keyUri: signer.id },
+    claimerSignature: { signature: Crypto.u8aToHex(signature), keyUri: signer.id },
   }
 }
 
@@ -190,11 +190,11 @@ export async function verifyQuoteAgreement(
     dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<void> {
-  const { holderSignature, holderDid, rootHash, ...issuerSignedQuote } = quote
+  const { claimerSignature, holderDid, rootHash, ...issuerSignedQuote } = quote
   // verify issuer signature
   await verifyIssuerSignedQuote(issuerSignedQuote, { dereferenceDidUrl })
   // verify holder signature
-  const { signerUrl, signature } = signatureFromJson(holderSignature)
+  const { signerUrl, signature } = signatureFromJson(claimerSignature)
   await verifyDidSignature({
     signature,
     signerUrl: signerUrl,

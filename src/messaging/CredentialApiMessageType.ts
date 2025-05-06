@@ -68,7 +68,7 @@ export function assertKnownMessageBody(message: IMessage): void {
   } else if (isSubmitCredential(message)) {
     message.body.content.forEach((presentation) => {
       Credential.verifyDataStructure(presentation)
-      if (!Did.isDidSignature(presentation.holderSignature)) {
+      if (!Did.isDidSignature(presentation.claimerSignature)) {
         throw new MessageError.SignatureMalformedError()
       }
     })

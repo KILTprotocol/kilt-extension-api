@@ -659,7 +659,7 @@ describe('Error checking / Verification', () => {
     submitCredentialContent = [
       {
         ...legitimation,
-        holderSignature: {
+        claimerSignature: {
           signature: '0x1234',
           keyUri: `${legitimation.claim.owner}#0x1234`,
         },
@@ -757,7 +757,7 @@ describe('Error checking / Verification', () => {
     submitTermsBody.content.delegationId = 'this is not a delegation id'
     expect(() => assertKnownMessageBody(messageSubmitTerms)).toThrowError()
 
-    submitCredentialBody.content[0].holderSignature = {
+    submitCredentialBody.content[0].claimerSignature = {
       signature: 'this is not the holders signature',
       // @ts-ignore
       keyUri: 'this is not a key id',

@@ -40,5 +40,5 @@ export interface IQuoteAgreement extends IQuoteIssuerSigned {
   rootHash: ICredential['rootHash']
   holderDid: Did
   // The signature of the holder.
-  holderSignature: DidSignature
+  claimerSignature: DidSignature
 }
