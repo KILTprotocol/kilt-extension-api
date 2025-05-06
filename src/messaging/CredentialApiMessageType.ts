@@ -58,9 +58,9 @@ export function assertKnownMessageBody(message: IMessage): void {
       throw new MessageError.HashMalformedError()
     }
   } else if (isIRequestCredential(message)) {
-    message.body.content.cTypes.forEach(({ cTypeHash, trustedAttesters, requiredProperties }) => {
+    message.body.content.cTypes.forEach(({ cTypeHash, trustedIssuers, requiredProperties }) => {
       DataUtils.verifyIsHex(cTypeHash)
-      trustedAttesters?.forEach((did) => Did.validateDid(did, 'Did'))
+      trustedIssuers?.forEach((did) => Did.validateDid(did, 'Did'))
       requiredProperties?.forEach((requiredProps) => {
         if (typeof requiredProps !== 'string') throw new TypeError('Required properties is expected to be a string')
       })
@@ -68,7 +68,7 @@ export function assertKnownMessageBody(message: IMessage): void {
   } else if (isSubmitCredential(message)) {
     message.body.content.forEach((presentation) => {
       Credential.verifyDataStructure(presentation)
-      if (!Did.isDidSignature(presentation.claimerSignature)) {
+      if (!Did.isDidSignature(presentation.holderSignature)) {
         throw new MessageError.SignatureMalformedError()
       }
     })

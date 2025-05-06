@@ -16,7 +16,7 @@ import type {
   ICType,
   Did,
 } from '@kiltprotocol/types'
-import type { IQuoteAgreement, IQuoteAttesterSigned } from './Quote.js'
+import type { IQuoteAgreement, IQuoteIssuerSigned } from './Quote.js'
 
 /**
  * All possible message types which are defined in the KILT Credential API (Spec version 3.2)
@@ -85,8 +85,8 @@ export type IError = MessageBody<'error', { name?: string; message?: string }>
 export type IReject = MessageBody<'reject', { name?: string; message?: string }>
 
 /**
- * An attester utilizes the message to propose a claim. The purpose of the extension is to enable
- * the user to authorize and endorse the claims prepared by the attester.
+ * An issuer utilizes the message to propose a claim. The purpose of the extension is to enable
+ * the user to authorize and endorse the claims prepared by the issuer.
  */
 export type ISubmitTerms = MessageBody<'submit-terms', ITerms>
 
@@ -114,7 +114,7 @@ export interface IRequestPaymentContent {
 }
 
 /**
- * An attester can send this message if it wants the user to transfer payment in KILT Coins by themselves without interrupting the flow.
+ * An issuer can send this message if it wants the user to transfer payment in KILT Coins by themselves without interrupting the flow.
  */
 export type IRequestPayment = MessageBody<'request-payment', IRequestPaymentContent>
 
@@ -126,12 +126,12 @@ export interface ISubmitAttestationContent {
 }
 
 /**
- * The attester sends the valid credential to the extension.
+ * The issuer sends the valid credential to the extension.
  */
 export type ISubmitAttestation = MessageBody<'submit-attestation', ISubmitAttestationContent>
 
 /**
- * If the attester does not approve the attestation request, the extension receives the [IRejectAttestation] message.
+ * If the issuer does not approve the attestation request, the extension receives the [IRejectAttestation] message.
  */
 export type IRejectAttestation = MessageBody<'reject-attestation', ICredential['rootHash']>
 
@@ -140,12 +140,12 @@ export type IRejectAttestation = MessageBody<'reject-attestation', ICredential['
  */
 export interface ITerms {
   claim: PartialClaim
-  // optional array of credentials of the attester
+  // optional array of credentials of the issuer
   legitimations: ICredential[]
-  // optional ID of the DelegationNode of the attester
+  // optional ID of the DelegationNode of the issuer
   delegationId?: IDelegationNode['id']
-  // Optional attester-signed binding
-  quote?: IQuoteAttesterSigned
+  // Optional issuer-signed binding
+  quote?: IQuoteIssuerSigned
   // CTypes for the proposed credential. In most cases this will be just one, but in the case of nested ctypes, this can be multiple.
   cTypes?: ICType[]
 }
@@ -159,7 +159,7 @@ export type ISubmitCredential = MessageBody<'submit-credential', ICredentialPres
 export interface IRequestCredentialContent {
   cTypes: Array<{
     cTypeHash: CTypeHash
-    trustedAttesters?: Did[]
+    trustedIssuers?: Did[]
     requiredProperties?: string[]
   }>
   owner?: Did
@@ -182,7 +182,7 @@ export interface IConfirmPaymentContent {
 
 /**
  * After the user has authorized the payment and it has been transferred,
- * the extension confirms the transfer to the attester by sending the [IConfirmPayment] message.
+ * the extension confirms the transfer to the issuer by sending the [IConfirmPayment] message.
  */
 export type IConfirmPayment = MessageBody<'confirm-payment', IConfirmPaymentContent>
 

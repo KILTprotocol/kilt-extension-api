@@ -13,16 +13,16 @@ import { Crypto } from '@kiltprotocol/utils'
 import { blake2AsU8a } from '@polkadot/util-crypto'
 import { u8aToHex } from '@polkadot/util'
 import { createLocalDemoFullDidFromKeypair, makeMockDereference, makeSigningKeyTool } from '../tests'
-import { ICostBreakdown, IQuote, IQuoteAgreement, IQuoteAttesterSigned } from '../types'
+import { ICostBreakdown, IQuote, IQuoteAgreement, IQuoteIssuerSigned } from '../types'
 import * as Quote from './Quote'
 import { QuoteSchema } from './QuoteSchema'
 
 describe('Quote', () => {
-  let claimerIdentity: DidDocument
-  const claimer = makeSigningKeyTool('ed25519')
+  let holderIdentity: DidDocument
+  const holder = makeSigningKeyTool('ed25519')
 
-  let attesterIdentity: DidDocument
-  const attester = makeSigningKeyTool('ed25519')
+  let issuerIdentity: DidDocument
+  const issuer = makeSigningKeyTool('ed25519')
 
   let invalidCost: ICostBreakdown
   let date: string
@@ -32,18 +32,18 @@ describe('Quote', () => {
   let invalidCostQuoteData: IQuote
   let invalidPropertiesQuoteData: IQuote
   let validQuoteData: IQuote
-  let validAttesterSignedQuote: IQuoteAttesterSigned
+  let validIssuerSignedQuote: IQuoteIssuerSigned
   let quoteBothAgreed: IQuoteAgreement
   let invalidPropertiesQuote: IQuote
   let invalidCostQuote: IQuote
   let dereferenceDidUrl: ReturnType<typeof makeMockDereference>
 
   beforeAll(async () => {
-    claimerIdentity = await createLocalDemoFullDidFromKeypair((await claimer).keypair)
+    holderIdentity = await createLocalDemoFullDidFromKeypair((await holder).keypair)
 
-    attesterIdentity = await createLocalDemoFullDidFromKeypair((await attester).keypair)
+    issuerIdentity = await createLocalDemoFullDidFromKeypair((await issuer).keypair)
 
-    dereferenceDidUrl = makeMockDereference([claimerIdentity, attesterIdentity])
+    dereferenceDidUrl = makeMockDereference([holderIdentity, issuerIdentity])
 
     invalidCost = {
       gross: 233,
@@ -58,7 +58,7 @@ describe('Quote', () => {
     claim = {
       cTypeHash: CType.idToHash(testCType.$id),
       contents: {},
-      owner: claimerIdentity.id,
+      owner: holderIdentity.id,
     }
 
     // build credential with legitimations
@@ -66,7 +66,7 @@ describe('Quote', () => {
 
     // Initialize the variable with proper type
     invalidCostQuoteData = {
-      attesterDid: attesterIdentity.id,
+      issuerDid: issuerIdentity.id,
       cTypeHash: '0x12345678',
       cost: invalidCost,
       currency: 'Euro',
@@ -87,7 +87,7 @@ describe('Quote', () => {
     } as unknown as IQuote
 
     validQuoteData = {
-      attesterDid: attesterIdentity.id,
+      issuerDid: issuerIdentity.id,
       cTypeHash: '0x12345678',
       cost: {
         gross: 233,
@@ -98,17 +98,17 @@ describe('Quote', () => {
       timeframe: new Date('12-04-2020').toISOString(),
       termsAndConditions: 'Lots of these',
     }
-    validAttesterSignedQuote = await Quote.createAttesterSignedQuote(
+    validIssuerSignedQuote = await Quote.createIssuerSignedQuote(
       validQuoteData,
       (
-        await (await attester).getSigners<'Sr25519'>(attesterIdentity, { verificationRelationship: 'authentication' })
+        await (await issuer).getSigners<'Sr25519'>(issuerIdentity, { verificationRelationship: 'authentication' })
       )[0]
     )
     quoteBothAgreed = await Quote.createQuoteAgreement(
-      validAttesterSignedQuote,
+      validIssuerSignedQuote,
       credential.rootHash,
-      (await (await claimer).getSigners<'Sr25519'>(claimerIdentity, { verificationRelationship: 'authentication' }))[0],
-      claimerIdentity.id,
+      (await (await holder).getSigners<'Sr25519'>(holderIdentity, { verificationRelationship: 'authentication' }))[0],
+      holderIdentity.id,
       {
         dereferenceDidUrl,
       }
@@ -118,15 +118,15 @@ describe('Quote', () => {
   })
 
   it('tests created quote data against given data', async () => {
-    expect(validQuoteData.attesterDid).toEqual(attesterIdentity.id)
+    expect(validQuoteData.issuerDid).toEqual(issuerIdentity.id)
     const signer = (
-      await (await claimer).getSigners(claimerIdentity, { verificationRelationship: 'authentication' })
+      await (await holder).getSigners(holderIdentity, { verificationRelationship: 'authentication' })
     )[0]
     const sig = await signer.sign({
       data: blake2AsU8a(
         Crypto.encodeObjectAsStr({
-          ...validAttesterSignedQuote,
-          claimerDid: claimerIdentity.id,
+          ...validIssuerSignedQuote,
+          holderDid: holderIdentity.id,
           rootHash: credential.rootHash,
         })
       ),
@@ -136,21 +136,21 @@ describe('Quote', () => {
       signature: u8aToHex(sig),
       keyUri: signer.id,
     }
-    expect(signature).toEqual(quoteBothAgreed.claimerSignature)
+    expect(signature).toEqual(quoteBothAgreed.holderSignature)
 
-    // const { fragment: attesterKeyId } = DidModule.parse(validAttesterSignedQuote.attesterSignature.keyUri)
-    const attesterKey = attesterIdentity.verificationMethod?.find(
-      ({ id }) => id === validAttesterSignedQuote.attesterSignature.keyUri
+    // const { fragment: issuerKeyId } = DidModule.parse(validIssuerSignedQuote.issuerSignature.keyUri)
+    const issuerKey = issuerIdentity.verificationMethod?.find(
+      ({ id }) => id === validIssuerSignedQuote.issuerSignature.keyUri
     )
-    if (!attesterKey) {
-      throw new Error('Attester key not found')
+    if (!issuerKey) {
+      throw new Error('Issuer key not found')
     }
 
     expect(() =>
       Crypto.verify(
         Crypto.hashStr(
           Crypto.encodeObjectAsStr({
-            attesterDid: validQuoteData.attesterDid,
+            issuerDid: validQuoteData.issuerDid,
             cTypeHash: validQuoteData.cTypeHash,
             cost: validQuoteData.cost,
             currency: validQuoteData.currency,
@@ -158,12 +158,12 @@ describe('Quote', () => {
             termsAndConditions: validQuoteData.termsAndConditions,
           })
         ),
-        validAttesterSignedQuote.attesterSignature.signature,
-        DidModule.multibaseKeyToDidKey(attesterKey.publicKeyMultibase).publicKey
+        validIssuerSignedQuote.issuerSignature.signature,
+        DidModule.multibaseKeyToDidKey(issuerKey.publicKeyMultibase).publicKey
       )
     ).not.toThrow()
     await expect(
-      Quote.verifyAttesterSignedQuote(validAttesterSignedQuote, {
+      Quote.verifyIssuerSignedQuote(validIssuerSignedQuote, {
         dereferenceDidUrl,
       })
     ).resolves.not.toThrow()
@@ -173,13 +173,13 @@ describe('Quote', () => {
       })
     ).resolves.not.toThrow()
     await expect(
-      Quote.createAttesterSignedQuote(
+      Quote.createIssuerSignedQuote(
         validQuoteData,
         (
-          await (await attester).getSigners<'Sr25519'>(attesterIdentity, { verificationRelationship: 'authentication' })
+          await (await issuer).getSigners<'Sr25519'>(issuerIdentity, { verificationRelationship: 'authentication' })
         )[0]
       )
-    ).resolves.toEqual(validAttesterSignedQuote)
+    ).resolves.toEqual(validIssuerSignedQuote)
   })
   it('validates created quotes against QuoteSchema', () => {
     expect(Quote.validateQuoteSchema(QuoteSchema, validQuoteData)).toBe(true)
@@ -188,12 +188,12 @@ describe('Quote', () => {
   })
 
   it('detects tampering', async () => {
-    const messedWithCurrency: IQuoteAttesterSigned = {
-      ...validAttesterSignedQuote,
+    const messedWithCurrency: IQuoteIssuerSigned = {
+      ...validIssuerSignedQuote,
       currency: 'Bananas',
     }
     await expect(
-      Quote.verifyAttesterSignedQuote(messedWithCurrency, {
+      Quote.verifyIssuerSignedQuote(messedWithCurrency, {
         dereferenceDidUrl,
       })
     ).rejects.toThrow()
@@ -208,18 +208,18 @@ describe('Quote', () => {
     ).rejects.toThrow()
   })
 
-  it('complains if attesterDid does not match attester signature', async () => {
+  it('complains if issuerDid does not match issuer signature', async () => {
     const signer = (
-      await (await claimer).getSigners(claimerIdentity, { verificationRelationship: 'authentication' })
+      await (await holder).getSigners(holderIdentity, { verificationRelationship: 'authentication' })
     )[0]
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { attesterSignature, ...attesterSignedQuote } = validAttesterSignedQuote
-    const wrongSignerAttester: IQuoteAttesterSigned = {
-      ...attesterSignedQuote,
-      attesterSignature: {
+    const { issuerSignature, ...issuerSignedQuote } = validIssuerSignedQuote
+    const wrongSignerIssuer: IQuoteIssuerSigned = {
+      ...issuerSignedQuote,
+      issuerSignature: {
         signature: (
           await signer.sign({
-            data: Crypto.hash(Crypto.encodeObjectAsStr(attesterSignedQuote)),
+            data: Crypto.hash(Crypto.encodeObjectAsStr(issuerSignedQuote)),
           })
         ).toString(),
         keyUri: signer.id,
@@ -227,21 +227,21 @@ describe('Quote', () => {
     }
 
     await expect(
-      Quote.verifyAttesterSignedQuote(wrongSignerAttester, {
+      Quote.verifyIssuerSignedQuote(wrongSignerIssuer, {
         dereferenceDidUrl,
       })
     ).rejects.toThrow()
   })
 
-  it('complains if claimerDid does not match claimer signature', async () => {
+  it('complains if holderDid does not match holder signature', async () => {
     const signer = (
-      await (await attester).getSigners(attesterIdentity, { verificationRelationship: 'authentication' })
+      await (await issuer).getSigners(issuerIdentity, { verificationRelationship: 'authentication' })
     )[0]
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { claimerSignature, ...restQuote } = quoteBothAgreed
-    const wrongSignerClaimer: IQuoteAgreement = {
+    const { holderSignature, ...restQuote } = quoteBothAgreed
+    const wrongSignerHolder: IQuoteAgreement = {
       ...restQuote,
-      claimerSignature: {
+      holderSignature: {
         signature: (
           await signer.sign({
             data: Crypto.hash(Crypto.encodeObjectAsStr(restQuote)),
@@ -252,7 +252,7 @@ describe('Quote', () => {
     }
 
     await expect(
-      Quote.verifyQuoteAgreement(wrongSignerClaimer, {
+      Quote.verifyQuoteAgreement(wrongSignerHolder, {
         dereferenceDidUrl,
       })
     ).rejects.toThrow()

@@ -173,7 +173,7 @@ export function isIRequestCredentialContent(body: any): body is IRequestCredenti
         cType !== null &&
         'cTypeHash' in cType &&
         typeof cType.cTypeHash === 'string' &&
-        (typeof cType.trustedAttesters === 'undefined' || Array.isArray(cType.trustedAttesters)) &&
+        (typeof cType.trustedIssuers === 'undefined' || Array.isArray(cType.trustedIssuers)) &&
         (typeof cType.requiredProperties === 'undefined' || Array.isArray(cType.requiredProperties))
     )
   ) {
@@ -204,8 +204,8 @@ function isICredentialPresentation(body: any): body is ICredentialPresentation {
   return (
     typeof body === 'object' &&
     body !== null &&
-    'claimerSignature' in body &&
-    typeof body.claimerSignature === 'object' &&
+    'holderSignature' in body &&
+    typeof body.holderSignature === 'object' &&
     'claim' in body &&
     'claimNonceMap' in body &&
     'claimHashes' in body &&
@@ -215,6 +215,6 @@ function isICredentialPresentation(body: any): body is ICredentialPresentation {
     Array.isArray(body.legitimations) &&
     'rootHash' in body &&
     typeof body.rootHash === 'string' &&
-    ('challenge' in body.claimerSignature ? typeof body.claimerSignature.challenge === 'string' : true)
+    ('challenge' in body.holderSignature ? typeof body.holderSignature.challenge === 'string' : true)
   )
 }

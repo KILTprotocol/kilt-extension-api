@@ -30,7 +30,7 @@ import { dereferenceToResolve } from '../../../quote/Quote.js'
  * @param session.encryptCallback - A callback function used for encryption.
  * @param cTypes - An array of credential type information. Normally a single one is enough. For nested cTypes an array has to be provided.
  * @param cTypes[].cTypeHash - The hash of the  Ctype on chain.
- * @param cTypes[].trustedAttesters - An optional array of trusted attester DIDs.
+ * @param cTypes[].trustedIssuers - An optional array of trusted issuer DIDs.
  * @param cTypes[].requiredProperties - An optional array of required property names.
  * @param owner - An optional owner DID for the credential.
  * @param options - Additional options for the function.
@@ -41,7 +41,7 @@ export async function requestCredential(
   { receiverEncryptionKeyUri, senderEncryptionKeyUri, encryptCallback }: ISession,
   cTypes: Array<{
     cTypeHash: CTypeHash
-    trustedAttesters?: Did[]
+    trustedIssuers?: Did[]
     requiredProperties?: string[]
   }>,
   owner?: Did,

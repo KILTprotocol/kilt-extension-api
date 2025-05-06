@@ -31,7 +31,7 @@ import type {
 } from '@kiltprotocol/types'
 import { Crypto, Signers } from '@kiltprotocol/utils'
 import { u8aToHex } from '@polkadot/util'
-import { createAttesterSignedQuote, createQuoteAgreement } from '../quote/Quote'
+import { createIssuerSignedQuote, createQuoteAgreement } from '../quote/Quote'
 import {
   KeyTool,
   createLocalDemoFullDidFromKeypair,
@@ -45,7 +45,7 @@ import type {
   IMessage,
   IQuote,
   IQuoteAgreement,
-  IQuoteAttesterSigned,
+  IQuoteIssuerSigned,
   IRejectAttestation,
   IRequestAttestation,
   IRequestAttestationContent,
@@ -198,7 +198,7 @@ describe('Messaging', () => {
     const date = new Date(2019, 11, 10).toISOString()
 
     const quoteData: IQuote = {
-      attesterDid: bobFullDid.id,
+      issuerDid: bobFullDid.id,
       cTypeHash: `${Crypto.hashStr('0x12345678')}`,
       cost: {
         tax: { vat: 3.3 },
@@ -209,9 +209,9 @@ describe('Messaging', () => {
       termsAndConditions: 'https://coolcompany.io/terms.pdf',
       timeframe: date,
     }
-    const quoteAttesterSigned = await createAttesterSignedQuote(quoteData, bobAuthentication)
+    const quoteIssuerSigned = await createIssuerSignedQuote(quoteData, bobAuthentication)
     const bothSigned = await createQuoteAgreement(
-      quoteAttesterSigned,
+      quoteIssuerSigned,
       credential.rootHash,
       aliceAuthentication,
       aliceFullDid.id,
@@ -298,7 +298,7 @@ describe('Messaging', () => {
 
     const date = new Date(2019, 11, 10).toISOString()
     const quoteData: IQuote = {
-      attesterDid: bobLightDid.id,
+      issuerDid: bobLightDid.id,
       cTypeHash: `${Crypto.hashStr('0x12345678')}`,
       cost: {
         tax: { vat: 3.3 },
@@ -309,9 +309,9 @@ describe('Messaging', () => {
       termsAndConditions: 'https://coolcompany.io/terms.pdf',
       timeframe: date,
     }
-    const quoteAttesterSigned = await createAttesterSignedQuote(quoteData, bobAuthentication)
+    const quoteIssuerSigned = await createIssuerSignedQuote(quoteData, bobAuthentication)
     const bothSigned = await createQuoteAgreement(
-      quoteAttesterSigned,
+      quoteIssuerSigned,
       credential.rootHash,
       aliceAuthentication,
       aliceLightDid.id,
@@ -337,7 +337,7 @@ describe('Messaging', () => {
     })
 
     const quoteDataEncodedDetails: IQuote = {
-      attesterDid: bobLightDidWithDetails.id,
+      issuerDid: bobLightDidWithDetails.id,
       cTypeHash: `${Crypto.hashStr('0x12345678')}`,
       cost: {
         tax: { vat: 3.3 },
@@ -348,12 +348,12 @@ describe('Messaging', () => {
       termsAndConditions: 'https://coolcompany.io/terms.pdf',
       timeframe: date,
     }
-    const quoteAttesterSignedEncodedDetails = await createAttesterSignedQuote(
+    const quoteIssuerSignedEncodedDetails = await createIssuerSignedQuote(
       quoteDataEncodedDetails,
       bobAuthentication
     )
     const bothSignedEncodedDetails = await createQuoteAgreement(
-      quoteAttesterSignedEncodedDetails,
+      quoteIssuerSignedEncodedDetails,
       credential.rootHash,
       aliceAuthentication,
       aliceLightDidWithDetails.id,
@@ -479,8 +479,8 @@ describe('Messaging', () => {
 describe('Error checking / Verification', () => {
   // TODO: Duplicated code, would be nice to have as a seperated test package with similar helpers
   async function buildCredential(
-    claimerDid: Did,
-    attesterDid: Did,
+    holderDid: Did,
+    issuerDid: Did,
     contents: IClaim['contents'],
     legitimations: ICredential[]
   ): Promise<[ICredential, IAttestation]> {
@@ -490,13 +490,13 @@ describe('Error checking / Verification', () => {
       name: { type: 'string' },
     })
 
-    const claim = Claim.fromCTypeAndClaimContents(testCType, contents, claimerDid)
+    const claim = Claim.fromCTypeAndClaimContents(testCType, contents, holderDid)
     // build credential with legitimations
     const credential = Credential.fromClaim(claim, {
       legitimations,
     })
     // build attestation
-    const testAttestation = Attestation.fromCredentialAndDid(credential, attesterDid)
+    const testAttestation = Attestation.fromCredentialAndDid(credential, issuerDid)
     return [credential, testAttestation]
   }
 
@@ -512,7 +512,7 @@ describe('Error checking / Verification', () => {
   let claim: IClaim
   let claimContents: IClaim['contents']
   let quoteData: IQuote
-  let quoteAttesterSigned: IQuoteAttesterSigned
+  let quoteIssuerSigned: IQuoteIssuerSigned
   let bothSigned: IQuoteAgreement
   let legitimation: ICredential
   let submitTermsBody: ISubmitTerms
@@ -580,7 +580,7 @@ describe('Error checking / Verification', () => {
     ;[legitimation] = await buildCredential(identityAlice.id, identityBob.id, {}, [])
     // Quote Data
     quoteData = {
-      attesterDid: identityAlice.id,
+      issuerDid: identityAlice.id,
       cTypeHash: claim.cTypeHash,
       cost: {
         tax: { vat: 3.3 },
@@ -591,14 +591,14 @@ describe('Error checking / Verification', () => {
       termsAndConditions: 'https://coolcompany.io/terms.pdf',
       timeframe: date,
     }
-    // Quote signed by attester
+    // Quote signed by issuer
     const aliceAuthentication = (
       await keyAlice.getSigners<Signers.DidPalletSupportedAlgorithms>(identityAlice, {
         verificationRelationship: 'authentication',
         algorithms: Signers.DID_PALLET_SUPPORTED_ALGORITHMS,
       })
     )[0]
-    quoteAttesterSigned = await createAttesterSignedQuote(quoteData, aliceAuthentication)
+    quoteIssuerSigned = await createIssuerSignedQuote(quoteData, aliceAuthentication)
     // Quote agreement
     const bobAuthentication = (
       await keyAlice.getSigners<Signers.DidPalletSupportedAlgorithms>(identityBob, {
@@ -607,7 +607,7 @@ describe('Error checking / Verification', () => {
       })
     )[0]
     bothSigned = await createQuoteAgreement(
-      quoteAttesterSigned,
+      quoteIssuerSigned,
       legitimation.rootHash,
       bobAuthentication,
       identityBob.id,
@@ -623,7 +623,7 @@ describe('Error checking / Verification', () => {
       },
       legitimations: [legitimation],
       delegationId: undefined,
-      quote: quoteAttesterSigned,
+      quote: quoteIssuerSigned,
       cTypes: undefined,
     }
 
@@ -649,7 +649,7 @@ describe('Error checking / Verification', () => {
       cTypes: [
         {
           cTypeHash: claim.cTypeHash,
-          trustedAttesters: [identityAlice.id],
+          trustedIssuers: [identityAlice.id],
           requiredProperties: ['id', 'name'],
         },
       ],
@@ -659,7 +659,7 @@ describe('Error checking / Verification', () => {
     submitCredentialContent = [
       {
         ...legitimation,
-        claimerSignature: {
+        holderSignature: {
           signature: '0x1234',
           keyUri: `${legitimation.claim.owner}#0x1234`,
         },
@@ -757,8 +757,8 @@ describe('Error checking / Verification', () => {
     submitTermsBody.content.delegationId = 'this is not a delegation id'
     expect(() => assertKnownMessageBody(messageSubmitTerms)).toThrowError()
 
-    submitCredentialBody.content[0].claimerSignature = {
-      signature: 'this is not the claimers signature',
+    submitCredentialBody.content[0].holderSignature = {
+      signature: 'this is not the holders signature',
       // @ts-ignore
       keyUri: 'this is not a key id',
     }

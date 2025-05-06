@@ -23,7 +23,7 @@ import {
   submitTerms,
   validateConfirmedPayment,
 } from '.'
-import { createAttesterSignedQuote, verifyAttesterSignedQuote, verifyQuoteAgreement } from '../../../quote'
+import { createIssuerSignedQuote, verifyIssuerSignedQuote, verifyQuoteAgreement } from '../../../quote'
 import {
   KeyToolSigners,
   createAttestation,
@@ -147,7 +147,7 @@ describe('Attestation', () => {
     claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, bobFullDid.id)
 
     const quoteData = {
-      attesterDid: aliceFullDid.id,
+      issuerDid: aliceFullDid.id,
       cTypeHash: claim.cTypeHash,
       cost: {
         tax: { vat: 3.3 },
@@ -158,14 +158,14 @@ describe('Attestation', () => {
       termsAndConditions: 'https://coolcompany.io/terms.pdf',
       timeframe: new Date(2024, 8, 23).toISOString(),
     }
-    // Quote signed by attester
-    const quoteAttesterSigned = await createAttesterSignedQuote(quoteData, aliceSession['authenticationSigner'])
+    // Quote signed by issuer
+    const quoteIssuerSigned = await createIssuerSignedQuote(quoteData, aliceSession['authenticationSigner'])
 
     submitTermsContent = {
       claim,
       legitimations: [],
       delegationId: undefined,
-      quote: quoteAttesterSigned,
+      quote: quoteIssuerSigned,
       cTypes: undefined,
     }
   }, 20_000)
@@ -182,7 +182,7 @@ describe('Attestation', () => {
     expect(messageBody.content.quote).toBeDefined()
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await expect(verifyAttesterSignedQuote(messageBody.content.quote!)).resolves.not.toThrowError()
+    await expect(verifyIssuerSignedQuote(messageBody.content.quote!)).resolves.not.toThrowError()
   })
   it('requests credential', async () => {
     const credential = Credential.fromClaim(claim)

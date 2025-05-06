@@ -23,7 +23,7 @@ import {
 import { decrypt, encrypt } from '../../MessageEnvelope.js'
 import { isIRequestPayment, isRequestAttestation, isSubmitAttestation, isSubmitTerms } from '../../../utils/index.js'
 import { fromBody } from '../../utils.js'
-import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote/index.js'
+import { createQuoteAgreement, verifyIssuerSignedQuote } from '../../../quote/index.js'
 
 /**
  * Requests an attestation based on a received encrypted message and a credential.
@@ -39,7 +39,7 @@ import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote/
  * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if the decrypted message is not a submit terms message.
  * @throws Error if the claims in the credential and proposed claim do not match.
- * @throws Error if attester's quote verification fails.
+ * @throws Error if issuer's quote verification fails.
  * @returns A promise that resolves to an object containing the encrypted response message and the response message itself.
  */
 export async function requestAttestation(
@@ -67,7 +67,7 @@ export async function requestAttestation(
   Credential.verifyWellFormed(credential)
 
   const { claim: requestClaim, rootHash } = credential
-  const { claim: proposedClaim, quote: attesterQuote } = decryptedMessage.body.content
+  const { claim: proposedClaim, quote: issuerQuote } = decryptedMessage.body.content
 
   if (JSON.stringify(proposedClaim) !== JSON.stringify(requestClaim)) {
     throw new Error('Claims do not match')
@@ -78,10 +78,10 @@ export async function requestAttestation(
   const { did: sender } = Did.parse(senderEncryptionKeyUri)
   const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
 
-  if (attesterQuote) {
-    verifyAttesterSignedQuote(attesterQuote, { dereferenceDidUrl })
+  if (issuerQuote) {
+    verifyIssuerSignedQuote(issuerQuote, { dereferenceDidUrl })
 
-    quote = await createQuoteAgreement(attesterQuote, rootHash, authenticationSigner, sender, {
+    quote = await createQuoteAgreement(issuerQuote, rootHash, authenticationSigner, sender, {
       dereferenceDidUrl,
     })
   }
