@@ -8,7 +8,7 @@
  */
 
 import { DataIntegrity } from '@kiltprotocol/credentials'
-import { multibaseKeyToDidKey } from '@kiltprotocol/did'
+import { multibaseKeyToDidKey, validateDid } from '@kiltprotocol/did'
 import { DidResolver, connect, disconnect } from '@kiltprotocol/sdk-js'
 import { Did, DidUrl } from '@kiltprotocol/types'
 import { Signers } from '@kiltprotocol/utils'
@@ -48,8 +48,20 @@ const createCredentialOpts = {
   wsAddress: { alias: 'w', type: 'string', demandOption: true, default: 'wss://spiritnet.kilt.io' },
 } as const
 
-async function issueCredential(did: string, origin: string, seed: string, keyType: KeyType, proofType: string) {
-  const { didDocument } = await DidResolver.resolve(did as Did, {})
+async function issueCredential({
+  did,
+  origin,
+  seed,
+  keyType,
+  proofType,
+}: {
+  did: Did
+  origin: string
+  seed: string
+  keyType: KeyType
+  proofType: string
+}) {
+  const { didDocument } = await DidResolver.resolve(did, {})
   const assertionMethodId = didDocument?.assertionMethod?.[0]
   const assertionMethod = didDocument?.verificationMethod?.find(({ id }) => id === assertionMethodId)
   if (!assertionMethod) {
@@ -130,7 +142,8 @@ async function run() {
       },
       async ({ origin, seed, keyType, wsAddress, outFile, did, proofType }) => {
         await connect(wsAddress)
-        const credential = await issueCredential(did, origin, seed, keyType, proofType)
+        validateDid(did)
+        const credential = await issueCredential({ did: did as Did, origin, seed, keyType, proofType })
         await write(credential, outFile)
       }
     )
@@ -140,9 +153,10 @@ async function run() {
       { ...createCredentialOpts, ...commonOpts },
       async ({ origin, seed, keyType, wsAddress, outFile, did }) => {
         await connect(wsAddress)
+        validateDid(did)
         const credentials = await Promise.all(
           [DataIntegrity.PROOF_TYPE, KILT_SELF_SIGNED_PROOF_TYPE].map((proofType) =>
-            issueCredential(did, origin, seed, keyType, proofType)
+            issueCredential({ did: did as Did, origin, seed, keyType, proofType })
           )
         )
         const didResource = didConfigResourceFromCredentials(credentials)
