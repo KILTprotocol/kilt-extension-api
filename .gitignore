@@ -4,6 +4,7 @@ yarn-error.log
 /.vscode
 /esm/**
 
-
 *.js
 *.d.ts
+
+/.vscode 

@@ -8,7 +8,12 @@
 import { CType } from '@kiltprotocol/credentials'
 import * as DidModule from '@kiltprotocol/did'
 import { Credential } from '@kiltprotocol/legacy-credentials'
-import type { DidDocument, ICType, IClaim, ICredential } from '@kiltprotocol/types'
+import type {
+  DidDocument,
+  ICType,
+  IClaim,
+  ICredential,
+} from '@kiltprotocol/types'
 import { Crypto } from '@kiltprotocol/utils'
 import { blake2AsU8a } from '@polkadot/util-crypto'
 import { u8aToHex } from '@polkadot/util'
