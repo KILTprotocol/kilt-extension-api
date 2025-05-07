@@ -7,7 +7,7 @@
 
 import { Blockchain } from '@kiltprotocol/chain-helpers'
 import { CType } from '@kiltprotocol/credentials'
-import { authorizeTx, dereference, getStoreTx, parse } from '@kiltprotocol/did'
+import { authorizeTx, dereference, getStoreTx, parse, getFullDid } from '@kiltprotocol/did'
 import { ConfigService, DidResolver } from '@kiltprotocol/sdk-js'
 import {
   DereferenceResult,
@@ -86,7 +86,7 @@ export async function keypairs(
 export async function generateDid(account: KiltKeyringPair, mnemonic: string): Promise<DidDocument> {
   const { authentication, assertionMethod, keyAgreement } = await keypairs(mnemonic)
 
-  const uri = `did:kilt:${authentication.address}` as const
+  const uri = getFullDid(authentication.address)
 
   let fullDid = await DidResolver.resolve(uri, {})
   if (fullDid?.didDocument) return fullDid.didDocument
@@ -120,7 +120,7 @@ export async function assertionSigners({
   if (!didDocument.assertionMethod) throw new Error('no assertionMethod')
   return Signers.getSignersForKeypair({
     keypair: assertionMethod,
-    id: didDocument.assertionMethod![0],
+    id: didDocument.assertionMethod?.[0],
   })
 }
 
