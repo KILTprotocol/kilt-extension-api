@@ -61,7 +61,7 @@
     "build": "yarn build:cjs && yarn build:esm",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:esm": "tsc -p tsconfig.esm.json && echo '{\"type\": \"module\"}' > esm/package.json",
-    "clean": "exec git clean -xf -e 'node_modules' '*'",
+    "clean": "yarn exec git clean -xf -e 'node_modules' -e '.yarn' '*'",
     "test": "jest test --no-cache --forceExit",
     "prepack": "yarn build"
   },
