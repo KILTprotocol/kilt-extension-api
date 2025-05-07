@@ -8,12 +8,7 @@
 import { CType } from '@kiltprotocol/credentials'
 import * as DidModule from '@kiltprotocol/did'
 import { Credential } from '@kiltprotocol/legacy-credentials'
-import type {
-  DidDocument,
-  ICType,
-  IClaim,
-  ICredential,
-} from '@kiltprotocol/types'
+import type { DidDocument, ICType, IClaim, ICredential } from '@kiltprotocol/types'
 import { Crypto } from '@kiltprotocol/utils'
 import { blake2AsU8a } from '@polkadot/util-crypto'
 import { u8aToHex } from '@polkadot/util'
@@ -105,9 +100,7 @@ describe('Quote', () => {
     }
     validIssuerSignedQuote = await Quote.createIssuerSignedQuote(
       validQuoteData,
-      (
-        await (await issuer).getSigners<'Sr25519'>(issuerIdentity, { verificationRelationship: 'authentication' })
-      )[0]
+      (await (await issuer).getSigners<'Sr25519'>(issuerIdentity, { verificationRelationship: 'authentication' }))[0]
     )
     quoteBothAgreed = await Quote.createQuoteAgreement(
       validIssuerSignedQuote,
@@ -124,9 +117,7 @@ describe('Quote', () => {
 
   it('tests created quote data against given data', async () => {
     expect(validQuoteData.issuerDid).toEqual(issuerIdentity.id)
-    const signer = (
-      await (await holder).getSigners(holderIdentity, { verificationRelationship: 'authentication' })
-    )[0]
+    const signer = (await (await holder).getSigners(holderIdentity, { verificationRelationship: 'authentication' }))[0]
     const sig = await signer.sign({
       data: blake2AsU8a(
         Crypto.encodeObjectAsStr({
@@ -180,9 +171,7 @@ describe('Quote', () => {
     await expect(
       Quote.createIssuerSignedQuote(
         validQuoteData,
-        (
-          await (await issuer).getSigners<'Sr25519'>(issuerIdentity, { verificationRelationship: 'authentication' })
-        )[0]
+        (await (await issuer).getSigners<'Sr25519'>(issuerIdentity, { verificationRelationship: 'authentication' }))[0]
       )
     ).resolves.toEqual(validIssuerSignedQuote)
   })
@@ -214,9 +203,7 @@ describe('Quote', () => {
   })
 
   it('complains if issuerDid does not match issuer signature', async () => {
-    const signer = (
-      await (await holder).getSigners(holderIdentity, { verificationRelationship: 'authentication' })
-    )[0]
+    const signer = (await (await holder).getSigners(holderIdentity, { verificationRelationship: 'authentication' }))[0]
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { issuerSignature, ...issuerSignedQuote } = validIssuerSignedQuote
     const wrongSignerIssuer: IQuoteIssuerSigned = {
@@ -239,9 +226,7 @@ describe('Quote', () => {
   })
 
   it('complains if holderDid does not match holder signature', async () => {
-    const signer = (
-      await (await issuer).getSigners(issuerIdentity, { verificationRelationship: 'authentication' })
-    )[0]
+    const signer = (await (await issuer).getSigners(issuerIdentity, { verificationRelationship: 'authentication' }))[0]
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { claimerSignature, ...restQuote } = quoteBothAgreed
     const wrongSignerHolder: IQuoteAgreement = {
