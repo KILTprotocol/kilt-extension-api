@@ -7,13 +7,6 @@
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
-/**
- * Copyright (c) 2018-2024, BOTLabs GmbH.
- *
- * This source code is licensed under the BSD 4-Clause "Original" license
- * found in the LICENSE file in the root directory of this source tree.
- */
-
 import { Attestation, CType } from '@kiltprotocol/credentials'
 import { createLightDidDocument, multibaseKeyToDidKey, parse } from '@kiltprotocol/did'
 import { Claim, Credential } from '@kiltprotocol/legacy-credentials'
@@ -27,13 +20,13 @@ import type {
   IClaim,
   ICredential,
   ICredentialPresentation,
-  SignerInterface,
 } from '@kiltprotocol/types'
 import { Crypto, Signers } from '@kiltprotocol/utils'
 import { u8aToHex } from '@polkadot/util'
 import { createIssuerSignedQuote, createQuoteAgreement } from '../quote/Quote'
 import {
   KeyTool,
+  KeyToolSigners,
   createLocalDemoFullDidFromKeypair,
   createLocalDemoFullDidFromLightDid,
   makeEncryptionKeyTool,
@@ -68,19 +61,63 @@ describe('Messaging', () => {
   let aliceLightDid: DidDocument
   let aliceLightDidWithDetails: DidDocument
   let aliceFullDid: DidDocument
-  let aliceSign: SignerInterface[]
-  let aliceAuthentication: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>
+  let aliceSign: KeyToolSigners
   const aliceEncKey = makeEncryptionKeyTool('Alice//enc')
 
   let bobLightDid: DidDocument
   let bobLightDidWithDetails: DidDocument
   let bobFullDid: DidDocument
-  let bobAuthentication: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>
+  let bobSign: KeyToolSigners
   const bobEncKey = makeEncryptionKeyTool('Bob//enc')
+
+  const DEFAULT_CTYPE_HASH = `${Crypto.hashStr('0x12345678')}` as `0x${string}`
+  const DEFAULT_QUOTE_DATA = {
+    cost: {
+      tax: { vat: 3.3 },
+      net: 23.4,
+      gross: 23.5,
+    },
+    currency: 'Euro',
+    termsAndConditions: 'https://coolcompany.io/terms.pdf',
+    timeframe: new Date(2019, 11, 10).toISOString(),
+  }
+
+  const getSignerOptions = () => ({
+    verificationRelationship: 'authentication' as const,
+    algorithms: Signers.DID_PALLET_SUPPORTED_ALGORITHMS,
+  })
+
+  const createQuoteWithSigners = async (issuerDid: Did, cTypeHash: `0x${string}` = DEFAULT_CTYPE_HASH) => {
+    const quoteData: IQuote = {
+      ...DEFAULT_QUOTE_DATA,
+      issuerDid,
+      cTypeHash,
+    }
+    const quoteIssuerSigned = await createIssuerSignedQuote(
+      quoteData,
+      (await bobSign<Signers.DidPalletSupportedAlgorithms>(bobFullDid, getSignerOptions()))[0]
+    )
+    return quoteIssuerSigned
+  }
+
+  const createQuoteAgreementWithSigners = async (
+    quoteIssuerSigned: IQuoteIssuerSigned,
+    rootHash: `0x${string}`,
+    holderDid: Did
+  ) => {
+    return createQuoteAgreement(
+      quoteIssuerSigned,
+      rootHash,
+      (await aliceSign<Signers.DidPalletSupportedAlgorithms>(aliceFullDid, getSignerOptions()))[0],
+      holderDid,
+      { dereferenceDidUrl: mockDereference }
+    )
+  }
 
   beforeAll(async () => {
     await init()
     const aliceAuthKey = await makeSigningKeyTool('ed25519')
+    aliceSign = aliceAuthKey.getSigners
     aliceLightDid = createLightDidDocument({
       authentication: aliceAuthKey.authentication,
       keyAgreement: aliceEncKey.keyAgreement,
@@ -91,15 +128,9 @@ describe('Messaging', () => {
       service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
     })
     aliceFullDid = await createLocalDemoFullDidFromLightDid(aliceLightDid)
-    aliceSign = await aliceAuthKey.getSigners(aliceFullDid)
-    aliceAuthentication = (
-      await aliceAuthKey.getSigners<Signers.DidPalletSupportedAlgorithms>(aliceFullDid, {
-        verificationRelationship: 'authentication',
-        algorithms: Signers.DID_PALLET_SUPPORTED_ALGORITHMS,
-      })
-    )[0]
 
     const bobAuthKey = await makeSigningKeyTool('ed25519')
+    bobSign = bobAuthKey.getSigners
     bobLightDid = createLightDidDocument({
       authentication: bobAuthKey.authentication,
       keyAgreement: bobEncKey.keyAgreement,
@@ -110,12 +141,6 @@ describe('Messaging', () => {
       service: [{ id: '#id-1', type: ['type-1'], serviceEndpoint: ['x:url-1'] }],
     })
     bobFullDid = await createLocalDemoFullDidFromLightDid(bobLightDid)
-    bobAuthentication = (
-      await bobAuthKey.getSigners<Signers.DidPalletSupportedAlgorithms>(bobFullDid, {
-        verificationRelationship: 'authentication',
-        algorithms: Signers.DID_PALLET_SUPPORTED_ALGORITHMS,
-      })
-    )[0]
 
     mockDereference = makeMockDereference([
       aliceLightDidWithDetails,
@@ -163,9 +188,9 @@ describe('Messaging', () => {
 
     const encryptedWrongBody = await aliceEncKey.encrypt(aliceLightDid)({
       data: Crypto.coToUInt8('{ wrong JSON'),
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       peerPublicKey: multibaseKeyToDidKey(
-        bobLightDid.verificationMethod?.find(({ id }) => id === bobLightDid.keyAgreement![0])?.publicKeyMultibase ?? 'z'
+        bobLightDid.verificationMethod?.find(({ id }) => id === bobLightDid.keyAgreement?.[0])?.publicKeyMultibase ??
+          'z'
       ).publicKey,
       did: aliceLightDid.id,
     })
@@ -184,39 +209,20 @@ describe('Messaging', () => {
 
   it('verifies the message with sender is the owner (as full DID)', async () => {
     const credential = Credential.fromClaim({
-      cTypeHash: `${Crypto.hashStr('0x12345678')}`,
+      cTypeHash: DEFAULT_CTYPE_HASH,
       owner: aliceFullDid.id,
       contents: {},
     })
 
     const presentation = await Credential.createPresentation({
       credential,
-      signers: aliceSign,
+      signers: await aliceSign(aliceFullDid),
       didDocument: aliceFullDid,
     })
 
-    const date = new Date(2019, 11, 10).toISOString()
+    const quoteIssuerSigned = await createQuoteWithSigners(bobFullDid.id)
+    const bothSigned = await createQuoteAgreementWithSigners(quoteIssuerSigned, credential.rootHash, aliceFullDid.id)
 
-    const quoteData: IQuote = {
-      issuerDid: bobFullDid.id,
-      cTypeHash: `${Crypto.hashStr('0x12345678')}`,
-      cost: {
-        tax: { vat: 3.3 },
-        net: 23.4,
-        gross: 23.5,
-      },
-      currency: 'Euro',
-      termsAndConditions: 'https://coolcompany.io/terms.pdf',
-      timeframe: date,
-    }
-    const quoteIssuerSigned = await createIssuerSignedQuote(quoteData, bobAuthentication)
-    const bothSigned = await createQuoteAgreement(
-      quoteIssuerSigned,
-      credential.rootHash,
-      aliceAuthentication,
-      aliceFullDid.id,
-      { dereferenceDidUrl: mockDereference }
-    )
     const requestAttestationBody: IRequestAttestation = {
       content: {
         credential,
@@ -283,40 +289,21 @@ describe('Messaging', () => {
   })
 
   it('verifies the message with sender is the owner (as light DID)', async () => {
-    // Create request for attestation to the light DID with no encoded details
     const credential = Credential.fromClaim({
-      cTypeHash: `${Crypto.hashStr('0x12345678')}`,
+      cTypeHash: DEFAULT_CTYPE_HASH,
       owner: aliceLightDid.id,
       contents: {},
     })
 
     const presentation = await Credential.createPresentation({
       credential,
-      signers: aliceSign,
+      signers: await aliceSign(aliceFullDid),
       didDocument: aliceFullDid,
     })
 
-    const date = new Date(2019, 11, 10).toISOString()
-    const quoteData: IQuote = {
-      issuerDid: bobLightDid.id,
-      cTypeHash: `${Crypto.hashStr('0x12345678')}`,
-      cost: {
-        tax: { vat: 3.3 },
-        net: 23.4,
-        gross: 23.5,
-      },
-      currency: 'Euro',
-      termsAndConditions: 'https://coolcompany.io/terms.pdf',
-      timeframe: date,
-    }
-    const quoteIssuerSigned = await createIssuerSignedQuote(quoteData, bobAuthentication)
-    const bothSigned = await createQuoteAgreement(
-      quoteIssuerSigned,
-      credential.rootHash,
-      aliceAuthentication,
-      aliceLightDid.id,
-      { dereferenceDidUrl: mockDereference }
-    )
+    const quoteIssuerSigned = await createQuoteWithSigners(bobLightDid.id)
+    const bothSigned = await createQuoteAgreementWithSigners(quoteIssuerSigned, credential.rootHash, aliceLightDid.id)
+
     const requestAttestationBody: IRequestAttestation = {
       content: {
         credential,
@@ -328,37 +315,21 @@ describe('Messaging', () => {
     // Create request for attestation to the light DID with encoded details
     const contentWithEncodedDetails = await Credential.createPresentation({
       credential: Credential.fromClaim({
-        cTypeHash: `${Crypto.hashStr('0x12345678')}`,
+        cTypeHash: DEFAULT_CTYPE_HASH,
         owner: aliceLightDidWithDetails.id,
         contents: {},
       }),
-      signers: aliceSign,
+      signers: await aliceSign(aliceFullDid),
       didDocument: aliceFullDid,
     })
 
-    const quoteDataEncodedDetails: IQuote = {
-      issuerDid: bobLightDidWithDetails.id,
-      cTypeHash: `${Crypto.hashStr('0x12345678')}`,
-      cost: {
-        tax: { vat: 3.3 },
-        net: 23.4,
-        gross: 23.5,
-      },
-      currency: 'Euro',
-      termsAndConditions: 'https://coolcompany.io/terms.pdf',
-      timeframe: date,
-    }
-    const quoteIssuerSignedEncodedDetails = await createIssuerSignedQuote(
-      quoteDataEncodedDetails,
-      bobAuthentication
-    )
-    const bothSignedEncodedDetails = await createQuoteAgreement(
+    const quoteIssuerSignedEncodedDetails = await createQuoteWithSigners(bobLightDidWithDetails.id)
+    const bothSignedEncodedDetails = await createQuoteAgreementWithSigners(
       quoteIssuerSignedEncodedDetails,
       credential.rootHash,
-      aliceAuthentication,
-      aliceLightDidWithDetails.id,
-      { dereferenceDidUrl: mockDereference }
+      aliceLightDidWithDetails.id
     )
+
     const requestAttestationBodyWithEncodedDetails: IRequestAttestation = {
       content: {
         credential: contentWithEncodedDetails,
@@ -560,7 +531,7 @@ describe('Error checking / Verification', () => {
       return {
         contentStream: result,
         contentMetadata: {},
-        dereferencingMetadata: {} as any,
+        dereferencingMetadata: { contentType: 'application/did+json' },
       }
     }
 
