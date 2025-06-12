@@ -5,12 +5,14 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DidResolveKey, ICredential, IEncryptedMessage } from '@kiltprotocol/types'
-import { Attestation, Credential, Did } from '@kiltprotocol/sdk-js'
+import type { ICredential } from '@kiltprotocol/types'
+import { Credential } from '@kiltprotocol/legacy-credentials'
+import * as Did from '@kiltprotocol/did'
 
 import {
   IConfirmPayment,
   IConfirmPaymentContent,
+  IEncryptedMessage,
   IMessage,
   IMessageWorkflow,
   IQuoteAgreement,
@@ -21,7 +23,7 @@ import {
 import { decrypt, encrypt } from '../../MessageEnvelope.js'
 import { isIRequestPayment, isRequestAttestation, isSubmitAttestation, isSubmitTerms } from '../../../utils/index.js'
 import { fromBody } from '../../utils.js'
-import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote/index.js'
+import { createQuoteAgreement, verifyIssuerSignedQuote } from '../../../quote/index.js'
 
 /**
  * Requests an attestation based on a received encrypted message and a credential.
@@ -32,25 +34,31 @@ import { createQuoteAgreement, verifyAttesterSignedQuote } from '../../../quote/
  * @param session.senderEncryptionKeyUri - The URI of the sender's encryption key.
  * @param session.receiverEncryptionKeyUri - The URI of the receiver's encryption key.
  * @param session.encryptCallback - A callback function used for encryption.
- * @param session.signCallback - A callback function used for signing.
+ * @param session.authenticationSigner - A signer interface for signing with your DID's authentication method.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Only used for tests
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if the decrypted message is not a submit terms message.
  * @throws Error if the claims in the credential and proposed claim do not match.
- * @throws Error if attester's quote verification fails.
+ * @throws Error if issuer's quote verification fails.
  * @returns A promise that resolves to an object containing the encrypted response message and the response message itself.
  */
 export async function requestAttestation(
   encryptedMessage: IEncryptedMessage,
   credential: ICredential,
-  { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback, signCallback }: ISession,
   {
-    resolveKey = Did.resolveKey,
+    decryptCallback,
+    senderEncryptionKeyUri,
+    receiverEncryptionKeyUri,
+    encryptCallback,
+    authenticationSigner,
+  }: ISession,
+  {
+    dereferenceDidUrl,
   }: {
-    resolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ) {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { dereferenceDidUrl })
 
   if (!isSubmitTerms(decryptedMessage)) {
     throw new Error('Wrong message. Expected submit terms message')
@@ -59,7 +67,7 @@ export async function requestAttestation(
   Credential.verifyWellFormed(credential)
 
   const { claim: requestClaim, rootHash } = credential
-  const { claim: proposedClaim, quote: attesterQuote } = decryptedMessage.body.content
+  const { claim: proposedClaim, quote: issuerQuote } = decryptedMessage.body.content
 
   if (JSON.stringify(proposedClaim) !== JSON.stringify(requestClaim)) {
     throw new Error('Claims do not match')
@@ -70,10 +78,11 @@ export async function requestAttestation(
   const { did: sender } = Did.parse(senderEncryptionKeyUri)
   const { did: receiver } = Did.parse(receiverEncryptionKeyUri)
 
-  if (attesterQuote) {
-    verifyAttesterSignedQuote(attesterQuote, { didResolveKey: resolveKey })
-    quote = await createQuoteAgreement(attesterQuote, rootHash, signCallback, sender, {
-      didResolveKey: resolveKey,
+  if (issuerQuote) {
+    verifyIssuerSignedQuote(issuerQuote, { dereferenceDidUrl })
+
+    quote = await createQuoteAgreement(issuerQuote, rootHash, authenticationSigner, sender, {
+      dereferenceDidUrl,
     })
   }
 
@@ -85,7 +94,7 @@ export async function requestAttestation(
   const message = fromBody(body, sender, receiver)
   message.inReplyTo = decryptedMessage.messageId
   return {
-    encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    encryptedMessage: await encrypt(message, encryptCallback, receiverEncryptionKeyUri, { dereferenceDidUrl }),
     message,
   }
 }
@@ -101,7 +110,7 @@ export async function requestAttestation(
  * @param session.receiverEncryptionKeyUri - The URI of the receiver's encryption key.
  * @param session.encryptCallback - A callback function used for encryption.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Only used for tests
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if the decrypted message is not a request payment message.
  * @throws Error if the decrypted message points to the wrong previous message.
  * @returns A promise that resolves to an object containing the encrypted response message and the response message itself.
@@ -112,12 +121,12 @@ export async function confirmPayment(
   { message }: IMessageWorkflow,
   { decryptCallback, senderEncryptionKeyUri, receiverEncryptionKeyUri, encryptCallback }: ISession,
   {
-    resolveKey = Did.resolveKey,
+    dereferenceDidUrl,
   }: {
-    resolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ) {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { dereferenceDidUrl })
 
   if (!isIRequestPayment(decryptedMessage)) {
     throw new Error('Wrong message. Expected request payment message')
@@ -138,7 +147,7 @@ export async function confirmPayment(
   const response = fromBody(body, sender, receiver)
   response.inReplyTo = decryptedMessage.messageId
   return {
-    encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri, { resolveKey }),
+    encryptedMessage: await encrypt(response, encryptCallback, receiverEncryptionKeyUri, { dereferenceDidUrl }),
     message: response,
   }
 }
@@ -150,7 +159,7 @@ export async function confirmPayment(
  * @param session - An object containing session information.
  * @param session.decryptCallback - A callback function used for decryption.
  * @param options - Additional options for the function.
- * @param options.resolveKey - A function for resolving keys. (Optional) Only used for tests
+ * @param options.dereferenceDidUrl - An alternative function for resolving DIDs and verification methods (Optional).
  * @throws Error if the decrypted message is not a submit attestation message.
  * @throws Error if the original message is not a request attestation message.
  * @throws Error if the decrypted message points to the wrong previous message.
@@ -163,12 +172,12 @@ export async function receiveAttestation(
   { message }: IMessageWorkflow,
   { decryptCallback }: ISession,
   {
-    resolveKey = Did.resolveKey,
+    dereferenceDidUrl,
   }: {
-    resolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof Did.dereference
   } = {}
 ): Promise<IMessage<ISubmitAttestation>> {
-  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { resolveKey })
+  const decryptedMessage = await decrypt(encryptedMessage, decryptCallback, { dereferenceDidUrl })
   if (!isSubmitAttestation(decryptedMessage)) {
     throw new Error('Wrong message. Expected submit attestation message')
   }
@@ -185,7 +194,7 @@ export async function receiveAttestation(
 
   const { attestation } = decryptedMessage.body.content
 
-  Attestation.verifyAgainstCredential(attestation, credential)
+  Credential.verifyAgainstAttestation(attestation, credential)
 
   await Credential.verifyAttested(credential)
 

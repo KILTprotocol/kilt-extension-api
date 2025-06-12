@@ -6,42 +6,14 @@
  */
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import {
-  CType,
-  Claim,
-  DidDocument,
-  ICType,
-  IClaim,
-  Credential,
-  Quote,
-  IConfirmPaymentContent,
-  IAttestation,
-  connect,
-  KiltKeyringPair,
-  DecryptCallback,
-  EncryptCallback,
-  ConfigService,
-  ChainHelpers,
-  Blockchain,
-} from '@kiltprotocol/sdk-js'
+import { Blockchain, disconnect } from '@kiltprotocol/chain-helpers'
+import { CType } from '@kiltprotocol/credentials'
+import { Claim, Credential } from '@kiltprotocol/legacy-credentials'
+import { ConfigService, connect } from '@kiltprotocol/sdk-js'
+import type { DidDocument, IAttestation, ICType, IClaim, KiltKeyringPair } from '@kiltprotocol/types'
+import Keyring from '@polkadot/keyring'
 import { BN } from '@polkadot/util'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
-import Keyring from '@polkadot/keyring'
-
-import {
-  KeyToolSignCallback,
-  createAttestation,
-  createCtype,
-  fundAccount,
-  generateDid,
-  keypairs,
-  makeDecryptCallback,
-  makeEncryptCallback,
-  makeSignCallback,
-  startContainer,
-} from '../../../tests'
-import { receiveSessionRequest, requestSession, verifySession } from '../session'
-import { IRequestAttestation, IRequestPayment, ISession, ISessionRequest, ISubmitTerms, ITerms } from '../../../types'
 import {
   confirmPayment,
   receiveAttestation,
@@ -51,6 +23,30 @@ import {
   submitTerms,
   validateConfirmedPayment,
 } from '.'
+import { createIssuerSignedQuote, verifyIssuerSignedQuote, verifyQuoteAgreement } from '../../../quote'
+import {
+  KeyToolSigners,
+  createAttestation,
+  createCtype,
+  fundAccount,
+  generateDid,
+  keypairs,
+  makeDecryptCallback,
+  makeDidSigners,
+  makeEncryptCallback,
+  startContainer,
+} from '../../../tests'
+import {
+  DecryptCallback,
+  EncryptCallback,
+  IConfirmPaymentContent,
+  IRequestAttestation,
+  IRequestPayment,
+  ISession,
+  ISessionRequest,
+  ISubmitTerms,
+  ITerms,
+} from '../../../types'
 import {
   isIConfirmPayment,
   isIRequestPayment,
@@ -59,14 +55,14 @@ import {
   isSubmitTerms,
 } from '../../../utils'
 import { decrypt } from '../../MessageEnvelope'
-import { verifyAttesterSignedQuote, verifyQuoteAgreement } from '../../../quote'
+import { receiveSessionRequest, requestSession, verifySession } from '../session'
 
 describe('Attestation', () => {
   //Alice
   let aliceAccount: KiltKeyringPair
   let aliceFullDid: DidDocument
-  let aliceSign: KeyToolSignCallback
-  let aliceSignAssertion: KeyToolSignCallback
+  let aliceSign: KeyToolSigners
+  let aliceSignAssertion: KeyToolSigners
   let aliceDecryptCallback: DecryptCallback
   let aliceEncryptCallback: EncryptCallback
   let aliceMnemonic: string
@@ -74,7 +70,7 @@ describe('Attestation', () => {
   //Bob
   let bobAccount: KiltKeyringPair
   let bobFullDid: DidDocument
-  let bobSign: KeyToolSignCallback
+  let bobSign: KeyToolSigners
   let bobDecryptCallback: DecryptCallback
   let bobEncryptCallback: EncryptCallback
 
@@ -107,8 +103,8 @@ describe('Attestation', () => {
     const keyPairsAlice = await keypairs(aliceMnemonic)
     aliceEncryptCallback = makeEncryptCallback(keyPairsAlice.keyAgreement)(aliceFullDid)
     aliceDecryptCallback = makeDecryptCallback(keyPairsAlice.keyAgreement)
-    aliceSign = makeSignCallback(keyPairsAlice.authentication)
-    aliceSignAssertion = makeSignCallback(keyPairsAlice.assertionMethod)
+    aliceSign = makeDidSigners(keyPairsAlice.authentication)
+    aliceSignAssertion = makeDidSigners(keyPairsAlice.assertionMethod)
 
     //setup bob
     const bobMnemonic = mnemonicGenerate()
@@ -119,7 +115,7 @@ describe('Attestation', () => {
     const keyPairsBob = await keypairs(bobMnemonic)
     bobEncryptCallback = makeEncryptCallback(keyPairsBob.keyAgreement)(bobFullDid)
     bobDecryptCallback = makeDecryptCallback(keyPairsBob.keyAgreement)
-    bobSign = makeSignCallback(keyPairsBob.authentication)
+    bobSign = makeDidSigners(keyPairsBob.authentication)
 
     //sessions
     sessionRequest = requestSession(aliceFullDid, 'MyApp')
@@ -128,7 +124,7 @@ describe('Attestation', () => {
       sessionRequest,
       bobEncryptCallback,
       bobDecryptCallback,
-      bobSign(bobFullDid)
+      await bobSign(bobFullDid)
     )
     bobSession = session
 
@@ -137,7 +133,7 @@ describe('Attestation', () => {
       sessionResponse,
       aliceDecryptCallback,
       aliceEncryptCallback,
-      aliceSign(aliceFullDid)
+      await aliceSign(aliceFullDid)
     )
 
     testCType = CType.fromProperties('testCtype', {
@@ -148,10 +144,10 @@ describe('Attestation', () => {
       name: 'Bob',
     }
 
-    claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, bobFullDid.uri)
+    claim = Claim.fromCTypeAndClaimContents(testCType, claimContents, bobFullDid.id)
 
     const quoteData = {
-      attesterDid: aliceFullDid.uri,
+      issuerDid: aliceFullDid.id,
       cTypeHash: claim.cTypeHash,
       cost: {
         tax: { vat: 3.3 },
@@ -162,14 +158,14 @@ describe('Attestation', () => {
       termsAndConditions: 'https://coolcompany.io/terms.pdf',
       timeframe: new Date(2024, 8, 23).toISOString(),
     }
-    // Quote signed by attester
-    const quoteAttesterSigned = await Quote.createAttesterSignedQuote(quoteData, aliceSign(aliceFullDid))
+    // Quote signed by issuer
+    const quoteIssuerSigned = await createIssuerSignedQuote(quoteData, aliceSession['authenticationSigner'])
 
     submitTermsContent = {
       claim,
       legitimations: [],
       delegationId: undefined,
-      quote: quoteAttesterSigned,
+      quote: quoteIssuerSigned,
       cTypes: undefined,
     }
   }, 20_000)
@@ -186,7 +182,7 @@ describe('Attestation', () => {
     expect(messageBody.content.quote).toBeDefined()
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await expect(verifyAttesterSignedQuote(messageBody.content.quote!)).resolves.not.toThrowError()
+    await expect(verifyIssuerSignedQuote(messageBody.content.quote!)).resolves.not.toThrowError()
   })
   it('requests credential', async () => {
     const credential = Credential.fromClaim(claim)
@@ -300,9 +296,9 @@ describe('Attestation', () => {
 
     const api = ConfigService.get('api')
 
-    const txTransfer = api.tx.balances.transfer(aliceAccount.address, COST)
+    const txTransfer = api.tx.balances.transferKeepAlive(aliceAccount.address, COST)
 
-    const finalizedTx = await ChainHelpers.Blockchain.signAndSubmitTx(txTransfer, bobAccount, {
+    const finalizedTx = await Blockchain.signAndSubmitTx(txTransfer, bobAccount, {
       resolveOn: Blockchain.IS_FINALIZED,
     })
 
@@ -334,7 +330,7 @@ describe('Attestation', () => {
       delegationId: null,
       claimHash: credential.rootHash,
       cTypeHash: claim.cTypeHash,
-      owner: bobFullDid.uri,
+      owner: bobFullDid.id,
       revoked: false,
     }
 
@@ -363,7 +359,7 @@ describe('Attestation', () => {
       delegationId: null,
       claimHash: credential.rootHash,
       cTypeHash: claim.cTypeHash,
-      owner: bobFullDid.uri,
+      owner: bobFullDid.id,
       revoked: false,
     }
 
@@ -372,11 +368,11 @@ describe('Attestation', () => {
     const requestAttestationMessages = await requestAttestation(requestTerms.encryptedMessage, credential, bobSession)
 
     // Anchor attestation to the blockchain
-    await createCtype(aliceFullDid.uri, aliceAccount, aliceMnemonic, testCType)
+    await createCtype(aliceFullDid.id, aliceAccount, aliceMnemonic, testCType)
     await createAttestation(
       aliceAccount,
-      aliceFullDid.uri,
-      aliceSignAssertion(aliceFullDid),
+      aliceFullDid.id,
+      await aliceSignAssertion(aliceFullDid),
       credential.rootHash,
       claim.cTypeHash
     )
@@ -393,4 +389,8 @@ describe('Attestation', () => {
       receiveAttestation(submitAttestationMessage.encryptedMessage, requestAttestationMessages, bobSession)
     ).resolves.not.toThrowError()
   })
+})
+
+afterAll(async () => {
+  await disconnect()
 })

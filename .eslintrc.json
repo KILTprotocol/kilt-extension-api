@@ -10,6 +10,7 @@
     "sourceType": "module"
   },
   "plugins": ["@typescript-eslint", "license-header"],
+  "ignorePatterns": ["license-header.js", "**/*.config.js", "**/*.config.cjs", "cjs/**", "esm/**"],
   "rules": {
     "linebreak-style": ["error", "unix"],
     "quotes": ["error", "single"],

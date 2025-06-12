@@ -6,7 +6,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { IAttestation, ICredentialPresentation, IRequestCredentialContent } from '@kiltprotocol/types'
+import { IAttestation, ICredentialPresentation } from '@kiltprotocol/types'
 
 import type {
   IMessage,
@@ -19,6 +19,7 @@ import type {
   ISubmitTerms,
   IConfirmPayment,
   IRequestPayment,
+  IRequestCredentialContent,
 } from '../types/index.js'
 
 export function isIMessage<Body extends MessageBody>(message: any): message is IMessage<Body> {
@@ -172,7 +173,7 @@ export function isIRequestCredentialContent(body: any): body is IRequestCredenti
         cType !== null &&
         'cTypeHash' in cType &&
         typeof cType.cTypeHash === 'string' &&
-        (typeof cType.trustedAttesters === 'undefined' || Array.isArray(cType.trustedAttesters)) &&
+        (typeof cType.trustedIssuers === 'undefined' || Array.isArray(cType.trustedIssuers)) &&
         (typeof cType.requiredProperties === 'undefined' || Array.isArray(cType.requiredProperties))
     )
   ) {

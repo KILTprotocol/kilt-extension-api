@@ -13,7 +13,7 @@ export const QuoteSchema: JsonSchema.Schema = {
   type: 'object',
   title: 'Quote',
   properties: {
-    attesterDid: {
+    issuerDid: {
       type: 'string',
     },
     cTypeHash: {
@@ -45,5 +45,5 @@ export const QuoteSchema: JsonSchema.Schema = {
       format: 'date-time',
     },
   },
-  required: ['attesterDid', 'cTypeHash', 'cost', 'currency', 'termsAndConditions', 'timeframe'],
+  required: ['issuerDid', 'cTypeHash', 'cost', 'currency', 'termsAndConditions', 'timeframe'],
 }

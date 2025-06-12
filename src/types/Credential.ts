@@ -5,29 +5,36 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DidUri } from '@kiltprotocol/types'
-import { VerifiableCredential, constants } from '@kiltprotocol/vc-export'
+import type { DataIntegrity, W3C_CREDENTIAL_CONTEXT_URL, W3C_CREDENTIAL_TYPE } from '@kiltprotocol/credentials'
+import type { Did } from '@kiltprotocol/types'
 
-import { IMessageWorkflow } from './index.js'
-import { DomainLinkageProof } from './Window.js'
-
-export type ICredentialRequest = IMessageWorkflow & {
-  challenge: string
-}
+import { DOMAIN_LINKAGE_CREDENTIAL_TYPE } from '../wellKnownDidConfiguration/index.js'
+import type { SelfSignedProof } from './LegacyProofs.js'
 
 export interface CredentialSubject {
-  id: DidUri
+  id: Did
   origin: string
 }
 
 type Contexts = [
-  typeof constants.DEFAULT_VERIFIABLECREDENTIAL_CONTEXT,
+  typeof W3C_CREDENTIAL_CONTEXT_URL,
   'https://identity.foundation/.well-known/did-configuration/v1',
+  ...string[],
 ]
 
-export interface DomainLinkageCredential
-  extends Omit<VerifiableCredential, '@context' | 'legitimationIds' | 'credentialSubject' | 'proof' | 'id'> {
+export type DomainLinkageProof = SelfSignedProof | DataIntegrity.DataIntegrityProof
+
+export interface DidConfigResource {
+  '@context': string
+  linked_dids: DomainLinkageCredential[]
+}
+
+export interface DomainLinkageCredential {
   '@context': Contexts
+  type: (typeof W3C_CREDENTIAL_TYPE | typeof DOMAIN_LINKAGE_CREDENTIAL_TYPE | string)[]
   credentialSubject: CredentialSubject
+  issuer: string
+  issuanceDate: string
+  expirationDate: string
   proof: DomainLinkageProof
 }

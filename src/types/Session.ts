@@ -5,28 +5,42 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import { DecryptCallback, DidResourceUri, EncryptCallback, SignCallback } from '@kiltprotocol/types'
-
-import { IEncryptedMessage, IEncryptedMessageV1 } from './index.js'
+import type { DidUrl, SignerInterface } from '@kiltprotocol/types'
+import type { Signers } from '@kiltprotocol/utils'
+import type { EncryptCallback, DecryptCallback, IEncryptedMessage } from './Message.js'
 
 export interface ISessionRequest {
   name: string
-  encryptionKeyUri: DidResourceUri
+  encryptionKeyUri: DidUrl
   challenge: string
 }
 
 export interface ISessionResponse {
-  encryptionKeyUri: DidResourceUri
+  encryptionKeyUri: DidUrl
   encryptedChallenge: Uint8Array
   nonce: Uint8Array
 }
 
 export interface ISession {
-  receiverEncryptionKeyUri: DidResourceUri
-  senderEncryptionKeyUri: DidResourceUri
+  receiverEncryptionKeyUri: DidUrl
+  senderEncryptionKeyUri: DidUrl
   encryptCallback: EncryptCallback
   decryptCallback: DecryptCallback
-  signCallback: SignCallback
+  authenticationSigner: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>
+}
+
+export interface IEncryptedMessageV1 {
+  /** ID of the key agreement key of the receiver DID used to encrypt the message */
+  receiverKeyId: DidUrl
+
+  /** ID of the key agreement key of the sender DID used to encrypt the message */
+  senderKeyId: DidUrl
+
+  /** ciphertext as hexadecimal */
+  ciphertext: string
+
+  /** 24 bytes nonce as hexadecimal */
+  nonce: string
 }
 
 export interface PubSubSessionV1 {
@@ -60,7 +74,7 @@ export interface PubSubSessionV2 {
   close: () => Promise<void>
 
   /** ID of the key agreement key of the temporary DID the extension will use to encrypt the session messages */
-  encryptionKeyUri: DidResourceUri
+  encryptionKeyUri: DidUrl
 
   /** bytes as hexadecimal */
   encryptedChallenge: string

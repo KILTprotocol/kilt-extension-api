@@ -9,9 +9,7 @@ module.exports = {
   rootDir: 'src',
   coverageDirectory: 'coverage',
   moduleDirectories: ['node_modules'],
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.cjs.json',
-    },
+  transform: {
+    '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.cjs.json' }],
   },
 }

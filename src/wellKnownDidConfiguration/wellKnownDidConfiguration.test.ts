@@ -5,44 +5,31 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import {
-  KiltKeyringPair,
-  DidUri,
-  DidDocument,
-  ICredentialPresentation,
-  IClaim,
-  DidResourceUri,
-  connect,
-  disconnect,
-  CType,
-} from '@kiltprotocol/sdk-js'
+import { connect, disconnect } from '@kiltprotocol/sdk-js'
 import { mnemonicGenerate } from '@polkadot/util-crypto'
-import { DidConfigResource } from '../types'
+import { DidConfigResource, DomainLinkageCredential } from '../types'
 import { BN } from '@polkadot/util'
 import { Keyring } from '@kiltprotocol/utils'
 import {
-  createCredential,
   DID_CONFIGURATION_CONTEXT,
   verifyDidConfigResource,
-  didConfigResourceFromCredential,
   DID_VC_CONTEXT,
   DEFAULT_VERIFIABLECREDENTIAL_TYPE,
-  ctypeDomainLinkage,
   DOMAIN_LINKAGE_CREDENTIAL_TYPE,
+  createCredential,
+  didConfigResourceFromCredentials,
 } from './index'
-import { fundAccount, generateDid, keypairs, createCtype, assertionSigner, startContainer } from '../tests/utils'
+import { fundAccount, generateDid, keypairs, createCtype, assertionSigners, startContainer } from '../tests/utils'
+import { Did, DidDocument, KiltKeyringPair } from '@kiltprotocol/types'
 
 describe('Well Known Did Configuration integration test', () => {
   let mnemonic: string
   let account: KiltKeyringPair
   const origin = 'http://localhost:3000'
   let didDocument: DidDocument
-  let didUri: DidUri
-  let keypair: any
-  let didConfigResource: DidConfigResource
-  let credential: ICredentialPresentation
-  let keyUri: DidResourceUri
-  let claim: IClaim
+  let didUri: Did
+  let keypair: Awaited<ReturnType<typeof keypairs>>
+  let credential: DomainLinkageCredential
 
   beforeAll(async () => {
     const address = await startContainer()
@@ -57,45 +44,48 @@ describe('Well Known Did Configuration integration test', () => {
 
     didDocument = await generateDid(account, mnemonic)
 
-    didUri = didDocument.uri
-    keyUri = `${didUri}${didDocument.assertionMethod![0].id}`
-    claim = {
-      cTypeHash: CType.idToHash(ctypeDomainLinkage.$id),
-      contents: { origin },
-      owner: didUri,
-    }
+    didUri = didDocument.id
     await createCtype(didUri, account, mnemonic)
   }, 30_000)
 
   it('generate a well known did configuration credential', async () => {
     expect(
       (credential = await createCredential(
-        await assertionSigner({ assertionMethod: keypair.assertionMethod, didDocument }),
+        await assertionSigners({ assertionMethod: keypair.assertionMethod, didDocument }),
         origin,
         didUri
       ))
-    ).toMatchObject<ICredentialPresentation>({
-      claim,
-      claimerSignature: {
-        keyUri,
-        signature: expect.any(String),
+    ).toMatchObject<DomainLinkageCredential>({
+      '@context': [DID_VC_CONTEXT, DID_CONFIGURATION_CONTEXT],
+      type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
+      credentialSubject: {
+        id: didUri,
+        origin,
       },
-      claimHashes: expect.any(Array<`0x${string}`>),
-      claimNonceMap: expect.any(Object),
-      delegationId: null,
-      legitimations: [],
-      rootHash: expect.any(String),
+      issuer: didUri,
+      issuanceDate: expect.any(String),
+      expirationDate: expect.any(String),
+      proof: {
+        type: 'KILTSelfSigned2020',
+        verificationMethod: expect.any(String),
+        signature: expect.any(String),
+        proofPurpose: 'assertionMethod',
+      },
     })
   }, 30_000)
 
   it('fails to generate a well known did configuration credential if origin is not a URL', async () => {
     await expect(
-      createCredential(await assertionSigner({ assertionMethod: keypair.assertion, didDocument }), 'bad origin', didUri)
+      createCredential(
+        await assertionSigners({ assertionMethod: keypair.assertionMethod, didDocument }),
+        'bad origin',
+        didUri
+      )
     ).rejects.toThrow()
   }, 30_000)
 
   it('get domain linkage presentation', async () => {
-    expect((didConfigResource = await didConfigResourceFromCredential(credential))).toMatchObject<DidConfigResource>({
+    expect(didConfigResourceFromCredentials([credential])).toMatchObject<DidConfigResource>({
       '@context': DID_CONFIGURATION_CONTEXT,
       linked_dids: [
         {
@@ -108,23 +98,35 @@ describe('Well Known Did Configuration integration test', () => {
           type: [DEFAULT_VERIFIABLECREDENTIAL_TYPE, DOMAIN_LINKAGE_CREDENTIAL_TYPE],
           issuer: didUri,
           issuanceDate: expect.any(String),
+          expirationDate: expect.any(String),
         },
       ],
     })
   }, 30_000)
 
-  it('rejects if the domain linkage has no signature', async () => {
-    delete (credential as any).claimerSignature
-    await expect(didConfigResourceFromCredential(credential)).rejects.toThrow()
-  }, 30_000)
-
   it('verify did configuration presentation', async () => {
-    await expect(verifyDidConfigResource(didConfigResource, origin, didUri)).resolves.not.toThrow()
+    const didConfigResource = didConfigResourceFromCredentials([credential])
+    await expect(
+      verifyDidConfigResource(didConfigResource, origin, { allowUnsafe: true, expectedDid: didUri })
+    ).resolves.not.toThrow()
+    await expect(
+      verifyDidConfigResource(didConfigResource, origin, { allowUnsafe: false, expectedDid: didUri })
+    ).resolves.not.toThrow()
   }, 30_000)
 
   it('did not verify did configuration presentation', async () => {
-    didConfigResource.linked_dids[0].proof.signature = '0x'
-    await expect(verifyDidConfigResource(didConfigResource, origin, didUri)).rejects.toThrow()
+    const didConfigResource = didConfigResourceFromCredentials([JSON.parse(JSON.stringify(credential))])
+    didConfigResource.linked_dids[0].expirationDate = '2199-01-10T16:44:17.017Z'
+    await expect(
+      verifyDidConfigResource(didConfigResource, origin, { allowUnsafe: false, expectedDid: didUri })
+    ).rejects.toThrow()
+    await expect(
+      verifyDidConfigResource(didConfigResource, origin, { allowUnsafe: true, expectedDid: didUri })
+    ).resolves.not.toThrow()
+    ;(didConfigResource.linked_dids[0].credentialSubject as any).rootHash = '0x1234'
+    await expect(
+      verifyDidConfigResource(didConfigResource, origin, { allowUnsafe: true, expectedDid: didUri })
+    ).rejects.toThrow()
   }, 30_000)
 })
 

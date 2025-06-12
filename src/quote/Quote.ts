@@ -6,7 +6,7 @@
  */
 
 /**
- * [[Quote]] constructs a framework for Attesters to make an offer for building a [[Claim]] on a [[CType]] in which it includes a price and other terms & conditions upon which a claimer can agree.
+ * [[Quote]] constructs a framework for Issuers to make an offer for building a [[Claim]] on a [[CType]] in which it includes a price and other terms & conditions upon which a holder can agree.
  *
  * A [[Quote]] object represents a legal **offer** for the closure of a contract attesting a [[Claim]] from the [[CType]] specified within the offer.
  *
@@ -15,20 +15,37 @@
  * @packageDocumentation
  */
 
+import { dereference, resolve, signatureFromJson, verifyDidSignature } from '@kiltprotocol/did'
 import type {
-  IQuote,
-  IQuoteAgreement,
-  IQuoteAttesterSigned,
+  Did,
+  DidDocument,
+  DidUrl,
   ICredential,
-  SignCallback,
-  DidResolveKey,
-  DidUri,
+  ResolutionMetadata,
+  ResolutionOptions,
+  SignerInterface,
 } from '@kiltprotocol/types'
-import { Crypto, JsonSchema } from '@kiltprotocol/utils'
+import { Crypto, JsonSchema, Signers } from '@kiltprotocol/utils'
+import { IQuote, IQuoteAgreement, IQuoteIssuerSigned } from '../types/Quote.js'
 import * as QuoteError from './Error.js'
-import { resolveKey, verifyDidSignature, signatureToJson, signatureFromJson } from '@kiltprotocol/did'
 import { QuoteSchema } from './QuoteSchema.js'
 
+export function dereferenceToResolve(dereferenceImplementation?: typeof dereference): typeof resolve | undefined {
+  if (typeof dereferenceImplementation !== 'function') {
+    return dereferenceImplementation
+  }
+  return async (did: Did, resolutionOptions?: ResolutionOptions | undefined) => {
+    const { dereferencingMetadata, contentMetadata, contentStream } = await dereferenceImplementation(did, {
+      ...resolutionOptions,
+      accept: 'application/did+json',
+    })
+    return {
+      didResolutionMetadata: dereferencingMetadata as ResolutionMetadata,
+      didDocument: contentStream as DidDocument | undefined,
+      didDocumentMetadata: contentMetadata,
+    }
+  }
+}
 /**
  * Validates the quote against the meta schema and quote data against the provided schema.
  *
@@ -55,50 +72,53 @@ export function validateQuoteSchema(schema: JsonSchema.Schema, validate: unknown
 // TODO: should have a "create quote" function.
 
 /**
- * Signs a [[Quote]] object as an Attester.
+ * Signs a [[Quote]] object as an Issuer.
  *
  * @param quoteInput A [[Quote]] object.
- * @param sign The callback to sign with the private key.
+ * @param signer A signer interface handling signing with the issue's authentication key.
  * @returns A signed [[Quote]] object.
  */
-export async function createAttesterSignedQuote(quoteInput: IQuote, sign: SignCallback): Promise<IQuoteAttesterSigned> {
+export async function createIssuerSignedQuote(
+  quoteInput: IQuote,
+  signer: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>
+): Promise<IQuoteIssuerSigned> {
   if (!validateQuoteSchema(QuoteSchema, quoteInput)) {
     throw new QuoteError.QuoteUnverifiableError()
   }
 
-  const signature = await sign({
+  const signature = await signer.sign({
     data: Crypto.hash(Crypto.encodeObjectAsStr(quoteInput)),
-    did: quoteInput.attesterDid,
-    keyRelationship: 'authentication',
   })
   return {
     ...quoteInput,
-    attesterSignature: signatureToJson(signature),
+    issuerSignature: { signature: Crypto.u8aToHex(signature), keyUri: signer.id },
   }
 }
 
 /**
- * Verifies a [[IQuoteAttesterSigned]] object.
+ * Verifies a [[IQuoteIssuerSigned]] object.
  *
  * @param quote The object which to be verified.
  * @param options Optional settings.
- * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ * @param options.dereferenceDidUrl Resolve function used in the process of verifying the issuer signature.
  */
-export async function verifyAttesterSignedQuote(
-  quote: IQuoteAttesterSigned,
+export async function verifyIssuerSignedQuote(
+  quote: IQuoteIssuerSigned,
   {
-    didResolveKey = resolveKey,
+    dereferenceDidUrl,
   }: {
-    didResolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<void> {
-  const { attesterSignature, ...basicQuote } = quote
+  const { issuerSignature, ...basicQuote } = quote
+  const { signerUrl, signature } = signatureFromJson(issuerSignature)
   await verifyDidSignature({
-    ...signatureFromJson(attesterSignature),
+    signerUrl,
+    signature,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
-    expectedSigner: basicQuote.attesterDid,
-    expectedVerificationMethod: 'authentication',
-    didResolveKey,
+    expectedSigner: basicQuote.issuerDid,
+    expectedVerificationRelationship: 'authentication',
+    didResolver: dereferenceToResolve(dereferenceDidUrl),
   })
 
   const messages: string[] = []
@@ -108,50 +128,50 @@ export async function verifyAttesterSignedQuote(
 }
 
 /**
- * Creates a [[Quote]] signed by the Attester and the Claimer.
+ * Creates a [[Quote]] signed by the Issuer and the Holder.
  *
- * @param attesterSignedQuote A [[Quote]] object signed by an Attester.
+ * @param issuerSignedQuote A [[Quote]] object signed by an Issuer.
  * @param credentialRootHash A root hash of the entire object.
- * @param sign The callback to sign with the private key.
- * @param claimerDid The DID of the Claimer, who has to sign.
+ * @param signer A signer interface handling signing with the Holder's authentication key.
+ * @param holderDid The DID of the Holder, who has to sign.
  * @param options Optional settings.
- * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
- * @returns A [[Quote]] agreement signed by both the Attester and Claimer.
+ * @param options.dereferenceDidUrl Resolve function used in the process of verifying the issuer signature.
+ * @returns A [[Quote]] agreement signed by both the Issuer and Holder.
  */
 export async function createQuoteAgreement(
-  attesterSignedQuote: IQuoteAttesterSigned,
+  issuerSignedQuote: IQuoteIssuerSigned,
   credentialRootHash: ICredential['rootHash'],
-  sign: SignCallback,
-  claimerDid: DidUri,
+  signer: SignerInterface<Signers.DidPalletSupportedAlgorithms, DidUrl>,
+  holderDid: Did,
   {
-    didResolveKey = resolveKey,
+    dereferenceDidUrl,
   }: {
-    didResolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<IQuoteAgreement> {
-  const { attesterSignature, ...basicQuote } = attesterSignedQuote
+  const { issuerSignature, ...basicQuote } = issuerSignedQuote
 
+  const transformed = signatureFromJson(issuerSignature)
   await verifyDidSignature({
-    ...signatureFromJson(attesterSignature),
+    signature: transformed.signature,
+    signerUrl: transformed.signerUrl,
     message: Crypto.hashStr(Crypto.encodeObjectAsStr(basicQuote)),
-    expectedVerificationMethod: 'authentication',
-    didResolveKey,
+    expectedVerificationRelationship: 'authentication',
+    didResolver: dereferenceToResolve(dereferenceDidUrl),
   })
 
   const quoteAgreement = {
-    ...attesterSignedQuote,
+    ...issuerSignedQuote,
     rootHash: credentialRootHash,
-    claimerDid,
+    holderDid,
   }
-  const signature = await sign({
+  const signature = await signer.sign({
     data: Crypto.hash(Crypto.encodeObjectAsStr(quoteAgreement)),
-    did: claimerDid,
-    keyRelationship: 'authentication',
   })
 
   return {
     ...quoteAgreement,
-    claimerSignature: signatureToJson(signature),
+    claimerSignature: { signature: Crypto.u8aToHex(signature), keyUri: signer.id },
   }
 }
 
@@ -160,25 +180,27 @@ export async function createQuoteAgreement(
  *
  * @param quote The object to be verified.
  * @param options Optional settings.
- * @param options.didResolveKey Resolve function used in the process of verifying the attester signature.
+ * @param options.dereferenceDidUrl Resolve function used in the process of verifying the issuer signature.
  */
 export async function verifyQuoteAgreement(
   quote: IQuoteAgreement,
   {
-    didResolveKey = resolveKey,
+    dereferenceDidUrl,
   }: {
-    didResolveKey?: DidResolveKey
+    dereferenceDidUrl?: typeof dereference
   } = {}
 ): Promise<void> {
-  const { claimerSignature, claimerDid, rootHash, ...attesterSignedQuote } = quote
-  // verify attester signature
-  await verifyAttesterSignedQuote(attesterSignedQuote, { didResolveKey })
-  // verify claimer signature
+  const { claimerSignature, holderDid, rootHash, ...issuerSignedQuote } = quote
+  // verify issuer signature
+  await verifyIssuerSignedQuote(issuerSignedQuote, { dereferenceDidUrl })
+  // verify holder signature
+  const { signerUrl, signature } = signatureFromJson(claimerSignature)
   await verifyDidSignature({
-    ...signatureFromJson(claimerSignature),
-    message: Crypto.hashStr(Crypto.encodeObjectAsStr({ ...attesterSignedQuote, claimerDid, rootHash })),
-    expectedSigner: claimerDid,
-    expectedVerificationMethod: 'authentication',
-    didResolveKey,
+    signature,
+    signerUrl: signerUrl,
+    message: Crypto.hashStr(Crypto.encodeObjectAsStr({ ...issuerSignedQuote, holderDid, rootHash })),
+    expectedSigner: holderDid,
+    expectedVerificationRelationship: 'authentication',
+    didResolver: dereferenceToResolve(dereferenceDidUrl),
   })
 }
